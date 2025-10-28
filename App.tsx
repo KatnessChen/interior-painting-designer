@@ -29,7 +29,6 @@ const App: React.FC = () => {
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<ImageData | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [apiKeySelected, setApiKeySelected] = useState<boolean>(false);
   const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
 
   // State for ImageDisplayModal
@@ -56,42 +55,15 @@ const App: React.FC = () => {
 
         setOriginalImages(originalImagesData);
         setUpdatedImages(updatedImagesData);
-
-        // Check API key
-        if (
-          (window as any).aistudio &&
-          (window as any).aistudio.hasSelectedApiKey
-        ) {
-          const hasKey = await (window as any).aistudio.hasSelectedApiKey();
-          setApiKeySelected(hasKey);
-        } else {
-          // Assume API key is available in typical development environments without the studio extension
-          setApiKeySelected(true);
-        }
       } catch (error) {
         console.error("Failed to initialize app:", error);
-        setErrorMessage(
-          "Failed to load saved data. Some features may not work properly."
-        );
+        setErrorMessage("Failed to load saved data. Some features may not work properly.");
       } finally {
         setIsLoadingData(false);
       }
     };
 
     initializeApp();
-  }, []);
-
-  const handleSelectApiKey = useCallback(async () => {
-    if ((window as any).aistudio && (window as any).aistudio.openSelectKey) {
-      await (window as any).aistudio.openSelectKey();
-      // Assume selection was successful to avoid race condition and immediately enable functionality
-      setApiKeySelected(true);
-      setErrorMessage(null); // Clear any previous API key errors
-    } else {
-      setErrorMessage(
-        "API Key selection utility not available. Please ensure you're running in a compatible environment."
-      );
-    }
   }, []);
 
   const handleImageUpload = useCallback(async (imageData: ImageData) => {
@@ -516,38 +488,7 @@ const App: React.FC = () => {
         {isLoadingData && (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <span className="ml-3 text-lg text-gray-600">
-              Loading your saved data...
-            </span>
-          </div>
-        )}
-
-        {!isLoadingData && !apiKeySelected && (
-          <div
-            className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded-md shadow-sm"
-            role="alert"
-          >
-            <p className="font-bold">API Key Required</p>
-            <p className="text-sm">
-              Please select your Gemini API key to use the AI features.
-              <button
-                onClick={handleSelectApiKey}
-                className="ml-2 inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
-              >
-                Select API Key
-              </button>
-            </p>
-            <p className="text-xs mt-2">
-              Learn about billing for Gemini API:{" "}
-              <a
-                href="https://ai.google.dev/gemini-api/docs/billing"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline hover:text-yellow-900"
-              >
-                ai.google.dev/gemini-api/docs/billing
-              </a>
-            </p>
+            <span className="ml-3 text-lg text-gray-600">Loading your saved data...</span>
           </div>
         )}
 
