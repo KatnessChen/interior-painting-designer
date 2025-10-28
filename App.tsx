@@ -4,20 +4,7 @@ import { CircularProgress } from '@mui/material';
 import ColorSelector from './components/ColorSelector';
 import Gallery from './components/Gallery';
 import ConfirmationModal from './components/ConfirmationModal';
-import React, { useState, useCallback, useEffect } from "react";
-import {
-  Storage as StorageIcon,
-  ColorLens as RecolorIcon,
-} from "@mui/icons-material";
-import { CircularProgress } from "@mui/material";
-import ColorSelector from "./components/ColorSelector";
-import Gallery from "./components/Gallery";
-import ConfirmationModal from "./components/ConfirmationModal";
-import ImageDisplayModal from "./components/ImageDisplayModal"; // Import the new modal component
-import StorageManager from "./components/StorageManager";
-import { BenjaminMooreColor, ImageData } from "./types";
-import { recolorImage } from "./services/geminiService";
-import { storageService } from "./services/storageService";
+import CustomPromptModal from './components/CustomPromptModal';
 import ImageDisplayModal from './components/ImageDisplayModal'; // Import the new modal component
 import StorageManager from './components/StorageManager';
 import { BenjaminMooreColor, ImageData } from './types';
@@ -42,6 +29,9 @@ const App: React.FC = () => {
 
   // State for StorageManager
   const [showStorageManager, setShowStorageManager] = useState<boolean>(false);
+
+  // State for custom prompt modal
+  const [showCustomPromptModal, setShowCustomPromptModal] = useState<boolean>(false);
 
   // Initialize storage and load persisted data on mount
   useEffect(() => {
@@ -192,59 +182,8 @@ const App: React.FC = () => {
       return;
     }
 
-    setProcessingImage(true);
-    setErrorMessage(null); // Clear previous errors
-
-    try {
-      const recolored = await recolorImage(
-        selectedImage,
-        selectedColor.name,
-        selectedColor.hex
-      );
-      setGeneratedImage(recolored);
-      setShowConfirmationModal(true);
-    } catch (error: any) {
-      // Cast to any to access potential custom error properties
-      console.error("Recolor failed:", error);
-      let msg = error instanceof Error ? error.message : String(error);
-      let displayMessage = `Recolor failed: ${msg}.`;
-      let shouldResetApiKey = false;
-
-      // Attempt to parse API specific error details from the message
-      let apiError: any = null;
-      try {
-        const jsonStringMatch = msg.match(/\{"error":\{.*\}\}/);
-        if (jsonStringMatch) {
-          apiError = JSON.parse(jsonStringMatch[0]);
-        }
-      } catch (e) {
-        console.warn("Failed to parse error message as JSON:", e);
-      }
-
-      if (
-        apiError?.error?.status === "RESOURCE_EXHAUSTED" ||
-        apiError?.error?.code === 429
-      ) {
-        const rateLimitDocsLink =
-          apiError?.error?.details?.[1]?.links?.[0]?.url ||
-          "https://ai.google.dev/gemini-api/docs/rate-limits";
-        const usageLink = "https://ai.dev/usage?tab=rate-limit"; // General usage link if not in details
-        displayMessage = `Recolor failed due to quota limits. You've exceeded your current usage limit for the Gemini API. Please check your plan and billing details. For more information, visit: ${rateLimitDocsLink} or monitor your usage at: ${usageLink}`;
-        // No need to reset API key selection for quota errors as the key is valid but limited.
-      } else if (msg.includes("Requested entity was not found.")) {
-        displayMessage = `Recolor failed: ${msg}. This might indicate an invalid API key or an issue with model availability. Please re-select your API key.`;
-        shouldResetApiKey = true;
-      } else {
-        displayMessage = `Recolor failed: ${msg}. If this error persists, try re-selecting your API key or contact support.`;
-      }
-
-      setErrorMessage(displayMessage);
-      if (shouldResetApiKey) {
-        setApiKeySelected(false);
-      }
-    } finally {
-      setProcessingImage(false);
-    }
+    // Show custom prompt modal
+    setShowCustomPromptModal(true);
   }, [selectedColor, originalImages, selectedOriginalImageIds]);
 
   const handleConfirmRecolor = useCallback(
@@ -288,6 +227,69 @@ const App: React.FC = () => {
     setShowConfirmationModal(false);
     setGeneratedImage(null);
   }, []);
+
+  const handleConfirmCustomPrompt = useCallback(
+    async (prompt: string) => {
+      if (!selectedColor) {
+        setErrorMessage('Please select a color first.');
+        return;
+      }
+
+      // Get the first (and only) selected image for recolor
+      const selectedImageId = Array.from(selectedOriginalImageIds)[0];
+      const selectedImage = originalImages.find((img) => img.id === selectedImageId);
+      if (!selectedImage) {
+        setErrorMessage('Please select an original photo to recolor.');
+        return;
+      }
+
+      setProcessingImage(true);
+      setErrorMessage(null);
+      setShowCustomPromptModal(false);
+
+      try {
+        const recolored = await recolorImage(
+          selectedImage,
+          selectedColor.name,
+          selectedColor.hex,
+          prompt || ''
+        );
+        setGeneratedImage(recolored);
+        setShowConfirmationModal(true);
+      } catch (error: any) {
+        console.error('Recolor failed:', error);
+        let msg = error instanceof Error ? error.message : String(error);
+        let displayMessage = `Recolor failed: ${msg}.`;
+
+        let apiError: any = null;
+        try {
+          const jsonStringMatch = msg.match(/\{"error":\{.*\}\}/);
+          if (jsonStringMatch) {
+            apiError = JSON.parse(jsonStringMatch[0]);
+          }
+        } catch (e) {
+          console.warn('Failed to parse error message as JSON:', e);
+        }
+
+        if (apiError?.error?.status === 'RESOURCE_EXHAUSTED' || apiError?.error?.code === 429) {
+          const rateLimitDocsLink =
+            apiError?.error?.details?.[1]?.links?.[0]?.url ||
+            'https://ai.google.dev/gemini-api/docs/rate-limits';
+          const usageLink = 'https://ai.dev/usage?tab=rate-limit';
+          displayMessage = `Recolor failed due to quota limits. You've exceeded your current usage limit for the Gemini API. Please check your plan and billing details. For more information, visit: ${rateLimitDocsLink} or monitor your usage at: ${usageLink}`;
+        } else if (msg.includes('Requested entity was not found.')) {
+          displayMessage = `Recolor failed: ${msg}. This might indicate an invalid API key or an issue with model availability. Please try again.`;
+        } else {
+          displayMessage = `Recolor failed: ${msg}. If this error persists, try again or contact support.`;
+        }
+
+        setErrorMessage(displayMessage);
+      } finally {
+        setProcessingImage(false);
+      }
+    },
+    [selectedColor, originalImages, selectedOriginalImageIds]
+  );
 
   // Multi-select handlers for original photos
   const handleSelectOriginalImage = useCallback((imageId: string) => {
@@ -545,7 +547,13 @@ const App: React.FC = () => {
           onCancel={handleCancelRecolor}
           colorName={selectedColor?.name || 'N/A'}
         />
-          colorName={selectedColor?.name || "N/A"}
+
+        {/* Custom Prompt Modal */}
+        <CustomPromptModal
+          isOpen={showCustomPromptModal}
+          onConfirm={handleConfirmCustomPrompt}
+          onCancel={() => setShowCustomPromptModal(false)}
+          colorName={selectedColor?.name || 'N/A'}
         />
 
         {/* New Image Display Modal */}
