@@ -1,3 +1,9 @@
+import React, { useState, useCallback, useEffect } from 'react';
+import { Storage as StorageIcon, ColorLens as RecolorIcon } from '@mui/icons-material';
+import { CircularProgress } from '@mui/material';
+import ColorSelector from './components/ColorSelector';
+import Gallery from './components/Gallery';
+import ConfirmationModal from './components/ConfirmationModal';
 import React, { useState, useCallback, useEffect } from "react";
 import {
   Storage as StorageIcon,
@@ -12,19 +18,18 @@ import StorageManager from "./components/StorageManager";
 import { BenjaminMooreColor, ImageData } from "./types";
 import { recolorImage } from "./services/geminiService";
 import { storageService } from "./services/storageService";
+import ImageDisplayModal from './components/ImageDisplayModal'; // Import the new modal component
+import StorageManager from './components/StorageManager';
+import { BenjaminMooreColor, ImageData } from './types';
+import { recolorImage } from './services/geminiService';
+import { storageService } from './services/storageService';
 
 const App: React.FC = () => {
-  const [selectedColor, setSelectedColor] = useState<BenjaminMooreColor | null>(
-    null
-  );
+  const [selectedColor, setSelectedColor] = useState<BenjaminMooreColor | null>(null);
   const [originalImages, setOriginalImages] = useState<ImageData[]>([]);
-  const [selectedOriginalImageIds, setSelectedOriginalImageIds] = useState<
-    Set<string>
-  >(new Set());
+  const [selectedOriginalImageIds, setSelectedOriginalImageIds] = useState<Set<string>>(new Set());
   const [updatedImages, setUpdatedImages] = useState<ImageData[]>([]);
-  const [selectedUpdatedImageIds, setSelectedUpdatedImageIds] = useState<
-    Set<string>
-  >(new Set());
+  const [selectedUpdatedImageIds, setSelectedUpdatedImageIds] = useState<Set<string>>(new Set());
   const [processingImage, setProcessingImage] = useState(false);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<ImageData | null>(null);
@@ -32,10 +37,8 @@ const App: React.FC = () => {
   const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
 
   // State for ImageDisplayModal
-  const [showImageDisplayModal, setShowImageDisplayModal] =
-    useState<boolean>(false);
-  const [imageToDisplayInModal, setImageToDisplayInModal] =
-    useState<ImageData | null>(null);
+  const [showImageDisplayModal, setShowImageDisplayModal] = useState<boolean>(false);
+  const [imageToDisplayInModal, setImageToDisplayInModal] = useState<ImageData | null>(null);
 
   // State for StorageManager
   const [showStorageManager, setShowStorageManager] = useState<boolean>(false);
@@ -56,8 +59,8 @@ const App: React.FC = () => {
         setOriginalImages(originalImagesData);
         setUpdatedImages(updatedImagesData);
       } catch (error) {
-        console.error("Failed to initialize app:", error);
-        setErrorMessage("Failed to load saved data. Some features may not work properly.");
+        console.error('Failed to initialize app:', error);
+        setErrorMessage('Failed to load saved data. Some features may not work properly.');
       } finally {
         setIsLoadingData(false);
       }
@@ -75,10 +78,8 @@ const App: React.FC = () => {
       setOriginalImages((prev) => [...prev, imageData]);
       setErrorMessage(null); // Clear error on successful upload
     } catch (error) {
-      console.error("Failed to save uploaded image:", error);
-      setErrorMessage(
-        "Failed to save uploaded image. It may not be available after page refresh."
-      );
+      console.error('Failed to save uploaded image:', error);
+      setErrorMessage('Failed to save uploaded image. It may not be available after page refresh.');
 
       // Still add to local state for current session
       setOriginalImages((prev) => [...prev, imageData]);
@@ -86,7 +87,7 @@ const App: React.FC = () => {
   }, []);
 
   const handleDownload = useCallback((imageData: ImageData) => {
-    const link = document.createElement("a");
+    const link = document.createElement('a');
     link.href = `data:${imageData.mimeType};base64,${imageData.base64}`;
     link.download = `recolored_${imageData.name}`;
     document.body.appendChild(link);
@@ -102,7 +103,7 @@ const App: React.FC = () => {
       // Update local state
       setUpdatedImages((prev) => prev.filter((image) => image.id !== imageId));
     } catch (error) {
-      console.error("Failed to remove image from storage:", error);
+      console.error('Failed to remove image from storage:', error);
 
       // Still remove from local state
       setUpdatedImages((prev) => prev.filter((image) => image.id !== imageId));
@@ -116,21 +117,17 @@ const App: React.FC = () => {
         await storageService.removeOriginalImage(imageId);
 
         // Update local state
-        setOriginalImages((prev) =>
-          prev.filter((image) => image.id !== imageId)
-        );
+        setOriginalImages((prev) => prev.filter((image) => image.id !== imageId));
 
         // Clear selection if the removed image was selected
         if (selectedOriginalImageIds.has(imageId)) {
           setSelectedOriginalImageIds(new Set());
         }
       } catch (error) {
-        console.error("Failed to remove original image from storage:", error);
+        console.error('Failed to remove original image from storage:', error);
 
         // Still remove from local state
-        setOriginalImages((prev) =>
-          prev.filter((image) => image.id !== imageId)
-        );
+        setOriginalImages((prev) => prev.filter((image) => image.id !== imageId));
         if (selectedOriginalImageIds.has(imageId)) {
           setSelectedOriginalImageIds(new Set());
         }
@@ -139,49 +136,35 @@ const App: React.FC = () => {
     [selectedOriginalImageIds]
   );
 
-  const handleRenameOriginalImage = useCallback(
-    async (imageId: string, newName: string) => {
-      // Optimistically update UI
-      setOriginalImages((prev) =>
-        prev.map((img) =>
-          img.id === imageId ? { ...img, name: newName } : img
-        )
-      );
+  const handleRenameOriginalImage = useCallback(async (imageId: string, newName: string) => {
+    // Optimistically update UI
+    setOriginalImages((prev) =>
+      prev.map((img) => (img.id === imageId ? { ...img, name: newName } : img))
+    );
 
-      try {
-        await storageService.renameOriginalImage(imageId, newName);
-      } catch (error) {
-        console.error("Failed to persist renamed image:", error);
-        setErrorMessage(
-          "Failed to save renamed image. Changes may not persist."
-        );
-        // Keep optimistic UI change for the session
-      }
-    },
-    []
-  );
+    try {
+      await storageService.renameOriginalImage(imageId, newName);
+    } catch (error) {
+      console.error('Failed to persist renamed image:', error);
+      setErrorMessage('Failed to save renamed image. Changes may not persist.');
+      // Keep optimistic UI change for the session
+    }
+  }, []);
 
-  const handleRenameUpdatedImage = useCallback(
-    async (imageId: string, newName: string) => {
-      // Optimistically update UI
-      setUpdatedImages((prev) =>
-        prev.map((img) =>
-          img.id === imageId ? { ...img, name: newName } : img
-        )
-      );
+  const handleRenameUpdatedImage = useCallback(async (imageId: string, newName: string) => {
+    // Optimistically update UI
+    setUpdatedImages((prev) =>
+      prev.map((img) => (img.id === imageId ? { ...img, name: newName } : img))
+    );
 
-      try {
-        await storageService.renameUpdatedImage(imageId, newName);
-      } catch (error) {
-        console.error("Failed to persist renamed image:", error);
-        setErrorMessage(
-          "Failed to save renamed image. Changes may not persist."
-        );
-        // Keep optimistic UI change for the session
-      }
-    },
-    []
-  );
+    try {
+      await storageService.renameUpdatedImage(imageId, newName);
+    } catch (error) {
+      console.error('Failed to persist renamed image:', error);
+      setErrorMessage('Failed to save renamed image. Changes may not persist.');
+      // Keep optimistic UI change for the session
+    }
+  }, []);
 
   // Generic handler to open the ImageDisplayModal for any image
   const handleViewImage = useCallback((imageData: ImageData) => {
@@ -197,17 +180,15 @@ const App: React.FC = () => {
 
   const handleRecolor = useCallback(async () => {
     if (!selectedColor) {
-      setErrorMessage("Please select a color first.");
+      setErrorMessage('Please select a color first.');
       return;
     }
 
     // Get the first (and only) selected image for recolor
     const selectedImageId = Array.from(selectedOriginalImageIds)[0];
-    const selectedImage = originalImages.find(
-      (img) => img.id === selectedImageId
-    );
+    const selectedImage = originalImages.find((img) => img.id === selectedImageId);
     if (!selectedImage) {
-      setErrorMessage("Please select an original photo to recolor.");
+      setErrorMessage('Please select an original photo to recolor.');
       return;
     }
 
@@ -272,9 +253,7 @@ const App: React.FC = () => {
         // Append color name to the image name
         const imageWithColorName: ImageData = {
           ...image,
-          name: selectedColor
-            ? `${image.name} (${selectedColor.name})`
-            : image.name,
+          name: selectedColor ? `${image.name} (${selectedColor.name})` : image.name,
         };
 
         // Save to storage
@@ -285,9 +264,9 @@ const App: React.FC = () => {
         setShowConfirmationModal(false);
         setGeneratedImage(null);
       } catch (error) {
-        console.error("Failed to save recolored image:", error);
+        console.error('Failed to save recolored image:', error);
         setErrorMessage(
-          "Failed to save recolored image. It may not be available after page refresh."
+          'Failed to save recolored image. It may not be available after page refresh.'
         );
 
         // Still add to local state for current session
@@ -295,9 +274,7 @@ const App: React.FC = () => {
           ...prev,
           {
             ...image,
-            name: selectedColor
-              ? `${image.name} (${selectedColor.name})`
-              : image.name,
+            name: selectedColor ? `${image.name} (${selectedColor.name})` : image.name,
           },
         ]);
         setShowConfirmationModal(false);
@@ -345,24 +322,20 @@ const App: React.FC = () => {
 
     try {
       // Delete from storage
-      const deletePromises = Array.from(selectedOriginalImageIds).map(
-        (id: string) => storageService.removeOriginalImage(id)
+      const deletePromises = Array.from(selectedOriginalImageIds).map((id: string) =>
+        storageService.removeOriginalImage(id)
       );
       await Promise.all(deletePromises);
 
       // Update local state
-      setOriginalImages((prev) =>
-        prev.filter((img) => !selectedOriginalImageIds.has(img.id))
-      );
+      setOriginalImages((prev) => prev.filter((img) => !selectedOriginalImageIds.has(img.id)));
       setSelectedOriginalImageIds(new Set());
       setErrorMessage(null);
     } catch (error) {
-      console.error("Failed to delete images from storage:", error);
-      setErrorMessage("Failed to delete images. They may still exist.");
+      console.error('Failed to delete images from storage:', error);
+      setErrorMessage('Failed to delete images. They may still exist.');
       // Still try to remove from local state
-      setOriginalImages((prev) =>
-        prev.filter((img) => !selectedOriginalImageIds.has(img.id))
-      );
+      setOriginalImages((prev) => prev.filter((img) => !selectedOriginalImageIds.has(img.id)));
       setSelectedOriginalImageIds(new Set());
     }
   }, [selectedOriginalImageIds]);
@@ -389,24 +362,20 @@ const App: React.FC = () => {
 
     try {
       // Delete from storage
-      const deletePromises = Array.from(selectedUpdatedImageIds).map(
-        (id: string) => storageService.removeUpdatedImage(id)
+      const deletePromises = Array.from(selectedUpdatedImageIds).map((id: string) =>
+        storageService.removeUpdatedImage(id)
       );
       await Promise.all(deletePromises);
 
       // Update local state
-      setUpdatedImages((prev) =>
-        prev.filter((img) => !selectedUpdatedImageIds.has(img.id))
-      );
+      setUpdatedImages((prev) => prev.filter((img) => !selectedUpdatedImageIds.has(img.id)));
       setSelectedUpdatedImageIds(new Set());
       setErrorMessage(null);
     } catch (error) {
-      console.error("Failed to delete images from storage:", error);
-      setErrorMessage("Failed to delete images. They may still exist.");
+      console.error('Failed to delete images from storage:', error);
+      setErrorMessage('Failed to delete images. They may still exist.');
       // Still try to remove from local state
-      setUpdatedImages((prev) =>
-        prev.filter((img) => !selectedUpdatedImageIds.has(img.id))
-      );
+      setUpdatedImages((prev) => prev.filter((img) => !selectedUpdatedImageIds.has(img.id)));
       setSelectedUpdatedImageIds(new Set());
     }
   }, [selectedUpdatedImageIds]);
@@ -417,7 +386,7 @@ const App: React.FC = () => {
     // Download each selected image
     updatedImages.forEach((img) => {
       if (selectedUpdatedImageIds.has(img.id)) {
-        const link = document.createElement("a");
+        const link = document.createElement('a');
         link.href = `data:${img.mimeType};base64,${img.base64}`;
         link.download = img.name;
         document.body.appendChild(link);
@@ -431,26 +400,20 @@ const App: React.FC = () => {
     if (selectedUpdatedImageIds.size === 0) return;
 
     try {
-      const imagesToMove = updatedImages.filter((img) =>
-        selectedUpdatedImageIds.has(img.id)
-      );
+      const imagesToMove = updatedImages.filter((img) => selectedUpdatedImageIds.has(img.id));
 
       // Add to original images storage
-      const addPromises = imagesToMove.map((img) =>
-        storageService.addOriginalImage(img)
-      );
+      const addPromises = imagesToMove.map((img) => storageService.addOriginalImage(img));
       await Promise.all(addPromises);
 
       // Update local state - add to original and remove from updated
       setOriginalImages((prev) => [...prev, ...imagesToMove]);
-      setUpdatedImages((prev) =>
-        prev.filter((img) => !selectedUpdatedImageIds.has(img.id))
-      );
+      setUpdatedImages((prev) => prev.filter((img) => !selectedUpdatedImageIds.has(img.id)));
       setSelectedUpdatedImageIds(new Set());
       setErrorMessage(null);
     } catch (error) {
-      console.error("Failed to move images to original:", error);
-      setErrorMessage("Failed to move images. Please try again.");
+      console.error('Failed to move images to original:', error);
+      setErrorMessage('Failed to move images. Please try again.');
     }
   }, [selectedUpdatedImageIds, updatedImages]);
 
@@ -458,16 +421,10 @@ const App: React.FC = () => {
     setSelectedUpdatedImageIds(new Set());
   }, []);
 
-  const selectedOriginalImageId =
-    Array.from(selectedOriginalImageIds)[0] || null;
-  const selectedOriginalImage = originalImages.find(
-    (img) => img.id === selectedOriginalImageId
-  );
+  const selectedOriginalImageId = Array.from(selectedOriginalImageIds)[0] || null;
+  const selectedOriginalImage = originalImages.find((img) => img.id === selectedOriginalImageId);
   const isRecolorButtonEnabled =
-    selectedColor &&
-    selectedOriginalImageIds.size === 1 &&
-    !processingImage &&
-    apiKeySelected;
+    selectedColor && selectedOriginalImageIds.size === 1 && !processingImage;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 sm:p-6 lg:p-8">
@@ -481,7 +438,7 @@ const App: React.FC = () => {
             className="ml-4 p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors"
             title="Manage Storage"
           >
-            <StorageIcon sx={{ fontSize: 24, color: "inherit" }} />
+            <StorageIcon sx={{ fontSize: 24, color: 'inherit' }} />
           </button>
         </div>
 
@@ -505,10 +462,7 @@ const App: React.FC = () => {
         {!isLoadingData && (
           <>
             <div className="mb-8">
-              <ColorSelector
-                selectedColor={selectedColor}
-                onSelectColor={setSelectedColor}
-              />
+              <ColorSelector selectedColor={selectedColor} onSelectColor={setSelectedColor} />
             </div>
 
             <div className="mb-8">
@@ -541,15 +495,15 @@ const App: React.FC = () => {
                             flex items-center justify-center space-x-2
                             ${
                               isRecolorButtonEnabled
-                                ? "bg-gradient-to-r from-blue-600 to-indigo-700 text-white hover:from-blue-700 hover:to-indigo-800 focus:outline-none focus:ring-4 focus:ring-blue-300"
-                                : "bg-gray-300 text-gray-600 cursor-not-allowed"
+                                ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white hover:from-blue-700 hover:to-indigo-800 focus:outline-none focus:ring-4 focus:ring-blue-300'
+                                : 'bg-gray-300 text-gray-600 cursor-not-allowed'
                             }`}
               >
                 {processingImage ? (
                   <>
                     <CircularProgress
                       size={24}
-                      sx={{ color: "white", marginRight: 1, marginLeft: -0.5 }}
+                      sx={{ color: 'white', marginRight: 1, marginLeft: -0.5 }}
                     />
                     Processing...
                   </>
@@ -589,6 +543,8 @@ const App: React.FC = () => {
           image={generatedImage}
           onConfirm={handleConfirmRecolor}
           onCancel={handleCancelRecolor}
+          colorName={selectedColor?.name || 'N/A'}
+        />
           colorName={selectedColor?.name || "N/A"}
         />
 
@@ -600,10 +556,7 @@ const App: React.FC = () => {
         />
 
         {/* Storage Manager Modal */}
-        <StorageManager
-          isOpen={showStorageManager}
-          onClose={() => setShowStorageManager(false)}
-        />
+        <StorageManager isOpen={showStorageManager} onClose={() => setShowStorageManager(false)} />
       </div>
     </div>
   );

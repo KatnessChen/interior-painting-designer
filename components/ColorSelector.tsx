@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
-import { BenjaminMooreColor } from "../types";
-import { BENJAMIN_MOORE_COLORS } from "../constants";
-import { storageService } from "../services/storageService";
-import { Check as CheckIcon } from "@mui/icons-material";
+import React, { useState, useEffect } from 'react';
+import { BenjaminMooreColor } from '../types';
+import { BENJAMIN_MOORE_COLORS } from '../constants';
+import { storageService } from '../services/storageService';
+import { Check as CheckIcon } from '@mui/icons-material';
 
 interface ColorSelectorProps {
   selectedColor: BenjaminMooreColor | null;
@@ -25,7 +25,7 @@ const rgbToHex = (rgb: string): string | null => {
 
   const toHex = (n: number) => {
     const hex = n.toString(16);
-    return hex.length === 1 ? "0" + hex : hex;
+    return hex.length === 1 ? '0' + hex : hex;
   };
 
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
@@ -49,16 +49,12 @@ const normalizeColorInput = (input: string): string | null => {
   return null;
 };
 
-const ColorSelector: React.FC<ColorSelectorProps> = ({
-  selectedColor,
-  onSelectColor,
-}) => {
-  const [availableColors, setAvailableColors] = useState<BenjaminMooreColor[]>(
-    BENJAMIN_MOORE_COLORS
-  );
-  const [newColorName, setNewColorName] = useState("");
-  const [newColorCode, setNewColorCode] = useState("");
-  const [newColorHex, setNewColorHex] = useState("");
+const ColorSelector: React.FC<ColorSelectorProps> = ({ selectedColor, onSelectColor }) => {
+  const [availableColors, setAvailableColors] =
+    useState<BenjaminMooreColor[]>(BENJAMIN_MOORE_COLORS);
+  const [newColorName, setNewColorName] = useState('');
+  const [newColorCode, setNewColorCode] = useState('');
+  const [newColorHex, setNewColorHex] = useState('');
   const [addError, setAddError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -71,7 +67,7 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({
         const allColors = [...BENJAMIN_MOORE_COLORS, ...customColors];
         setAvailableColors(allColors);
       } catch (error) {
-        console.error("Failed to load custom colors:", error);
+        console.error('Failed to load custom colors:', error);
       } finally {
         setIsLoading(false);
       }
@@ -83,16 +79,14 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({
   const handleAddColor = async () => {
     setAddError(null);
     if (!newColorName.trim() || !newColorCode.trim() || !newColorHex.trim()) {
-      setAddError("All fields are required.");
+      setAddError('All fields are required.');
       return;
     }
 
     // Normalize and validate color input (accepts HEX or RGB)
     const normalizedHex = normalizeColorInput(newColorHex.trim());
     if (!normalizedHex) {
-      setAddError(
-        "Color must be in HEX format (#RRGGBB) or RGB format (rgb(r, g, b))."
-      );
+      setAddError('Color must be in HEX format (#RRGGBB) or RGB format (rgb(r, g, b)).');
       return;
     }
 
@@ -105,12 +99,10 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({
     // Check for duplicates by code or hex
     if (
       availableColors.some(
-        (c) =>
-          c.code === newColor.code ||
-          c.hex.toLowerCase() === newColor.hex.toLowerCase()
+        (c) => c.code === newColor.code || c.hex.toLowerCase() === newColor.hex.toLowerCase()
       )
     ) {
-      setAddError("A color with this code or HEX already exists.");
+      setAddError('A color with this code or HEX already exists.');
       return;
     }
 
@@ -120,21 +112,19 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({
 
       // Update local state
       setAvailableColors((prevColors) => [...prevColors, newColor]);
-      setNewColorName("");
-      setNewColorCode("");
-      setNewColorHex("");
+      setNewColorName('');
+      setNewColorCode('');
+      setNewColorHex('');
       setAddError(null);
     } catch (error) {
-      console.error("Failed to save custom color:", error);
-      setAddError("Failed to save color. Please try again.");
+      console.error('Failed to save custom color:', error);
+      setAddError('Failed to save color. Please try again.');
     }
   };
 
   return (
     <div className="p-4 bg-white rounded-lg shadow-md mb-6">
-      <h2 className="text-xl font-semibold mb-4 text-gray-800">
-        1. Select a Color
-      </h2>
+      <h2 className="text-xl font-semibold mb-4 text-gray-800">1. Select a Color</h2>
 
       {isLoading ? (
         <div className="flex items-center justify-center py-8">
@@ -152,8 +142,8 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({
                 className={`flex flex-col items-center px-0 py-1 cursor-pointer transition-all duration-200
                         ${
                           selectedColor?.code === color.code
-                            ? "relative z-10 ring-2 ring-blue-500 ring-offset-0"
-                            : ""
+                            ? 'relative z-10 ring-2 ring-blue-500 ring-offset-0'
+                            : ''
                         }`}
                 onClick={() => onSelectColor(color)}
               >
@@ -165,8 +155,8 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({
                     <CheckIcon
                       sx={{
                         fontSize: 16,
-                        color: "white",
-                        textShadow: "0 1px 3px rgba(0,0,0,0.5)",
+                        color: 'white',
+                        textShadow: '0 1px 3px rgba(0,0,0,0.5)',
                       }}
                     />
                   )}
@@ -174,36 +164,26 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({
                 <p className="mt-1 text-xs font-medium text-gray-700 text-center leading-tight">
                   {color.name}
                 </p>
-                <p className="text-xs text-gray-500 text-center">
-                  {color.code}
-                </p>
+                <p className="text-xs text-gray-500 text-center">{color.code}</p>
               </div>
             ))}
           </div>
           {selectedColor && (
             <p className="mt-4 text-center text-md text-gray-700">
-              Selected:{" "}
-              <span
-                className="font-semibold"
-                style={{ color: selectedColor.hex }}
-              >
+              Selected:{' '}
+              <span className="font-semibold" style={{ color: selectedColor.hex }}>
                 {selectedColor.name}
-              </span>{" "}
+              </span>{' '}
               ({selectedColor.code})
             </p>
           )}
 
           {/* New section for adding custom colors */}
           <div className="mt-6 pt-4 border-t border-gray-200">
-            <h3 className="text-lg font-semibold mb-3 text-gray-800">
-              Add Custom Color
-            </h3>
+            <h3 className="text-lg font-semibold mb-3 text-gray-800">Add Custom Color</h3>
             <div className="space-y-3">
               <div>
-                <label
-                  htmlFor="newColorName"
-                  className="block text-sm font-medium text-gray-700"
-                >
+                <label htmlFor="newColorName" className="block text-sm font-medium text-gray-700">
                   Color Name
                 </label>
                 <input
@@ -217,10 +197,7 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({
                 />
               </div>
               <div>
-                <label
-                  htmlFor="newColorCode"
-                  className="block text-sm font-medium text-gray-700"
-                >
+                <label htmlFor="newColorCode" className="block text-sm font-medium text-gray-700">
                   Color Code
                 </label>
                 <input
@@ -234,10 +211,7 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({
                 />
               </div>
               <div>
-                <label
-                  htmlFor="newColorHex"
-                  className="block text-sm font-medium text-gray-700"
-                >
+                <label htmlFor="newColorHex" className="block text-sm font-medium text-gray-700">
                   Color Value
                 </label>
                 <p className="text-xs text-gray-500 mt-1 mb-2">

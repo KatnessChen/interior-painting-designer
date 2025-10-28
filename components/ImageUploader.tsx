@@ -1,17 +1,14 @@
-import React, { useRef, useState } from "react";
-import { ImageData } from "../types";
-import { MAX_FILE_SIZE_MB } from "../constants";
-import { CloudUpload as UploadIcon } from "@mui/icons-material";
+import React, { useRef, useState } from 'react';
+import { ImageData } from '../types';
+import { MAX_FILE_SIZE_MB } from '../constants';
+import { CloudUpload as UploadIcon } from '@mui/icons-material';
 
 interface ImageUploaderProps {
   onImageUpload: (imageData: ImageData) => void;
   onError: (message: string) => void;
 }
 
-const ImageUploader: React.FC<ImageUploaderProps> = ({
-  onImageUpload,
-  onError,
-}) => {
+const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageUpload, onError }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -20,10 +17,10 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = () => {
-        if (typeof reader.result === "string") {
-          resolve(reader.result.split(",")[1]); // Get base64 part only
+        if (typeof reader.result === 'string') {
+          resolve(reader.result.split(',')[1]); // Get base64 part only
         } else {
-          reject("Failed to read file as base64");
+          reject('Failed to read file as base64');
         }
       };
       reader.onerror = (error) => reject(error);
@@ -33,8 +30,8 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
   const handleFileChange = async (files: FileList | null) => {
     if (files && files.length > 0) {
       const file = files[0];
-      if (!file.type.startsWith("image/")) {
-        onError("Please upload an image file (e.g., JPG, PNG, GIF).");
+      if (!file.type.startsWith('image/')) {
+        onError('Please upload an image file (e.g., JPG, PNG, GIF).');
         return;
       }
       if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
@@ -52,8 +49,8 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
         };
         onImageUpload(imageData);
       } catch (error) {
-        onError("Failed to process image file.");
-        console.error("File upload error:", error);
+        onError('Failed to process image file.');
+        console.error('File upload error:', error);
       }
     }
   };
@@ -79,16 +76,10 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
 
   return (
     <div className="p-4 bg-white rounded-lg shadow-md mb-6">
-      <h2 className="text-xl font-semibold mb-4 text-gray-800">
-        2. Upload Interior Photo
-      </h2>
+      <h2 className="text-xl font-semibold mb-4 text-gray-800">2. Upload Interior Photo</h2>
       <div
         className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors duration-200
-                    ${
-                      isDragOver
-                        ? "border-blue-500 bg-blue-50"
-                        : "border-gray-300 bg-gray-50"
-                    }`}
+                    ${isDragOver ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-gray-50'}`}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -104,18 +95,15 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
         <UploadIcon
           sx={{
             fontSize: 48,
-            color: "text.secondary",
-            margin: "0 auto",
-            display: "block",
+            color: 'text.secondary',
+            margin: '0 auto',
+            display: 'block',
           }}
         />
         <p className="mt-2 text-sm text-gray-600">
-          <span className="font-semibold text-blue-600">Click to upload</span>{" "}
-          or drag and drop
+          <span className="font-semibold text-blue-600">Click to upload</span> or drag and drop
         </p>
-        <p className="mt-1 text-xs text-gray-500">
-          PNG, JPG, GIF up to {MAX_FILE_SIZE_MB}MB
-        </p>
+        <p className="mt-1 text-xs text-gray-500">PNG, JPG, GIF up to {MAX_FILE_SIZE_MB}MB</p>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
-import { Close as CloseIcon } from "@mui/icons-material";
-import { useStorage } from "../hooks/useStorage";
+import React, { useEffect, useState } from 'react';
+import { Close as CloseIcon } from '@mui/icons-material';
+import { useStorage } from '../hooks/useStorage';
 
 interface StorageManagerProps {
   isOpen: boolean;
@@ -8,8 +8,7 @@ interface StorageManagerProps {
 }
 
 const StorageManager: React.FC<StorageManagerProps> = ({ isOpen, onClose }) => {
-  const { storageInfo, isLoading, error, refreshStorageInfo, clearAllData } =
-    useStorage();
+  const { storageInfo, isLoading, error, refreshStorageInfo, clearAllData } = useStorage();
   const [showConfirmClear, setShowConfirmClear] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
 
@@ -46,7 +45,7 @@ const StorageManager: React.FC<StorageManagerProps> = ({ isOpen, onClose }) => {
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600 transition-colors"
             >
-              <CloseIcon sx={{ fontSize: 24, color: "inherit" }} />
+              <CloseIcon sx={{ fontSize: 24, color: 'inherit' }} />
             </button>
           </div>
 
@@ -54,9 +53,7 @@ const StorageManager: React.FC<StorageManagerProps> = ({ isOpen, onClose }) => {
           {isLoading && (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-              <span className="ml-2 text-gray-600">
-                Loading storage info...
-              </span>
+              <span className="ml-2 text-gray-600">Loading storage info...</span>
             </div>
           )}
 
@@ -72,27 +69,19 @@ const StorageManager: React.FC<StorageManagerProps> = ({ isOpen, onClose }) => {
             <>
               <div className="space-y-4 mb-6">
                 <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="font-semibold text-gray-800 mb-3">
-                    Storage Summary
-                  </h3>
+                  <h3 className="font-semibold text-gray-800 mb-3">Storage Summary</h3>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Custom Colors:</span>
-                      <span className="font-medium">
-                        {storageInfo.customColorsCount}
-                      </span>
+                      <span className="font-medium">{storageInfo.customColorsCount}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Original Photos:</span>
-                      <span className="font-medium">
-                        {storageInfo.originalImagesCount}
-                      </span>
+                      <span className="font-medium">{storageInfo.originalImagesCount}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Updated Photos:</span>
-                      <span className="font-medium">
-                        {storageInfo.updatedImagesCount}
-                      </span>
+                      <span className="font-medium">{storageInfo.updatedImagesCount}</span>
                     </div>
                   </div>
                 </div>
@@ -118,13 +107,10 @@ const StorageManager: React.FC<StorageManagerProps> = ({ isOpen, onClose }) => {
                 ) : (
                   <div className="space-y-2">
                     <div className="bg-red-50 border border-red-200 rounded-md p-3">
-                      <p className="text-sm text-red-800 font-medium mb-2">
-                        ⚠️ Are you sure?
-                      </p>
+                      <p className="text-sm text-red-800 font-medium mb-2">⚠️ Are you sure?</p>
                       <p className="text-xs text-red-600">
-                        This will permanently delete all your custom colors,
-                        original photos, and updated photos. This action cannot
-                        be undone.
+                        This will permanently delete all your custom colors, original photos, and
+                        updated photos. This action cannot be undone.
                       </p>
                     </div>
                     <div className="flex space-x-2">
@@ -146,7 +132,7 @@ const StorageManager: React.FC<StorageManagerProps> = ({ isOpen, onClose }) => {
                             Clearing...
                           </>
                         ) : (
-                          "Delete All"
+                          'Delete All'
                         )}
                       </button>
                     </div>

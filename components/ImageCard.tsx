@@ -1,12 +1,12 @@
-import React from "react";
-import { ImageData } from "../types";
+import React from 'react';
+import { ImageData } from '../types';
 import {
   Visibility as EyeIcon,
   Download as DownloadIcon,
   Edit as PencilIcon,
   CheckCircle as CheckmarkBadgeIcon,
   Cancel as XBadgeIcon,
-} from "@mui/icons-material";
+} from '@mui/icons-material';
 
 interface ImageCardProps {
   image: ImageData;
@@ -84,8 +84,8 @@ const ImageCard: React.FC<ImageCardProps> = ({
   return (
     <div
       className={`relative group rounded-lg overflow-hidden shadow-md bg-white transition-all duration-200
-                  ${onSelect ? "cursor-pointer hover:shadow-lg" : ""}
-                  ${isSelected ? "ring-4 ring-blue-500 ring-offset-2" : ""}`}
+                  ${onSelect ? 'cursor-pointer hover:shadow-lg' : ''}
+                  ${isSelected ? 'ring-4 ring-blue-500 ring-offset-2' : ''}`}
       onClick={onSelect ? handleCardClick : undefined} // Only add onClick if selectable
     >
       {/* Image container with overlay buttons */}
@@ -104,9 +104,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
                 className="flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors w-40"
                 aria-label={`View full image of ${image.name}`}
               >
-                <EyeIcon
-                  sx={{ fontSize: 20, marginRight: 1, color: "inherit" }}
-                />
+                <EyeIcon sx={{ fontSize: 20, marginRight: 1, color: 'inherit' }} />
                 View Photo
               </button>
             )}
@@ -116,9 +114,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
                 className="flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors w-40"
                 aria-label={`Download image ${image.name}`}
               >
-                <DownloadIcon
-                  sx={{ fontSize: 20, marginRight: 1, color: "inherit" }}
-                />
+                <DownloadIcon sx={{ fontSize: 20, marginRight: 1, color: 'inherit' }} />
                 Download
               </button>
             )}
@@ -130,9 +126,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
       <div className="p-3">
         <div className="flex items-center justify-between gap-2">
           {!isEditing ? (
-            <p className="text-sm font-medium text-gray-800 truncate">
-              {image.name}
-            </p>
+            <p className="text-sm font-medium text-gray-800 truncate">{image.name}</p>
           ) : (
             <input
               aria-label={`Rename ${image.name}`}
@@ -140,8 +134,8 @@ const ImageCard: React.FC<ImageCardProps> = ({
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
               onKeyDown={(ev) => {
-                if (ev.key === "Enter") commitEdit();
-                if (ev.key === "Escape") cancelEdit();
+                if (ev.key === 'Enter') commitEdit();
+                if (ev.key === 'Escape') cancelEdit();
               }}
               autoFocus
             />
@@ -154,7 +148,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
                 title="Rename image"
                 aria-label={`Rename ${image.name}`}
               >
-                <PencilIcon sx={{ fontSize: 16, color: "inherit" }} />
+                <PencilIcon sx={{ fontSize: 16, color: 'inherit' }} />
               </button>
             )}
             {isEditing && (
@@ -180,7 +174,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
       </div>
       {isSelected && (
         <div className="absolute top-2 right-2">
-          <CheckmarkBadgeIcon sx={{ fontSize: 24, color: "#3b82f6" }} />
+          <CheckmarkBadgeIcon sx={{ fontSize: 24, color: '#3b82f6' }} />
         </div>
       )}
       {onRemove && (
@@ -189,7 +183,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
           className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 focus:outline-none"
           aria-label="Remove image"
         >
-          <XBadgeIcon sx={{ fontSize: 24, color: "#ef4444" }} />
+          <XBadgeIcon sx={{ fontSize: 24, color: '#ef4444' }} />
         </button>
       )}
     </div>

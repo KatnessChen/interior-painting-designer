@@ -1,5 +1,5 @@
-import React from "react";
-import { ImageData } from "../types";
+import React from 'react';
+import { ImageData } from '../types';
 
 interface ConfirmationModalProps {
   isOpen: boolean;
@@ -23,23 +23,20 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl w-[90vw] h-[90vh] p-6 relative flex flex-col">
-        {" "}
+        {' '}
         {/* Expanded to 90vw and 90vh */}
         <h3 className="text-2xl font-bold text-gray-800 mb-4 text-center">
           Is this new wall color satisfactory?
         </h3>
         <p className="text-gray-600 text-center mb-6">
-          The walls have been recolored to{" "}
-          <span className="font-semibold">{colorName}</span>.
+          The walls have been recolored to <span className="font-semibold">{colorName}</span>.
         </p>
         <div className="flex flex-col lg:flex-row gap-6 mb-6 flex-1 h-0">
-          {" "}
+          {' '}
           {/* Flex container for images, flex-1 to take remaining space */}
           {/* Original Photo */}
           <div className="flex-1 flex flex-col items-center min-h-0">
-            <h4 className="text-xl font-semibold text-gray-700 mb-3">
-              Original Photo
-            </h4>
+            <h4 className="text-xl font-semibold text-gray-700 mb-3">Original Photo</h4>
             <div className="relative w-full flex-1 bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center">
               <img
                 src={`data:${originalImage.mimeType};base64,${originalImage.base64}`}
@@ -50,9 +47,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           </div>
           {/* Recolor Photo */}
           <div className="flex-1 flex flex-col items-center min-h-0">
-            <h4 className="text-xl font-semibold text-gray-700 mb-3">
-              Recolored Photo
-            </h4>
+            <h4 className="text-xl font-semibold text-gray-700 mb-3">Recolored Photo</h4>
             <div className="relative w-full flex-1 bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center">
               <img
                 src={`data:${image.mimeType};base64,${image.base64}`}

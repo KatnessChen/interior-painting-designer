@@ -1,7 +1,7 @@
-import React, { useRef, useState } from "react";
-import { ImageData } from "../types";
-import { MAX_FILE_SIZE_MB } from "../constants";
-import { CloudUpload as UploadIcon } from "@mui/icons-material";
+import React, { useRef, useState } from 'react';
+import { ImageData } from '../types';
+import { MAX_FILE_SIZE_MB } from '../constants';
+import { CloudUpload as UploadIcon } from '@mui/icons-material';
 
 interface UploadCardProps {
   onImageUpload: (imageData: ImageData) => void;
@@ -17,10 +17,10 @@ const UploadCard: React.FC<UploadCardProps> = ({ onImageUpload, onError }) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = () => {
-        if (typeof reader.result === "string") {
-          resolve(reader.result.split(",")[1]); // Get base64 part only
+        if (typeof reader.result === 'string') {
+          resolve(reader.result.split(',')[1]); // Get base64 part only
         } else {
-          reject("Failed to read file as base64");
+          reject('Failed to read file as base64');
         }
       };
       reader.onerror = (error) => reject(error);
@@ -30,8 +30,8 @@ const UploadCard: React.FC<UploadCardProps> = ({ onImageUpload, onError }) => {
   const handleFileChange = async (files: FileList | null) => {
     if (files && files.length > 0) {
       const file = files[0];
-      if (!file.type.startsWith("image/")) {
-        onError("Please upload an image file (e.g., JPG, PNG, GIF).");
+      if (!file.type.startsWith('image/')) {
+        onError('Please upload an image file (e.g., JPG, PNG, GIF).');
         return;
       }
       if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
@@ -49,8 +49,8 @@ const UploadCard: React.FC<UploadCardProps> = ({ onImageUpload, onError }) => {
         };
         onImageUpload(imageData);
       } catch (error) {
-        onError("Failed to process image file.");
-        console.error("File upload error:", error);
+        onError('Failed to process image file.');
+        console.error('File upload error:', error);
       }
     }
   };
@@ -77,7 +77,7 @@ const UploadCard: React.FC<UploadCardProps> = ({ onImageUpload, onError }) => {
   return (
     <div
       className={`relative group rounded-lg overflow-hidden shadow-md bg-white transition-all duration-200 cursor-pointer hover:shadow-lg
-                  ${isDragOver ? "ring-2 ring-blue-500" : ""}`}
+                  ${isDragOver ? 'ring-2 ring-blue-500' : ''}`}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -96,9 +96,9 @@ const UploadCard: React.FC<UploadCardProps> = ({ onImageUpload, onError }) => {
         <UploadIcon
           sx={{
             fontSize: 48,
-            color: "text.secondary",
-            transition: "color 0.2s",
-            "&:hover": { color: "primary.main" },
+            color: 'text.secondary',
+            transition: 'color 0.2s',
+            '&:hover': { color: 'primary.main' },
           }}
           className="group-hover:text-blue-400"
         />
@@ -110,9 +110,7 @@ const UploadCard: React.FC<UploadCardProps> = ({ onImageUpload, onError }) => {
 
       {/* Info section matching ImageCard layout */}
       <div className="p-3">
-        <p className="text-sm font-medium text-gray-800 text-center">
-          Add Photo
-        </p>
+        <p className="text-sm font-medium text-gray-800 text-center">Add Photo</p>
       </div>
     </div>
   );

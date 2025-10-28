@@ -1,13 +1,13 @@
-import React from "react";
-import { ImageData } from "../types";
-import ImageCard from "./ImageCard";
-import UploadCard from "./UploadCard";
+import React from 'react';
+import { ImageData } from '../types';
+import ImageCard from './ImageCard';
+import UploadCard from './UploadCard';
 import {
   Delete as DeleteIcon,
   Download as DownloadIcon,
   SwapHoriz as MoveIcon,
   Clear as ClearIcon,
-} from "@mui/icons-material";
+} from '@mui/icons-material';
 
 interface GalleryProps {
   title: string;
@@ -66,9 +66,7 @@ const Gallery: React.FC<GalleryProps> = ({
         <h2 className="text-xl font-semibold text-gray-800">{title}</h2>
         {enableMultiSelect && hasSelection && (
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">
-              {selectedImageIds.size} selected
-            </span>
+            <span className="text-sm text-gray-600">{selectedImageIds.size} selected</span>
             {!hideDownloadAndMove && (
               <>
                 <button
@@ -110,9 +108,7 @@ const Gallery: React.FC<GalleryProps> = ({
       </div>
 
       {images.length === 0 && !showUploadCard ? (
-        <div className="text-center py-8 text-gray-500 italic">
-          {emptyMessage}
-        </div>
+        <div className="text-center py-8 text-gray-500 italic">{emptyMessage}</div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {showUploadCard && onUploadImage && onUploadError && (
@@ -123,18 +119,12 @@ const Gallery: React.FC<GalleryProps> = ({
               key={image.id}
               image={image}
               isSelected={
-                enableMultiSelect
-                  ? selectedImageIds.has(image.id)
-                  : selectedImageId === image.id
+                enableMultiSelect ? selectedImageIds.has(image.id) : selectedImageId === image.id
               }
               onSelect={enableMultiSelect ? onSelectMultiple : onSelectImage}
               onDownload={onDownloadImage}
               showDownloadButton={showDownloadButtons && !enableMultiSelect}
-              onRemove={
-                showRemoveButtons && !enableMultiSelect
-                  ? onRemoveImage
-                  : undefined
-              }
+              onRemove={showRemoveButtons && !enableMultiSelect ? onRemoveImage : undefined}
               onViewButtonClick={onViewImage}
               onRename={onRenameImage}
             />

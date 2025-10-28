@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react";
-import { storageService } from "../services/storageService";
+import { useState, useCallback } from 'react';
+import { storageService } from '../services/storageService';
 
 interface StorageInfo {
   customColorsCount: number;
@@ -29,8 +29,8 @@ export const useStorage = (): UseStorageReturn => {
       const info = await storageService.getStorageInfo();
       setStorageInfo(info);
     } catch (err) {
-      console.error("Failed to get storage info:", err);
-      setError("Failed to get storage information");
+      console.error('Failed to get storage info:', err);
+      setError('Failed to get storage information');
     } finally {
       setIsLoading(false);
     }
@@ -45,8 +45,8 @@ export const useStorage = (): UseStorageReturn => {
       await refreshStorageInfo(); // Refresh info after clearing
       return true;
     } catch (err) {
-      console.error("Failed to clear storage:", err);
-      setError("Failed to clear storage");
+      console.error('Failed to clear storage:', err);
+      setError('Failed to clear storage');
       return false;
     } finally {
       setIsLoading(false);

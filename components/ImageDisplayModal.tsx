@@ -1,6 +1,6 @@
-import React, { useEffect, useCallback } from "react";
-import { ImageData } from "../types";
-import { Close as CloseIcon } from "@mui/icons-material";
+import React, { useEffect, useCallback } from 'react';
+import { ImageData } from '../types';
+import { Close as CloseIcon } from '@mui/icons-material';
 
 interface ImageDisplayModalProps {
   isOpen: boolean;
@@ -8,14 +8,10 @@ interface ImageDisplayModalProps {
   onClose: () => void;
 }
 
-const ImageDisplayModal: React.FC<ImageDisplayModalProps> = ({
-  isOpen,
-  image,
-  onClose,
-}) => {
+const ImageDisplayModal: React.FC<ImageDisplayModalProps> = ({ isOpen, image, onClose }) => {
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen) {
+      if (e.key === 'Escape' && isOpen) {
         onClose();
       }
     },
@@ -24,15 +20,15 @@ const ImageDisplayModal: React.FC<ImageDisplayModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = "hidden"; // Prevent scrolling of the background
-      window.addEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = 'hidden'; // Prevent scrolling of the background
+      window.addEventListener('keydown', handleKeyDown);
     } else {
-      document.body.style.overflow = "";
-      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
     }
     return () => {
-      document.body.style.overflow = "";
-      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, handleKeyDown]);
 
@@ -60,7 +56,7 @@ const ImageDisplayModal: React.FC<ImageDisplayModalProps> = ({
           className="absolute top-4 right-4 p-2 rounded-full bg-gray-700 text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-200"
           aria-label="Close image viewer"
         >
-          <CloseIcon sx={{ fontSize: 24, color: "inherit" }} />
+          <CloseIcon sx={{ fontSize: 24, color: 'inherit' }} />
         </button>
       </div>
     </div>
