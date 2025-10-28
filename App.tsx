@@ -21,7 +21,13 @@ const App: React.FC = () => {
   const [selectedOriginalImageId, setSelectedOriginalImageId] = useState<
     string | null
   >(null);
+  const [selectedOriginalImageIds, setSelectedOriginalImageIds] = useState<
+    Set<string>
+  >(new Set());
   const [updatedImages, setUpdatedImages] = useState<ImageData[]>([]);
+  const [selectedUpdatedImageIds, setSelectedUpdatedImageIds] = useState<
+    Set<string>
+  >(new Set());
   const [processingImage, setProcessingImage] = useState(false);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<ImageData | null>(null);
@@ -334,6 +340,155 @@ const App: React.FC = () => {
     setGeneratedImage(null);
   }, []);
 
+  // Multi-select handlers for original photos
+  const handleSelectOriginalImage = useCallback(
+    (imageId: string) => {
+      // If single-select and clicking the same image, toggle it off
+      if (selectedOriginalImageId === imageId) {
+        setSelectedOriginalImageId(null);
+        setSelectedOriginalImageIds(new Set());
+      } else {
+        // Set as single-selected image
+        setSelectedOriginalImageId(imageId);
+        setSelectedOriginalImageIds(new Set());
+      }
+    },
+    [selectedOriginalImageId]
+  );
+
+  const handleSelectMultipleOriginal = useCallback((imageId: string) => {
+    setSelectedOriginalImageIds((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(imageId)) {
+        newSet.delete(imageId);
+      } else {
+        newSet.add(imageId);
+      }
+      return newSet;
+    });
+    // Clear single selection when multi-selecting
+    setSelectedOriginalImageId(null);
+  }, []);
+
+  const handleBulkDeleteOriginal = useCallback(async () => {
+    if (selectedOriginalImageIds.size === 0) return;
+
+    try {
+      // Delete from storage
+      const deletePromises = Array.from(selectedOriginalImageIds).map(
+        (id: string) => storageService.removeOriginalImage(id)
+      );
+      await Promise.all(deletePromises);
+
+      // Update local state
+      setOriginalImages((prev) =>
+        prev.filter((img) => !selectedOriginalImageIds.has(img.id))
+      );
+      setSelectedOriginalImageIds(new Set());
+      setErrorMessage(null);
+    } catch (error) {
+      console.error("Failed to delete images from storage:", error);
+      setErrorMessage("Failed to delete images. They may still exist.");
+      // Still try to remove from local state
+      setOriginalImages((prev) =>
+        prev.filter((img) => !selectedOriginalImageIds.has(img.id))
+      );
+      setSelectedOriginalImageIds(new Set());
+    }
+  }, [selectedOriginalImageIds]);
+
+  const handleClearOriginalSelection = useCallback(() => {
+    setSelectedOriginalImageIds(new Set());
+    setSelectedOriginalImageId(null);
+  }, []);
+
+  // Multi-select handlers for updated photos
+  const handleSelectUpdatedImage = useCallback((imageId: string) => {
+    setSelectedUpdatedImageIds((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(imageId)) {
+        newSet.delete(imageId);
+      } else {
+        newSet.add(imageId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const handleBulkDeleteUpdated = useCallback(async () => {
+    if (selectedUpdatedImageIds.size === 0) return;
+
+    try {
+      // Delete from storage
+      const deletePromises = Array.from(selectedUpdatedImageIds).map(
+        (id: string) => storageService.removeUpdatedImage(id)
+      );
+      await Promise.all(deletePromises);
+
+      // Update local state
+      setUpdatedImages((prev) =>
+        prev.filter((img) => !selectedUpdatedImageIds.has(img.id))
+      );
+      setSelectedUpdatedImageIds(new Set());
+      setErrorMessage(null);
+    } catch (error) {
+      console.error("Failed to delete images from storage:", error);
+      setErrorMessage("Failed to delete images. They may still exist.");
+      // Still try to remove from local state
+      setUpdatedImages((prev) =>
+        prev.filter((img) => !selectedUpdatedImageIds.has(img.id))
+      );
+      setSelectedUpdatedImageIds(new Set());
+    }
+  }, [selectedUpdatedImageIds]);
+
+  const handleBulkDownloadUpdated = useCallback(() => {
+    if (selectedUpdatedImageIds.size === 0) return;
+
+    // Download each selected image
+    updatedImages.forEach((img) => {
+      if (selectedUpdatedImageIds.has(img.id)) {
+        const link = document.createElement("a");
+        link.href = `data:${img.mimeType};base64,${img.base64}`;
+        link.download = img.name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    });
+  }, [selectedUpdatedImageIds, updatedImages]);
+
+  const handleBulkMoveToOriginal = useCallback(async () => {
+    if (selectedUpdatedImageIds.size === 0) return;
+
+    try {
+      const imagesToMove = updatedImages.filter((img) =>
+        selectedUpdatedImageIds.has(img.id)
+      );
+
+      // Add to original images storage
+      const addPromises = imagesToMove.map((img) =>
+        storageService.addOriginalImage(img)
+      );
+      await Promise.all(addPromises);
+
+      // Update local state - add to original and remove from updated
+      setOriginalImages((prev) => [...prev, ...imagesToMove]);
+      setUpdatedImages((prev) =>
+        prev.filter((img) => !selectedUpdatedImageIds.has(img.id))
+      );
+      setSelectedUpdatedImageIds(new Set());
+      setErrorMessage(null);
+    } catch (error) {
+      console.error("Failed to move images to original:", error);
+      setErrorMessage("Failed to move images. Please try again.");
+    }
+  }, [selectedUpdatedImageIds, updatedImages]);
+
+  const handleClearUpdatedSelection = useCallback(() => {
+    setSelectedUpdatedImageIds(new Set());
+  }, []);
+
   const selectedOriginalImage = originalImages.find(
     (img) => img.id === selectedOriginalImageId
   );
@@ -418,18 +573,24 @@ const App: React.FC = () => {
 
             <div className="mb-8">
               <Gallery
-                title="2. Original Photos (Select one to recolor)"
+                title="2. Original Photos (Select one to recolor, or multiple to delete)"
                 images={originalImages}
                 selectedImageId={selectedOriginalImageId}
-                onSelectImage={setSelectedOriginalImageId}
+                selectedImageIds={selectedOriginalImageIds}
+                onSelectImage={handleSelectOriginalImage}
+                onSelectMultiple={handleSelectMultipleOriginal}
                 onRemoveImage={handleRemoveOriginalImage}
                 onRenameImage={handleRenameOriginalImage}
-                showRemoveButtons={true}
+                showRemoveButtons={selectedOriginalImageIds.size === 0}
                 emptyMessage="No photos uploaded yet."
                 onViewImage={handleViewImage}
                 onUploadImage={handleImageUpload}
                 showUploadCard={true}
                 onUploadError={setErrorMessage}
+                enableMultiSelect={true}
+                onBulkDelete={handleBulkDeleteOriginal}
+                onClearSelection={handleClearOriginalSelection}
+                hideDownloadAndMove={true}
               />
             </div>
 
@@ -466,13 +627,18 @@ const App: React.FC = () => {
               <Gallery
                 title="3. Updated Photos (Download your favorites)"
                 images={updatedImages}
+                selectedImageIds={selectedUpdatedImageIds}
+                onSelectMultiple={handleSelectUpdatedImage}
                 onDownloadImage={handleDownload}
-                showDownloadButtons={true}
                 onRemoveImage={handleRemoveUpdatedImage}
-                showRemoveButtons={true}
                 onRenameImage={handleRenameUpdatedImage}
                 emptyMessage="Satisfied recolored photos will appear here."
                 onViewImage={handleViewImage}
+                enableMultiSelect={true}
+                onBulkDelete={handleBulkDeleteUpdated}
+                onBulkDownload={handleBulkDownloadUpdated}
+                onBulkMove={handleBulkMoveToOriginal}
+                onClearSelection={handleClearUpdatedSelection}
               />
             </div>
           </>

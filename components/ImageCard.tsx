@@ -179,8 +179,8 @@ const ImageCard: React.FC<ImageCardProps> = ({
         </div>
       </div>
       {isSelected && (
-        <div className="absolute top-2 right-2 p-1 rounded-full bg-blue-500 text-white">
-          <CheckmarkBadgeIcon sx={{ fontSize: 16, color: "inherit" }} />
+        <div className="absolute top-2 right-2">
+          <CheckmarkBadgeIcon sx={{ fontSize: 24, color: "#3b82f6" }} />
         </div>
       )}
       {onRemove && (
