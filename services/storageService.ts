@@ -140,6 +140,29 @@ class IndexedDBManager {
     });
   }
 
+  async updateImageName(imageId: string, newName: string): Promise<void> {
+    if (!this.db) await this.init();
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([STORES.IMAGES], "readwrite");
+      const store = transaction.objectStore(STORES.IMAGES);
+      const getRequest = store.get(imageId);
+
+      getRequest.onerror = () => reject(getRequest.error);
+      getRequest.onsuccess = () => {
+        const entry = getRequest.result;
+        if (!entry) {
+          reject(new Error("Image not found in IndexedDB"));
+          return;
+        }
+        entry.name = newName;
+        const putReq = store.put(entry);
+        putReq.onerror = () => reject(putReq.error);
+        putReq.onsuccess = () => resolve();
+      };
+    });
+  }
+
   async deleteImage(imageId: string): Promise<void> {
     if (!this.db) await this.init();
 
@@ -268,6 +291,36 @@ class StorageService {
       await this.indexedDB.deleteImage(imageId);
     } catch (error) {
       console.error("Failed to delete image from IndexedDB:", error);
+      throw error;
+    }
+  }
+
+  // Rename original image metadata (keeps blob intact)
+  async renameOriginalImage(imageId: string, newName: string): Promise<void> {
+    if (!this.isIndexedDBSupported) {
+      // nothing to do if no IndexedDB; original images are not persisted
+      return;
+    }
+
+    try {
+      await this.indexedDB.updateImageName(imageId, newName);
+    } catch (error) {
+      console.error("Failed to rename image in IndexedDB:", error);
+      throw error;
+    }
+  }
+
+  // Rename updated image metadata (keeps blob intact)
+  async renameUpdatedImage(imageId: string, newName: string): Promise<void> {
+    if (!this.isIndexedDBSupported) {
+      // nothing to do if no IndexedDB; updated images are not persisted
+      return;
+    }
+
+    try {
+      await this.indexedDB.updateImageName(imageId, newName);
+    } catch (error) {
+      console.error("Failed to rename updated image in IndexedDB:", error);
       throw error;
     }
   }

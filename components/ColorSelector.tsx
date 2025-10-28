@@ -8,6 +8,46 @@ interface ColorSelectorProps {
   onSelectColor: (color: BenjaminMooreColor) => void;
 }
 
+// Convert RGB format rgb(r, g, b) to HEX format #RRGGBB
+const rgbToHex = (rgb: string): string | null => {
+  const match = rgb.match(/^rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/i);
+  if (!match) return null;
+
+  const r = parseInt(match[1], 10);
+  const g = parseInt(match[2], 10);
+  const b = parseInt(match[3], 10);
+
+  // Validate RGB values are in range 0-255
+  if (r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255) {
+    return null;
+  }
+
+  const toHex = (n: number) => {
+    const hex = n.toString(16);
+    return hex.length === 1 ? "0" + hex : hex;
+  };
+
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
+};
+
+// Validate and normalize color input (accepts HEX or RGB format)
+const normalizeColorInput = (input: string): string | null => {
+  const trimmed = input.trim();
+
+  // Check if it's HEX format
+  if (/^#[0-9A-Fa-f]{6}$/i.test(trimmed)) {
+    return trimmed.toUpperCase();
+  }
+
+  // Check if it's RGB format
+  const hexFromRgb = rgbToHex(trimmed);
+  if (hexFromRgb) {
+    return hexFromRgb;
+  }
+
+  return null;
+};
+
 const ColorSelector: React.FC<ColorSelectorProps> = ({
   selectedColor,
   onSelectColor,
@@ -45,16 +85,20 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({
       setAddError("All fields are required.");
       return;
     }
-    if (!/^#[0-9A-Fa-f]{6}$/i.test(newColorHex.trim())) {
-      // Case-insensitive hex check
-      setAddError("HEX code must be in the format #RRGGBB (e.g., #FFFFFF).");
+
+    // Normalize and validate color input (accepts HEX or RGB)
+    const normalizedHex = normalizeColorInput(newColorHex.trim());
+    if (!normalizedHex) {
+      setAddError(
+        "Color must be in HEX format (#RRGGBB) or RGB format (rgb(r, g, b))."
+      );
       return;
     }
 
     const newColor: BenjaminMooreColor = {
       name: newColorName.trim(),
       code: newColorCode.trim(),
-      hex: newColorHex.trim().toUpperCase(), // Store in uppercase for consistency
+      hex: normalizedHex, // Always store as HEX for consistency
     };
 
     // Check for duplicates by code or hex
@@ -197,16 +241,19 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({
                   htmlFor="newColorHex"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  HEX Code
+                  Color Value
                 </label>
+                <p className="text-xs text-gray-500 mt-1 mb-2">
+                  Accepts HEX (#RRGGBB) or RGB (rgb(r, g, b)) format
+                </p>
                 <input
                   type="text"
                   id="newColorHex"
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2"
                   value={newColorHex}
                   onChange={(e) => setNewColorHex(e.target.value)}
-                  placeholder="e.g., #87CEEB"
-                  aria-label="New color HEX code"
+                  placeholder="e.g., #87CEEB or rgb(135, 206, 235)"
+                  aria-label="New color value (HEX or RGB)"
                 />
               </div>
               {addError && (

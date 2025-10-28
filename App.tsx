@@ -1,6 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
 import ColorSelector from "./components/ColorSelector";
-import ImageUploader from "./components/ImageUploader";
 import Gallery from "./components/Gallery";
 import ConfirmationModal from "./components/ConfirmationModal";
 import ImageDisplayModal from "./components/ImageDisplayModal"; // Import the new modal component
@@ -160,6 +159,50 @@ const App: React.FC = () => {
     [selectedOriginalImageId]
   );
 
+  const handleRenameOriginalImage = useCallback(
+    async (imageId: string, newName: string) => {
+      // Optimistically update UI
+      setOriginalImages((prev) =>
+        prev.map((img) =>
+          img.id === imageId ? { ...img, name: newName } : img
+        )
+      );
+
+      try {
+        await storageService.renameOriginalImage(imageId, newName);
+      } catch (error) {
+        console.error("Failed to persist renamed image:", error);
+        setErrorMessage(
+          "Failed to save renamed image. Changes may not persist."
+        );
+        // Keep optimistic UI change for the session
+      }
+    },
+    []
+  );
+
+  const handleRenameUpdatedImage = useCallback(
+    async (imageId: string, newName: string) => {
+      // Optimistically update UI
+      setUpdatedImages((prev) =>
+        prev.map((img) =>
+          img.id === imageId ? { ...img, name: newName } : img
+        )
+      );
+
+      try {
+        await storageService.renameUpdatedImage(imageId, newName);
+      } catch (error) {
+        console.error("Failed to persist renamed image:", error);
+        setErrorMessage(
+          "Failed to save renamed image. Changes may not persist."
+        );
+        // Keep optimistic UI change for the session
+      }
+    },
+    []
+  );
+
   // Generic handler to open the ImageDisplayModal for any image
   const handleViewImage = useCallback((imageData: ImageData) => {
     setImageToDisplayInModal(imageData);
@@ -240,27 +283,46 @@ const App: React.FC = () => {
     }
   }, [selectedColor, originalImages, selectedOriginalImageId]);
 
-  const handleConfirmRecolor = useCallback(async (image: ImageData) => {
-    try {
-      // Save to storage
-      await storageService.addUpdatedImage(image);
+  const handleConfirmRecolor = useCallback(
+    async (image: ImageData) => {
+      try {
+        // Append color name to the image name
+        const imageWithColorName: ImageData = {
+          ...image,
+          name: selectedColor
+            ? `${image.name} (${selectedColor.name})`
+            : image.name,
+        };
 
-      // Update local state
-      setUpdatedImages((prev) => [...prev, image]);
-      setShowConfirmationModal(false);
-      setGeneratedImage(null);
-    } catch (error) {
-      console.error("Failed to save recolored image:", error);
-      setErrorMessage(
-        "Failed to save recolored image. It may not be available after page refresh."
-      );
+        // Save to storage
+        await storageService.addUpdatedImage(imageWithColorName);
 
-      // Still add to local state for current session
-      setUpdatedImages((prev) => [...prev, image]);
-      setShowConfirmationModal(false);
-      setGeneratedImage(null);
-    }
-  }, []);
+        // Update local state
+        setUpdatedImages((prev) => [...prev, imageWithColorName]);
+        setShowConfirmationModal(false);
+        setGeneratedImage(null);
+      } catch (error) {
+        console.error("Failed to save recolored image:", error);
+        setErrorMessage(
+          "Failed to save recolored image. It may not be available after page refresh."
+        );
+
+        // Still add to local state for current session
+        setUpdatedImages((prev) => [
+          ...prev,
+          {
+            ...image,
+            name: selectedColor
+              ? `${image.name} (${selectedColor.name})`
+              : image.name,
+          },
+        ]);
+        setShowConfirmationModal(false);
+        setGeneratedImage(null);
+      }
+    },
+    [selectedColor]
+  );
 
   const handleCancelRecolor = useCallback(() => {
     setShowConfirmationModal(false);
@@ -354,27 +416,27 @@ const App: React.FC = () => {
 
         {!isLoadingData && (
           <>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <div className="mb-8">
               <ColorSelector
                 selectedColor={selectedColor}
                 onSelectColor={setSelectedColor}
-              />
-              <ImageUploader
-                onImageUpload={handleImageUpload}
-                onError={setErrorMessage}
               />
             </div>
 
             <div className="mb-8">
               <Gallery
-                title="3. Original Photos (Select one to recolor)"
+                title="2. Original Photos (Select one to recolor)"
                 images={originalImages}
                 selectedImageId={selectedOriginalImageId}
                 onSelectImage={setSelectedOriginalImageId}
                 onRemoveImage={handleRemoveOriginalImage}
+                onRenameImage={handleRenameOriginalImage}
                 showRemoveButtons={true}
-                emptyMessage="Upload photos above to get started."
+                emptyMessage="No photos uploaded yet."
                 onViewImage={handleViewImage}
+                onUploadImage={handleImageUpload}
+                showUploadCard={true}
+                onUploadError={setErrorMessage}
               />
             </div>
 
@@ -438,12 +500,13 @@ const App: React.FC = () => {
 
             <div className="mt-8">
               <Gallery
-                title="4. Updated Photos (Download your favorites)"
+                title="3. Updated Photos (Download your favorites)"
                 images={updatedImages}
                 onDownloadImage={handleDownload}
                 showDownloadButtons={true}
                 onRemoveImage={handleRemoveUpdatedImage}
                 showRemoveButtons={true}
+                onRenameImage={handleRenameUpdatedImage}
                 emptyMessage="Satisfied recolored photos will appear here."
                 onViewImage={handleViewImage}
               />
