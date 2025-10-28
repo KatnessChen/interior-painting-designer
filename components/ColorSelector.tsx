@@ -132,7 +132,7 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({
   return (
     <div className="p-4 bg-white rounded-lg shadow-md mb-6">
       <h2 className="text-xl font-semibold mb-4 text-gray-800">
-        1. Select a Benjamin Moore Color
+        1. Select a Color
       </h2>
 
       {isLoading ? (
