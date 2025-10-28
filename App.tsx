@@ -18,9 +18,6 @@ const App: React.FC = () => {
     null
   );
   const [originalImages, setOriginalImages] = useState<ImageData[]>([]);
-  const [selectedOriginalImageId, setSelectedOriginalImageId] = useState<
-    string | null
-  >(null);
   const [selectedOriginalImageIds, setSelectedOriginalImageIds] = useState<
     Set<string>
   >(new Set());
@@ -152,8 +149,8 @@ const App: React.FC = () => {
         );
 
         // Clear selection if the removed image was selected
-        if (selectedOriginalImageId === imageId) {
-          setSelectedOriginalImageId(null);
+        if (selectedOriginalImageIds.has(imageId)) {
+          setSelectedOriginalImageIds(new Set());
         }
       } catch (error) {
         console.error("Failed to remove original image from storage:", error);
@@ -162,12 +159,12 @@ const App: React.FC = () => {
         setOriginalImages((prev) =>
           prev.filter((image) => image.id !== imageId)
         );
-        if (selectedOriginalImageId === imageId) {
-          setSelectedOriginalImageId(null);
+        if (selectedOriginalImageIds.has(imageId)) {
+          setSelectedOriginalImageIds(new Set());
         }
       }
     },
-    [selectedOriginalImageId]
+    [selectedOriginalImageIds]
   );
 
   const handleRenameOriginalImage = useCallback(
@@ -231,8 +228,11 @@ const App: React.FC = () => {
       setErrorMessage("Please select a color first.");
       return;
     }
+
+    // Get the first (and only) selected image for recolor
+    const selectedImageId = Array.from(selectedOriginalImageIds)[0];
     const selectedImage = originalImages.find(
-      (img) => img.id === selectedOriginalImageId
+      (img) => img.id === selectedImageId
     );
     if (!selectedImage) {
       setErrorMessage("Please select an original photo to recolor.");
@@ -292,7 +292,7 @@ const App: React.FC = () => {
     } finally {
       setProcessingImage(false);
     }
-  }, [selectedColor, originalImages, selectedOriginalImageId]);
+  }, [selectedColor, originalImages, selectedOriginalImageIds]);
 
   const handleConfirmRecolor = useCallback(
     async (image: ImageData) => {
@@ -341,20 +341,20 @@ const App: React.FC = () => {
   }, []);
 
   // Multi-select handlers for original photos
-  const handleSelectOriginalImage = useCallback(
-    (imageId: string) => {
-      // If single-select and clicking the same image, toggle it off
-      if (selectedOriginalImageId === imageId) {
-        setSelectedOriginalImageId(null);
-        setSelectedOriginalImageIds(new Set());
+  const handleSelectOriginalImage = useCallback((imageId: string) => {
+    // Single-select mode: toggle selection, max 1 image
+    setSelectedOriginalImageIds((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(imageId)) {
+        newSet.delete(imageId);
       } else {
-        // Set as single-selected image
-        setSelectedOriginalImageId(imageId);
-        setSelectedOriginalImageIds(new Set());
+        // Clear and add only this one
+        newSet.clear();
+        newSet.add(imageId);
       }
-    },
-    [selectedOriginalImageId]
-  );
+      return newSet;
+    });
+  }, []);
 
   const handleSelectMultipleOriginal = useCallback((imageId: string) => {
     setSelectedOriginalImageIds((prev) => {
@@ -366,8 +366,6 @@ const App: React.FC = () => {
       }
       return newSet;
     });
-    // Clear single selection when multi-selecting
-    setSelectedOriginalImageId(null);
   }, []);
 
   const handleBulkDeleteOriginal = useCallback(async () => {
@@ -399,7 +397,6 @@ const App: React.FC = () => {
 
   const handleClearOriginalSelection = useCallback(() => {
     setSelectedOriginalImageIds(new Set());
-    setSelectedOriginalImageId(null);
   }, []);
 
   // Multi-select handlers for updated photos
@@ -489,12 +486,14 @@ const App: React.FC = () => {
     setSelectedUpdatedImageIds(new Set());
   }, []);
 
+  const selectedOriginalImageId =
+    Array.from(selectedOriginalImageIds)[0] || null;
   const selectedOriginalImage = originalImages.find(
     (img) => img.id === selectedOriginalImageId
   );
   const isRecolorButtonEnabled =
     selectedColor &&
-    selectedOriginalImageId &&
+    selectedOriginalImageIds.size === 1 &&
     !processingImage &&
     apiKeySelected;
 
@@ -575,7 +574,6 @@ const App: React.FC = () => {
               <Gallery
                 title="2. Original Photos (Select one to recolor, or multiple to delete)"
                 images={originalImages}
-                selectedImageId={selectedOriginalImageId}
                 selectedImageIds={selectedOriginalImageIds}
                 onSelectImage={handleSelectOriginalImage}
                 onSelectMultiple={handleSelectMultipleOriginal}
