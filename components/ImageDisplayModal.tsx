@@ -43,13 +43,17 @@ const ImageDisplayModal: React.FC<ImageDisplayModalProps> = ({ isOpen, image, on
       aria-label="Image viewer"
     >
       <div
-        className="relative bg-white rounded-lg shadow-xl p-4 sm:p-6 lg:p-8 max-w-4xl w-full max-h-[90vh] overflow-hidden flex items-center justify-center"
+        className="relative bg-white rounded-lg shadow-xl p-4 sm:p-6 lg:p-8 max-w-4xl w-full max-h-[90vh] overflow-hidden flex items-center justify-center bg-gray-100"
         onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside the modal content
       >
         <img
           src={`data:${image.mimeType};base64,${image.base64}`}
           alt={image.name}
-          className="max-w-full max-h-full object-contain rounded-md"
+          className="max-w-full max-h-full object-contain"
+          style={{
+            maxWidth: '-webkit-fill-available',
+            maxHeight: '-webkit-fill-available',
+          }}
         />
         <button
           onClick={onClose}

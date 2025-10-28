@@ -93,7 +93,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
         <img
           src={`data:${image.mimeType};base64,${image.base64}`}
           alt={image.name}
-          className="w-full h-48 object-cover object-center"
+          className="w-full h-48 object-contain object-center"
         />
         {/* Overlay buttons - appear on hover */}
         {(onViewButtonClick || (showDownloadButton && onDownload)) && (
