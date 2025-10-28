@@ -32,7 +32,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           The walls have been recolored to{" "}
           <span className="font-semibold">{colorName}</span>.
         </p>
-        <div className="flex flex-col lg:flex-row gap-6 mb-6 flex-1">
+        <div className="flex flex-col lg:flex-row gap-6 mb-6 flex-1 h-0">
           {" "}
           {/* Flex container for images, flex-1 to take remaining space */}
           {/* Original Photo */}
