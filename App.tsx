@@ -1,4 +1,9 @@
 import React, { useState, useCallback, useEffect } from "react";
+import {
+  Storage as StorageIcon,
+  ColorLens as RecolorIcon,
+} from "@mui/icons-material";
+import { CircularProgress } from "@mui/material";
 import ColorSelector from "./components/ColorSelector";
 import Gallery from "./components/Gallery";
 import ConfirmationModal from "./components/ConfirmationModal";
@@ -350,19 +355,7 @@ const App: React.FC = () => {
             className="ml-4 p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors"
             title="Manage Storage"
           >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M4 7v10c0 2.21 1.79 4 4 4h8c2.21 0 4-1.79 4-4V7M4 7c0-2.21 1.79-4 4-4h8c2.21 0 4 1.79 4 4M4 7h16m-4-4v4m-8-4v4"
-              />
-            </svg>
+            <StorageIcon sx={{ fontSize: 24, color: "inherit" }} />
           </button>
         </div>
 
@@ -454,44 +447,15 @@ const App: React.FC = () => {
               >
                 {processingImage ? (
                   <>
-                    <svg
-                      className="animate-spin -ml-1 mr-3 h-6 w-6 text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
+                    <CircularProgress
+                      size={24}
+                      sx={{ color: "white", marginRight: 1, marginLeft: -0.5 }}
+                    />
                     Processing...
                   </>
                 ) : (
                   <>
-                    <svg
-                      className="w-7 h-7"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.257-1.257m0 0l1.257 1.257M11 7.343V4m0 0h.007"
-                      ></path>
-                    </svg>
+                    <RecolorIcon sx={{ fontSize: 28, marginRight: 0.5 }} />
                     Recolor Walls
                   </>
                 )}

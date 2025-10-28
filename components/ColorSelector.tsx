@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { BenjaminMooreColor } from "../types";
 import { BENJAMIN_MOORE_COLORS } from "../constants";
 import { storageService } from "../services/storageService";
+import { Check as CheckIcon } from "@mui/icons-material";
 
 interface ColorSelectorProps {
   selectedColor: BenjaminMooreColor | null;
@@ -161,17 +162,13 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({
                   style={{ backgroundColor: color.hex }}
                 >
                   {selectedColor?.code === color.code && (
-                    <svg
-                      className="w-4 h-4 text-white drop-shadow-sm"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
+                    <CheckIcon
+                      sx={{
+                        fontSize: 16,
+                        color: "white",
+                        textShadow: "0 1px 3px rgba(0,0,0,0.5)",
+                      }}
+                    />
                   )}
                 </div>
                 <p className="mt-1 text-xs font-medium text-gray-700 text-center leading-tight">

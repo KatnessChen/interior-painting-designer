@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import { ImageData } from "../types";
 import { MAX_FILE_SIZE_MB } from "../constants";
+import { CloudUpload as UploadIcon } from "@mui/icons-material";
 
 interface UploadCardProps {
   onImageUpload: (imageData: ImageData) => void;
@@ -92,20 +93,15 @@ const UploadCard: React.FC<UploadCardProps> = ({ onImageUpload, onError }) => {
 
       {/* Upload area matching ImageCard height */}
       <div className="w-full h-48 bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-t-lg hover:border-blue-400 hover:from-blue-50 hover:to-blue-100 transition-all duration-200">
-        <svg
-          className="h-12 w-12 text-gray-400 group-hover:text-blue-400 transition-colors"
-          stroke="currentColor"
-          fill="none"
-          viewBox="0 0 48 48"
-          aria-hidden="true"
-        >
-          <path
-            d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-4V8m-12 8h.02"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+        <UploadIcon
+          sx={{
+            fontSize: 48,
+            color: "text.secondary",
+            transition: "color 0.2s",
+            "&:hover": { color: "primary.main" },
+          }}
+          className="group-hover:text-blue-400"
+        />
         <p className="mt-2 text-sm text-gray-600 group-hover:text-blue-600 transition-colors font-semibold">
           Click or Drop
         </p>

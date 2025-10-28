@@ -1,5 +1,12 @@
 import React from "react";
 import { ImageData } from "../types";
+import {
+  Visibility as EyeIcon,
+  Download as DownloadIcon,
+  Edit as PencilIcon,
+  CheckCircle as CheckmarkBadgeIcon,
+  Cancel as XBadgeIcon,
+} from "@mui/icons-material";
 
 interface ImageCardProps {
   image: ImageData;
@@ -97,26 +104,9 @@ const ImageCard: React.FC<ImageCardProps> = ({
                 className="flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors w-40"
                 aria-label={`View full image of ${image.name}`}
               >
-                <svg
-                  className="w-6 h-4 mr-2"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                  ></path>
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                  ></path>
-                </svg>
+                <EyeIcon
+                  sx={{ fontSize: 20, marginRight: 1, color: "inherit" }}
+                />
                 View Photo
               </button>
             )}
@@ -126,20 +116,9 @@ const ImageCard: React.FC<ImageCardProps> = ({
                 className="flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors w-40"
                 aria-label={`Download image ${image.name}`}
               >
-                <svg
-                  className="w-6 h-4 mr-2"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                  ></path>
-                </svg>
+                <DownloadIcon
+                  sx={{ fontSize: 20, marginRight: 1, color: "inherit" }}
+                />
                 Download
               </button>
             )}
@@ -175,20 +154,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
                 title="Rename image"
                 aria-label={`Rename ${image.name}`}
               >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M15.232 5.232l3.536 3.536M9 11l6 6L21 11l-6-6-6 6z"
-                  ></path>
-                </svg>
+                <PencilIcon sx={{ fontSize: 16, color: "inherit" }} />
               </button>
             )}
             {isEditing && (
@@ -214,28 +180,16 @@ const ImageCard: React.FC<ImageCardProps> = ({
       </div>
       {isSelected && (
         <div className="absolute top-2 right-2 p-1 rounded-full bg-blue-500 text-white">
-          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-            <path
-              fillRule="evenodd"
-              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-              clipRule="evenodd"
-            />
-          </svg>
+          <CheckmarkBadgeIcon sx={{ fontSize: 16, color: "inherit" }} />
         </div>
       )}
       {onRemove && (
         <button
           onClick={handleRemove}
-          className="absolute top-2 left-2 p-1 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+          className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 focus:outline-none"
           aria-label="Remove image"
         >
-          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-            <path
-              fillRule="evenodd"
-              d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-              clipRule="evenodd"
-            />
-          </svg>
+          <XBadgeIcon sx={{ fontSize: 24, color: "#ef4444" }} />
         </button>
       )}
     </div>

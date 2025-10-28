@@ -1,5 +1,6 @@
-import React, { useEffect, useCallback } from 'react';
-import { ImageData } from '../types';
+import React, { useEffect, useCallback } from "react";
+import { ImageData } from "../types";
+import { Close as CloseIcon } from "@mui/icons-material";
 
 interface ImageDisplayModalProps {
   isOpen: boolean;
@@ -7,24 +8,31 @@ interface ImageDisplayModalProps {
   onClose: () => void;
 }
 
-const ImageDisplayModal: React.FC<ImageDisplayModalProps> = ({ isOpen, image, onClose }) => {
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'Escape' && isOpen) {
-      onClose();
-    }
-  }, [isOpen, onClose]);
+const ImageDisplayModal: React.FC<ImageDisplayModalProps> = ({
+  isOpen,
+  image,
+  onClose,
+}) => {
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        onClose();
+      }
+    },
+    [isOpen, onClose]
+  );
 
   useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = 'hidden'; // Prevent scrolling of the background
-      window.addEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = "hidden"; // Prevent scrolling of the background
+      window.addEventListener("keydown", handleKeyDown);
     } else {
-      document.body.style.overflow = '';
-      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", handleKeyDown);
     }
     return () => {
-      document.body.style.overflow = '';
-      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", handleKeyDown);
     };
   }, [isOpen, handleKeyDown]);
 
@@ -52,9 +60,7 @@ const ImageDisplayModal: React.FC<ImageDisplayModalProps> = ({ isOpen, image, on
           className="absolute top-4 right-4 p-2 rounded-full bg-gray-700 text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-200"
           aria-label="Close image viewer"
         >
-          <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
+          <CloseIcon sx={{ fontSize: 24, color: "inherit" }} />
         </button>
       </div>
     </div>

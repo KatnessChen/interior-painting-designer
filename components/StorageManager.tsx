@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Close as CloseIcon } from "@mui/icons-material";
 import { useStorage } from "../hooks/useStorage";
 
 interface StorageManagerProps {
@@ -45,19 +46,7 @@ const StorageManager: React.FC<StorageManagerProps> = ({ isOpen, onClose }) => {
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600 transition-colors"
             >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
+              <CloseIcon sx={{ fontSize: 24, color: "inherit" }} />
             </button>
           </div>
 
