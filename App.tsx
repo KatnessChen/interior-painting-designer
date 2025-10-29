@@ -175,7 +175,70 @@ const App: React.FC = () => {
     setImageToDisplayInModal(null);
   }, []);
 
-  const handleRecolor = useCallback(async () => {
+  const handleRecolor = useCallback(
+    async (customPrompt: string | undefined) => {
+      if (!selectedColor) {
+        setErrorMessage('Please select a color first.');
+        return;
+      }
+
+      // Get the first (and only) selected image for recolor
+      const selectedImageId = Array.from(selectedOriginalImageIds)[0];
+      const selectedImage = originalImages.find((img) => img.id === selectedImageId);
+      if (!selectedImage) {
+        setErrorMessage('Please select an original photo to recolor.');
+        return;
+      }
+
+      setProcessingImage(true);
+      setErrorMessage(null);
+      setShowCustomPromptModal(false);
+
+      try {
+        const recolored = await recolorImage(
+          selectedImage,
+          selectedColor.name,
+          selectedColor.hex,
+          customPrompt
+        );
+        setGeneratedImage(recolored);
+        setShowConfirmationModal(true);
+      } catch (error: any) {
+        console.error('Recolor failed:', error);
+        let msg = error instanceof Error ? error.message : String(error);
+        let displayMessage = `Recolor failed: ${msg}.`;
+
+        let apiError: any = null;
+        try {
+          const jsonStringMatch = msg.match(/\{"error":\{.*\}\}/);
+          if (jsonStringMatch) {
+            apiError = JSON.parse(jsonStringMatch[0]);
+          }
+        } catch (e) {
+          console.warn('Failed to parse error message as JSON:', e);
+        }
+
+        if (apiError?.error?.status === 'RESOURCE_EXHAUSTED' || apiError?.error?.code === 429) {
+          const rateLimitDocsLink =
+            apiError?.error?.details?.[1]?.links?.[0]?.url ||
+            'https://ai.google.dev/gemini-api/docs/rate-limits';
+          const usageLink = 'https://ai.dev/usage?tab=rate-limit';
+          displayMessage = `Recolor failed due to quota limits. You've exceeded your current usage limit for the Gemini API. Please check your plan and billing details. For more information, visit: ${rateLimitDocsLink} or monitor your usage at: ${usageLink}`;
+        } else if (msg.includes('Requested entity was not found.')) {
+          displayMessage = `Recolor failed: ${msg}. This might indicate an invalid API key or an issue with model availability. Please try again.`;
+        } else {
+          displayMessage = `Recolor failed: ${msg}. If this error persists, try again or contact support.`;
+        }
+
+        setErrorMessage(displayMessage);
+      } finally {
+        setProcessingImage(false);
+      }
+    },
+    [selectedOriginalImageIds, originalImages, selectedColor]
+  );
+
+  const handleOpenCustomPromptModal = useCallback(async () => {
     if (!selectedColor) {
       setErrorMessage('Please select a color first.');
       return;
@@ -234,69 +297,6 @@ const App: React.FC = () => {
     setShowConfirmationModal(false);
     setGeneratedImage(null);
   }, []);
-
-  const handleConfirmCustomPrompt = useCallback(
-    async (prompt: string) => {
-      if (!selectedColor) {
-        setErrorMessage('Please select a color first.');
-        return;
-      }
-
-      // Get the first (and only) selected image for recolor
-      const selectedImageId = Array.from(selectedOriginalImageIds)[0];
-      const selectedImage = originalImages.find((img) => img.id === selectedImageId);
-      if (!selectedImage) {
-        setErrorMessage('Please select an original photo to recolor.');
-        return;
-      }
-
-      setProcessingImage(true);
-      setErrorMessage(null);
-      setShowCustomPromptModal(false);
-
-      try {
-        const recolored = await recolorImage(
-          selectedImage,
-          selectedColor.name,
-          selectedColor.hex,
-          prompt || ''
-        );
-        setGeneratedImage(recolored);
-        setShowConfirmationModal(true);
-      } catch (error: any) {
-        console.error('Recolor failed:', error);
-        let msg = error instanceof Error ? error.message : String(error);
-        let displayMessage = `Recolor failed: ${msg}.`;
-
-        let apiError: any = null;
-        try {
-          const jsonStringMatch = msg.match(/\{"error":\{.*\}\}/);
-          if (jsonStringMatch) {
-            apiError = JSON.parse(jsonStringMatch[0]);
-          }
-        } catch (e) {
-          console.warn('Failed to parse error message as JSON:', e);
-        }
-
-        if (apiError?.error?.status === 'RESOURCE_EXHAUSTED' || apiError?.error?.code === 429) {
-          const rateLimitDocsLink =
-            apiError?.error?.details?.[1]?.links?.[0]?.url ||
-            'https://ai.google.dev/gemini-api/docs/rate-limits';
-          const usageLink = 'https://ai.dev/usage?tab=rate-limit';
-          displayMessage = `Recolor failed due to quota limits. You've exceeded your current usage limit for the Gemini API. Please check your plan and billing details. For more information, visit: ${rateLimitDocsLink} or monitor your usage at: ${usageLink}`;
-        } else if (msg.includes('Requested entity was not found.')) {
-          displayMessage = `Recolor failed: ${msg}. This might indicate an invalid API key or an issue with model availability. Please try again.`;
-        } else {
-          displayMessage = `Recolor failed: ${msg}. If this error persists, try again or contact support.`;
-        }
-
-        setErrorMessage(displayMessage);
-      } finally {
-        setProcessingImage(false);
-      }
-    },
-    [selectedColor, originalImages, selectedOriginalImageIds]
-  );
 
   // Multi-select handlers for original photos
   const handleSelectOriginalImage = useCallback((imageId: string) => {
@@ -392,12 +392,21 @@ const App: React.FC = () => {
   const handleBulkDownloadUpdated = useCallback(() => {
     if (selectedUpdatedImageIds.size === 0) return;
 
+    // Map mimeType to extension
+    const mimeTypeMap: { [key: string]: string } = {
+      'image/jpeg': '.jpg',
+      'image/png': '.png',
+      'image/gif': '.gif',
+      'image/webp': '.webp',
+    };
+
     // Download each selected image
     updatedImages.forEach((img) => {
       if (selectedUpdatedImageIds.has(img.id)) {
         const link = document.createElement('a');
         link.href = `data:${img.mimeType};base64,${img.base64}`;
-        link.download = img.name;
+        const extension = mimeTypeMap[img.mimeType] || '.jpg';
+        link.download = `${img.name}${extension}`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -497,32 +506,52 @@ const App: React.FC = () => {
             </div>
 
             <div className="sticky bottom-4 w-full flex justify-center z-40 p-2">
-              <button
-                onClick={handleRecolor}
-                disabled={!isRecolorButtonEnabled}
-                className={`px-8 py-4 text-xl font-semibold rounded-full shadow-lg transition-all duration-300
-                            flex items-center justify-center space-x-2
-                            ${
-                              isRecolorButtonEnabled
-                                ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white hover:from-blue-700 hover:to-indigo-800 focus:outline-none focus:ring-4 focus:ring-blue-300'
-                                : 'bg-gray-300 text-gray-600 cursor-not-allowed'
-                            }`}
-              >
-                {processingImage ? (
-                  <>
-                    <CircularProgress
-                      size={24}
-                      sx={{ color: 'white', marginRight: 1, marginLeft: -0.5 }}
-                    />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <RecolorIcon sx={{ fontSize: 28, marginRight: 0.5 }} />
-                    Recolor Walls
-                  </>
+              {/* Container with group for hover effects */}
+              <div className="group relative">
+                {/* Main "Recolor Walls" button */}
+                <button
+                  onClick={handleRecolor}
+                  disabled={!isRecolorButtonEnabled}
+                  className={`px-8 py-4 text-xl font-semibold rounded-full shadow-lg transition-all duration-300
+                              flex items-center justify-center space-x-2
+                              ${
+                                isRecolorButtonEnabled
+                                  ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white hover:from-blue-700 hover:to-indigo-800 focus:outline-none focus:ring-4 focus:ring-blue-300'
+                                  : 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                              }`}
+                >
+                  {processingImage ? (
+                    <>
+                      <CircularProgress
+                        size={24}
+                        sx={{ color: 'white', marginRight: 1, marginLeft: -0.5 }}
+                      />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <RecolorIcon sx={{ fontSize: 28, marginRight: 0.5 }} />
+                      Recolor Walls
+                    </>
+                  )}
+                </button>
+                {/* Overlay "With Custom Prompt" button - appears on hover */}
+                {isRecolorButtonEnabled && !processingImage && (
+                  <button
+                    onClick={handleOpenCustomPromptModal}
+                    className="absolute h-12 left-1/2 -bottom-16 -translate-x-1/2 -translate-y-1/2 px-8 py-2 text-sm font-semibold rounded-full
+                             bg-gradient-to-r from-amber-500 to-orange-600 text-white
+                             shadow-lg transition-all duration-300
+                             opacity-0 group-hover:opacity-100
+                             pointer-events-none group-hover:pointer-events-auto
+                             hover:from-amber-600 hover:to-orange-700
+                             focus:outline-none focus:ring-4 focus:ring-amber-300
+                             whitespace-nowrap"
+                  >
+                    With Custom Prompt
+                  </button>
                 )}
-              </button>
+              </div>
             </div>
 
             <div className="mt-8">
@@ -558,7 +587,7 @@ const App: React.FC = () => {
         {/* Custom Prompt Modal */}
         <CustomPromptModal
           isOpen={showCustomPromptModal}
-          onConfirm={handleConfirmCustomPrompt}
+          onConfirm={(customPrompt: string) => handleRecolor(customPrompt)}
           onCancel={() => setShowCustomPromptModal(false)}
           colorName={selectedColor?.name || 'N/A'}
         />
