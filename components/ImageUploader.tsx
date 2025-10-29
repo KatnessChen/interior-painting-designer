@@ -41,9 +41,11 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageUpload, onError })
 
       try {
         const base64 = await fileToBase64(file);
+        // Remove file extension from name
+        const fileName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
         const imageData: ImageData = {
           id: crypto.randomUUID(),
-          name: file.name,
+          name: fileName,
           base64: base64,
           mimeType: file.type,
         };

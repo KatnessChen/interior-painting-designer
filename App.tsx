@@ -79,7 +79,14 @@ const App: React.FC = () => {
   const handleDownload = useCallback((imageData: ImageData) => {
     const link = document.createElement('a');
     link.href = `data:${imageData.mimeType};base64,${imageData.base64}`;
-    link.download = `recolored_${imageData.name}`;
+    const mimeTypeMap: { [key: string]: string } = {
+      'image/jpeg': '.jpg',
+      'image/png': '.png',
+      'image/gif': '.gif',
+      'image/webp': '.webp',
+    };
+    const extension = mimeTypeMap[imageData.mimeType] || '.jpg';
+    link.download = `recolored_${imageData.name}${extension}`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
