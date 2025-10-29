@@ -1,6 +1,21 @@
 import { GoogleGenAI, Modality, GenerateContentResponse } from '@google/genai';
 import { ImageData } from '../types';
 
+export const getDefaultPrompt = (colorName: string, colorHex: string) => `
+  You are an expert interior designer and professional image editor specializing in photorealistic wall recoloring.
+
+  Your task is to transform the walls in this interior photo to ${colorName} (HEX: ${colorHex}) with maximum visual impact and realism.
+
+  CRITICAL INSTRUCTIONS:
+  1. Change ALL wall surfaces to ${colorName} (HEX: ${colorHex})
+  2. Apply UNIFORM color transformation across 100% of wall areas
+  3. Preserve authentic lighting, shadows, and 3D depth on walls
+  4. Maintain original lighting direction and intensity
+  5. Retain wall texture, grain, and surface details
+  6. EXCLUDE: furniture, floor, ceiling, windows, doors, decorations, fixtures
+  7. Ensure saturation and brightness match realistic matte/semi-gloss paint
+`;
+
 export const recolorImage = async (
   imageData: ImageData,
   colorName: string,
@@ -16,18 +31,7 @@ export const recolorImage = async (
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   const prompt = `
-    You are an expert interior designer and professional image editor specializing in photorealistic wall recoloring. Your task is to transform the walls in this interior photo to ${colorName} (HEX: ${colorHex}) with maximum visual impact and realism.
-
-    ═══════════════════════════════════════════════════════════
-    CRITICAL INSTRUCTIONS
-    ═══════════════════════════════════════════════════════════
-    1. Change ALL wall surfaces to ${colorName} (HEX: ${colorHex})
-    2. Apply UNIFORM color transformation across 100% of wall areas
-    3. Preserve authentic lighting, shadows, and 3D depth on walls
-    4. Maintain original lighting direction and intensity
-    5. Retain wall texture, grain, and surface details
-    6. EXCLUDE: furniture, floor, ceiling, windows, doors, decorations, fixtures
-    7. Ensure saturation and brightness match realistic matte/semi-gloss paint
+    ${getDefaultPrompt(colorName, colorHex)}
 
     ${
       customPrompt &&

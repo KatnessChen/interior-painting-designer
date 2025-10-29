@@ -589,7 +589,8 @@ const App: React.FC = () => {
           isOpen={showCustomPromptModal}
           onConfirm={(customPrompt: string) => handleRecolor(customPrompt)}
           onCancel={() => setShowCustomPromptModal(false)}
-          colorName={selectedColor?.name || 'N/A'}
+          colorName={selectedColor?.name}
+          colorHex={selectedColor?.hex}
         />
 
         {/* New Image Display Modal */}

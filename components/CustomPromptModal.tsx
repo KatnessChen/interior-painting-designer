@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { Close as CloseIcon } from '@mui/icons-material';
+import { Close as CloseIcon, ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
+import { getDefaultPrompt } from '@/services/geminiService';
 
 interface CustomPromptModalProps {
   isOpen: boolean;
   onConfirm: (prompt: string) => void;
   onCancel: () => void;
   colorName: string;
+  colorHex: string;
 }
 
 const CustomPromptModal: React.FC<CustomPromptModalProps> = ({
@@ -13,8 +15,10 @@ const CustomPromptModal: React.FC<CustomPromptModalProps> = ({
   onConfirm,
   onCancel,
   colorName,
+  colorHex,
 }) => {
   const [prompt, setPrompt] = useState<string>('');
+  const [isDefaultPromptExpanded, setIsDefaultPromptExpanded] = useState<boolean>(false);
 
   const handleConfirm = () => {
     onConfirm(prompt);
@@ -25,8 +29,6 @@ const CustomPromptModal: React.FC<CustomPromptModalProps> = ({
     setPrompt('');
     onCancel();
   };
-
-  // const defaultPrompt = `You are an expert interior designer and professional image editor specializing in photorealistic wall recoloring. Transform the walls in this interior photo to ${colorName} with maximum visual impact and realism. Preserve authentic lighting, shadows, and texture. Exclude furniture, floor, ceiling, windows, doors, and decorations.`;
 
   if (!isOpen) return null;
 
@@ -44,8 +46,9 @@ const CustomPromptModal: React.FC<CustomPromptModalProps> = ({
         </div>
 
         <p className="text-gray-600 mb-4">
-          Customize the prompt to control how Gemini recolors your walls to{' '}
-          <span className="font-semibold">{colorName}</span>. Leave blank to use the default prompt.
+          Fine-tune the recoloring to control exactly how your walls appear in{' '}
+          <span className="font-semibold">{colorName}</span>. Leave blank to use the default
+          settings.
         </p>
 
         <div className="mb-6">
@@ -64,14 +67,33 @@ const CustomPromptModal: React.FC<CustomPromptModalProps> = ({
           </p>
         </div>
 
-        {/* <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-          <p className="text-xs font-semibold text-gray-700 mb-2">
-            Default Prompt:
-          </p>
-          <p className="text-xs text-gray-600 leading-relaxed">
-            {defaultPrompt}
-          </p>
-        </div> */}
+        <div className="mb-6">
+          <button
+            onClick={() => setIsDefaultPromptExpanded(!isDefaultPromptExpanded)}
+            className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
+          >
+            <p className="text-xs font-semibold text-gray-700">Default Prompt</p>
+            <ExpandMoreIcon
+              sx={{
+                fontSize: 20,
+                color: 'text.secondary',
+                transform: isDefaultPromptExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: 'transform 0.3s ease',
+              }}
+            />
+          </button>
+          <div
+            className={`overflow-hidden transition-all duration-300 ease-in-out ${
+              isDefaultPromptExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+            }`}
+          >
+            <div className="p-1 bg-gray-50 rounded-lg border border-gray-200 border-t-0 rounded-t-none">
+              <pre className="text-xs text-gray-600 leading-relaxed overflow-scroll">
+                {getDefaultPrompt(colorName, colorHex)}
+              </pre>
+            </div>
+          </div>
+        </div>
 
         <div className="flex flex-col sm:flex-row justify-center gap-4">
           <button
