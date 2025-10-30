@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { Storage as StorageIcon, ColorLens as RecolorIcon } from '@mui/icons-material';
 import { CircularProgress } from '@mui/material';
 import ColorSelector from './components/ColorSelector';
@@ -450,105 +451,106 @@ const App: React.FC = () => {
     selectedColor && selectedOriginalImageIds.size === 1 && !processingImage;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 sm:p-6 lg:p-8">
-      <div className="container mx-auto max-w-6xl">
-        <div className="flex items-center justify-between mb-10 mt-4">
-          <div className="flex-1">
-            <h1 className="mb-2 text-4xl font-extrabold text-gray-900 drop-shadow-sm flex-grow text-center">
-              Vizion Studio
-            </h1>
-            <h3 className="text-center">Your Interior Design Simulator</h3>
-          </div>
-
-          <button
-            onClick={() => setShowStorageManager(true)}
-            className="ml-4 p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors"
-            title="Manage Storage"
-          >
-            <StorageIcon sx={{ fontSize: 24, color: 'inherit' }} />
-          </button>
-        </div>
-
-        {isLoadingData && (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <span className="ml-3 text-lg text-gray-600">Loading your saved data...</span>
-          </div>
-        )}
-
-        {!isLoadingData && errorMessage && (
-          <div
-            className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-md shadow-sm"
-            role="alert"
-          >
-            <p className="font-bold">Error!</p>
-            <p>{errorMessage}</p>
-          </div>
-        )}
-
-        {!isLoadingData && (
-          <>
-            <div className="mb-8">
-              <ColorSelector selectedColor={selectedColor} onSelectColor={setSelectedColor} />
+    <>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 sm:p-6 lg:p-8">
+        <div className="container mx-auto max-w-6xl">
+          <div className="flex items-center justify-between mb-10 mt-4">
+            <div className="flex-1">
+              <h1 className="mb-2 text-4xl font-extrabold text-gray-900 drop-shadow-sm flex-grow text-center">
+                Vizion Studio
+              </h1>
+              <h3 className="text-center">Your Interior Design Simulator</h3>
             </div>
 
-            <div className="mb-8">
-              <Gallery
-                title="2. Original Photos (Select one to recolor, or multiple to delete)"
-                images={originalImages}
-                selectedImageIds={selectedOriginalImageIds}
-                onSelectImage={handleSelectOriginalImage}
-                onSelectMultiple={handleSelectMultipleOriginal}
-                onRemoveImage={handleRemoveOriginalImage}
-                onRenameImage={handleRenameOriginalImage}
-                showRemoveButtons={selectedOriginalImageIds.size === 0}
-                emptyMessage="No photos uploaded yet."
-                onViewImage={handleViewImage}
-                onUploadImage={handleImageUpload}
-                showUploadCard={true}
-                onUploadError={setErrorMessage}
-                enableMultiSelect={true}
-                onBulkDelete={handleBulkDeleteOriginal}
-                onClearSelection={handleClearOriginalSelection}
-                hideDownloadAndMove={true}
-              />
-            </div>
+            <button
+              onClick={() => setShowStorageManager(true)}
+              className="ml-4 p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors"
+              title="Manage Storage"
+            >
+              <StorageIcon sx={{ fontSize: 24, color: 'inherit' }} />
+            </button>
+          </div>
 
-            <div className="sticky bottom-4 w-full flex justify-center z-40 p-2">
-              {/* Container with group for hover effects */}
-              <div className="group relative">
-                {/* Main "Recolor Walls" button */}
-                <button
-                  onClick={handleRecolor}
-                  disabled={!isRecolorButtonEnabled}
-                  className={`px-8 py-4 text-xl font-semibold rounded-full shadow-lg transition-all duration-300
+          {isLoadingData && (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <span className="ml-3 text-lg text-gray-600">Loading your saved data...</span>
+            </div>
+          )}
+
+          {!isLoadingData && errorMessage && (
+            <div
+              className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-md shadow-sm"
+              role="alert"
+            >
+              <p className="font-bold">Error!</p>
+              <p>{errorMessage}</p>
+            </div>
+          )}
+
+          {!isLoadingData && (
+            <>
+              <div className="mb-8">
+                <ColorSelector selectedColor={selectedColor} onSelectColor={setSelectedColor} />
+              </div>
+
+              <div className="mb-8">
+                <Gallery
+                  title="2. Original Photos (Select one to recolor, or multiple to delete)"
+                  images={originalImages}
+                  selectedImageIds={selectedOriginalImageIds}
+                  onSelectImage={handleSelectOriginalImage}
+                  onSelectMultiple={handleSelectMultipleOriginal}
+                  onRemoveImage={handleRemoveOriginalImage}
+                  onRenameImage={handleRenameOriginalImage}
+                  showRemoveButtons={selectedOriginalImageIds.size === 0}
+                  emptyMessage="No photos uploaded yet."
+                  onViewImage={handleViewImage}
+                  onUploadImage={handleImageUpload}
+                  showUploadCard={true}
+                  onUploadError={setErrorMessage}
+                  enableMultiSelect={true}
+                  onBulkDelete={handleBulkDeleteOriginal}
+                  onClearSelection={handleClearOriginalSelection}
+                  hideDownloadAndMove={true}
+                />
+              </div>
+
+              <div className="sticky bottom-4 w-full flex justify-center z-40 p-2">
+                {/* Container with group for hover effects */}
+                <div className="group relative">
+                  {/* Main "Recolor Walls" button */}
+                  <button
+                    onClick={handleRecolor}
+                    disabled={!isRecolorButtonEnabled}
+                    className={`px-8 py-4 text-xl font-semibold rounded-full shadow-lg transition-all duration-300
                               flex items-center justify-center space-x-2
                               ${
                                 isRecolorButtonEnabled
                                   ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white hover:from-blue-700 hover:to-indigo-800 focus:outline-none focus:ring-4 focus:ring-blue-300'
                                   : 'bg-gray-300 text-gray-600 cursor-not-allowed'
                               }`}
-                >
-                  {processingImage ? (
-                    <>
-                      <CircularProgress
-                        size={24}
-                        sx={{ color: 'white', marginRight: 1, marginLeft: -0.5 }}
-                      />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <RecolorIcon sx={{ fontSize: 28, marginRight: 0.5 }} />
-                      Recolor Walls
-                    </>
-                  )}
-                </button>
-                {/* Overlay "With Custom Prompt" button - appears on hover */}
-                {isRecolorButtonEnabled && !processingImage && (
-                  <button
-                    onClick={handleOpenCustomPromptModal}
-                    className="absolute h-12 left-1/2 -bottom-16 -translate-x-1/2 -translate-y-1/2 px-8 py-2 text-sm font-semibold rounded-full
+                  >
+                    {processingImage ? (
+                      <>
+                        <CircularProgress
+                          size={24}
+                          sx={{ color: 'white', marginRight: 1, marginLeft: -0.5 }}
+                        />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <RecolorIcon sx={{ fontSize: 28, marginRight: 0.5 }} />
+                        Recolor Walls
+                      </>
+                    )}
+                  </button>
+                  {/* Overlay "With Custom Prompt" button - appears on hover */}
+                  {isRecolorButtonEnabled && !processingImage && (
+                    <button
+                      onClick={handleOpenCustomPromptModal}
+                      className="absolute h-12 left-1/2 -bottom-16 -translate-x-1/2 -translate-y-1/2 px-8 py-2 text-sm font-semibold rounded-full
                              bg-gradient-to-r from-amber-500 to-orange-600 text-white
                              shadow-lg transition-all duration-300
                              opacity-0 group-hover:opacity-100
@@ -556,63 +558,68 @@ const App: React.FC = () => {
                              hover:from-amber-600 hover:to-orange-700
                              focus:outline-none focus:ring-4 focus:ring-amber-300
                              whitespace-nowrap"
-                  >
-                    With Custom Prompt
-                  </button>
-                )}
+                    >
+                      With Custom Prompt
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
 
-            <div className="mt-8">
-              <Gallery
-                title="3. Updated Photos (Download your favorites)"
-                images={updatedImages}
-                selectedImageIds={selectedUpdatedImageIds}
-                onSelectMultiple={handleSelectUpdatedImage}
-                onDownloadImage={handleDownload}
-                onRemoveImage={handleRemoveUpdatedImage}
-                onRenameImage={handleRenameUpdatedImage}
-                emptyMessage="Satisfied recolored photos will appear here."
-                onViewImage={handleViewImage}
-                enableMultiSelect={true}
-                onBulkDelete={handleBulkDeleteUpdated}
-                onBulkDownload={handleBulkDownloadUpdated}
-                onBulkMove={handleBulkMoveToOriginal}
-                onClearSelection={handleClearUpdatedSelection}
-              />
-            </div>
-          </>
-        )}
+              <div className="mt-8">
+                <Gallery
+                  title="3. Updated Photos (Download your favorites)"
+                  images={updatedImages}
+                  selectedImageIds={selectedUpdatedImageIds}
+                  onSelectMultiple={handleSelectUpdatedImage}
+                  onDownloadImage={handleDownload}
+                  onRemoveImage={handleRemoveUpdatedImage}
+                  onRenameImage={handleRenameUpdatedImage}
+                  emptyMessage="Satisfied recolored photos will appear here."
+                  onViewImage={handleViewImage}
+                  enableMultiSelect={true}
+                  onBulkDelete={handleBulkDeleteUpdated}
+                  onBulkDownload={handleBulkDownloadUpdated}
+                  onBulkMove={handleBulkMoveToOriginal}
+                  onClearSelection={handleClearUpdatedSelection}
+                />
+              </div>
+            </>
+          )}
 
-        <ConfirmationModal
-          isOpen={showConfirmationModal}
-          originalImage={selectedOriginalImage}
-          image={generatedImage}
-          onConfirm={handleConfirmRecolor}
-          onCancel={handleCancelRecolor}
-          colorName={selectedColor?.name || 'N/A'}
-        />
+          <ConfirmationModal
+            isOpen={showConfirmationModal}
+            originalImage={selectedOriginalImage}
+            image={generatedImage}
+            onConfirm={handleConfirmRecolor}
+            onCancel={handleCancelRecolor}
+            colorName={selectedColor?.name || 'N/A'}
+          />
 
-        {/* Custom Prompt Modal */}
-        <CustomPromptModal
-          isOpen={showCustomPromptModal}
-          onConfirm={(customPrompt: string) => handleRecolor(customPrompt)}
-          onCancel={() => setShowCustomPromptModal(false)}
-          colorName={selectedColor?.name}
-          colorHex={selectedColor?.hex}
-        />
+          {/* Custom Prompt Modal */}
+          <CustomPromptModal
+            isOpen={showCustomPromptModal}
+            onConfirm={(customPrompt: string) => handleRecolor(customPrompt)}
+            onCancel={() => setShowCustomPromptModal(false)}
+            colorName={selectedColor?.name}
+            colorHex={selectedColor?.hex}
+          />
 
-        {/* New Image Display Modal */}
-        <ImageDisplayModal
-          isOpen={showImageDisplayModal}
-          image={imageToDisplayInModal}
-          onClose={handleCloseImageDisplayModal}
-        />
+          {/* New Image Display Modal */}
+          <ImageDisplayModal
+            isOpen={showImageDisplayModal}
+            image={imageToDisplayInModal}
+            onClose={handleCloseImageDisplayModal}
+          />
 
-        {/* Storage Manager Modal */}
-        <StorageManager isOpen={showStorageManager} onClose={() => setShowStorageManager(false)} />
+          {/* Storage Manager Modal */}
+          <StorageManager
+            isOpen={showStorageManager}
+            onClose={() => setShowStorageManager(false)}
+          />
+        </div>
       </div>
-    </div>
+      <SpeedInsights />
+    </>
   );
 };
 
