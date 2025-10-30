@@ -8,19 +8,24 @@ import CustomPromptModal from './components/CustomPromptModal';
 import ImageDisplayModal from './components/ImageDisplayModal'; // Import the new modal component
 import StorageManager from './components/StorageManager';
 import { BenjaminMooreColor, ImageData } from './types';
-import { recolorImage } from './services/geminiService';
+import { recolorImage } from './services/gemini/geminiService';
 import { storageService } from './services/storageService';
 
 const App: React.FC = () => {
   const [selectedColor, setSelectedColor] = useState<BenjaminMooreColor | null>(null);
+
   const [originalImages, setOriginalImages] = useState<ImageData[]>([]);
   const [selectedOriginalImageIds, setSelectedOriginalImageIds] = useState<Set<string>>(new Set());
+
+  const [generatedImage, setGeneratedImage] = useState<ImageData | null>(null);
+
   const [updatedImages, setUpdatedImages] = useState<ImageData[]>([]);
   const [selectedUpdatedImageIds, setSelectedUpdatedImageIds] = useState<Set<string>>(new Set());
+
   const [processingImage, setProcessingImage] = useState(false);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
-  const [generatedImage, setGeneratedImage] = useState<ImageData | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
   const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
 
   // State for ImageDisplayModal

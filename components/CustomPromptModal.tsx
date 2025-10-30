@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Close as CloseIcon, ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
-import { getDefaultPrompt } from '@/services/geminiService';
+import { wallRecolorPrompts } from '@/services/gemini/prompts';
 
 interface CustomPromptModalProps {
   isOpen: boolean;
@@ -89,7 +89,7 @@ const CustomPromptModal: React.FC<CustomPromptModalProps> = ({
           >
             <div className="p-1 bg-gray-50 rounded-lg border border-gray-200 border-t-0 rounded-t-none">
               <pre className="text-xs text-gray-600 leading-relaxed overflow-scroll">
-                {getDefaultPrompt(colorName, colorHex)}
+                {wallRecolorPrompts(colorName, colorHex, undefined)}
               </pre>
             </div>
           </div>
