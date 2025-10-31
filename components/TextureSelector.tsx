@@ -185,7 +185,7 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({ onTextureSelect, onEr
               }`}
             >
               <img
-                src={texture.base64}
+                src={`data:${texture.mimeType};base64,${texture.base64}`}
                 alt={texture.name}
                 className="w-full h-24 object-cover group-hover:opacity-80 transition-opacity"
               />

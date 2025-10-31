@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
-import { Storage as StorageIcon, ColorLens as RecolorIcon } from '@mui/icons-material';
-import { CircularProgress } from '@mui/material';
+import { Storage as StorageIcon } from '@mui/icons-material';
 import ColorSelector from './components/ColorSelector';
 import TaskSelector from './components/TaskSelector';
 import TextureSelector, { Texture } from './components/TextureSelector';
@@ -10,6 +9,7 @@ import ConfirmationModal from './components/ConfirmationModal';
 import CustomPromptModal from './components/CustomPromptModal';
 import ImageDisplayModal from './components/ImageDisplayModal';
 import StorageManager from './components/StorageManager';
+import ProcessButton from './components/ProcessButton';
 import { BenjaminMooreColor, ImageData } from './types';
 import {
   recolorWalls,
@@ -522,13 +522,6 @@ const App: React.FC = () => {
     ((selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name && selectedColor) ||
       (selectedTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name && selectedTexture));
 
-  const getButtonLabel = () => {
-    if (processingImage) return 'Processing...';
-    if (selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name) return 'Recolor Walls';
-    if (selectedTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name) return 'Add Texture';
-    return 'Process';
-  };
-
   return (
     <>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 sm:p-6 lg:p-8">
@@ -538,7 +531,7 @@ const App: React.FC = () => {
               <h1 className="mb-2 text-4xl font-extrabold text-gray-900 drop-shadow-sm flex-grow text-center">
                 Vizion Studio
               </h1>
-              <h3 className="text-center">Your Interior Design Simulator</h3>
+              <h3 className="text-center">Your AI Interior Design Simulator</h3>
             </div>
 
             <button
@@ -604,52 +597,12 @@ const App: React.FC = () => {
               </div>
 
               <div className="sticky bottom-4 w-full flex justify-center z-40 p-2">
-                {/* Container with group for hover effects */}
-                <div className="group relative">
-                  {/* Main Processing button */}
-                  <button
-                    onClick={processImage}
-                    disabled={!isProcessingButtonEnabled}
-                    className={`px-8 py-4 text-xl font-semibold rounded-full shadow-lg transition-all duration-300
-                              flex items-center justify-center space-x-2
-                              ${
-                                isProcessingButtonEnabled
-                                  ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white hover:from-blue-700 hover:to-indigo-800 focus:outline-none focus:ring-4 focus:ring-blue-300'
-                                  : 'bg-gray-300 text-gray-600 cursor-not-allowed'
-                              }`}
-                  >
-                    {processingImage ? (
-                      <>
-                        <CircularProgress
-                          size={24}
-                          sx={{ color: 'white', marginRight: 1, marginLeft: -0.5 }}
-                        />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <RecolorIcon sx={{ fontSize: 28, marginRight: 0.5 }} />
-                        {getButtonLabel()}
-                      </>
-                    )}
-                  </button>
-                  {/* Overlay "With Custom Prompt" button - appears on hover */}
-                  {isProcessingButtonEnabled && !processingImage && (
-                    <button
-                      onClick={handleOpenCustomPromptModal}
-                      className="absolute h-12 left-1/2 -bottom-16 -translate-x-1/2 -translate-y-1/2 px-8 py-2 text-sm font-semibold rounded-full
-                             bg-gradient-to-r from-amber-500 to-orange-600 text-white
-                             shadow-lg transition-all duration-300
-                             opacity-0 group-hover:opacity-100
-                             pointer-events-none group-hover:pointer-events-auto
-                             hover:from-amber-600 hover:to-orange-700
-                             focus:outline-none focus:ring-4 focus:ring-amber-300
-                             whitespace-nowrap"
-                    >
-                      With Custom Prompt
-                    </button>
-                  )}
-                </div>
+                <ProcessButton
+                  isEnabled={isProcessingButtonEnabled}
+                  isProcessing={processingImage}
+                  selectedTaskName={selectedTaskName}
+                  onOpenCustomPrompt={handleOpenCustomPromptModal}
+                />
               </div>
 
               <div className="mt-8">
