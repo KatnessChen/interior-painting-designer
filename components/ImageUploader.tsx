@@ -14,6 +14,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageUpload, onError })
 
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
+      // TODO: extract file upload handler to utils
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = () => {

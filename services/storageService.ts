@@ -1,4 +1,5 @@
 import { BenjaminMooreColor, ImageData } from '../types';
+import { Texture } from '../components/TextureSelector';
 
 // Constants for storage keys
 const STORAGE_KEYS = {
@@ -8,11 +9,12 @@ const STORAGE_KEYS = {
 } as const;
 
 // IndexedDB configuration
-const DB_NAME = 'InteriorDesignerDB';
-const DB_VERSION = 1;
+const DB_NAME = 'VizionStudioDB';
+const DB_VERSION = 2;
 const STORES = {
   IMAGES: 'images',
   COLORS: 'colors',
+  TEXTURES: 'textures',
 } as const;
 
 // IndexedDB wrapper class
@@ -23,28 +25,52 @@ class IndexedDBManager {
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
 
+      // Add a timeout to prevent indefinite waiting
+      const timeout = setTimeout(() => {
+        reject(new Error('IndexedDB initialization timeout'));
+      }, 5000);
+
+      const cleanup = () => clearTimeout(timeout);
+
       request.onerror = () => {
+        cleanup();
         console.error('IndexedDB failed to open:', request.error);
         reject(request.error);
       };
 
       request.onsuccess = () => {
+        cleanup();
         this.db = request.result;
+        console.log('IndexedDB initialized successfully');
         resolve();
       };
 
       request.onupgradeneeded = (event) => {
+        console.log('IndexedDB upgrading to version', DB_VERSION);
         const db = (event.target as IDBOpenDBRequest).result;
 
-        // Create images store (only need image store)
+        // Create images store if it doesn't exist
         if (!db.objectStoreNames.contains(STORES.IMAGES)) {
+          console.log('Creating IMAGES store');
           const imageStore = db.createObjectStore(STORES.IMAGES, {
             keyPath: 'id',
           });
           imageStore.createIndex('type', 'type', { unique: false });
           imageStore.createIndex('timestamp', 'timestamp', { unique: false });
-          imageStore.createIndex('size', 'size', { unique: false }); // Track file size
+          imageStore.createIndex('size', 'size', { unique: false });
         }
+
+        // Create textures store if it doesn't exist
+        if (!db.objectStoreNames.contains(STORES.TEXTURES)) {
+          console.log('Creating TEXTURES store');
+          const textureStore = db.createObjectStore(STORES.TEXTURES, {
+            keyPath: 'id',
+          });
+          textureStore.createIndex('name', 'name', { unique: false });
+          textureStore.createIndex('timestamp', 'timestamp', { unique: false });
+        }
+
+        console.log('IndexedDB upgrade complete');
       };
     });
   }
@@ -177,6 +203,76 @@ class IndexedDBManager {
       request.onsuccess = () => resolve();
     });
   }
+
+  async saveTexture(texture: Texture): Promise<void> {
+    if (!this.db) await this.init();
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([STORES.TEXTURES], 'readwrite');
+      const store = transaction.objectStore(STORES.TEXTURES);
+
+      const dataToStore = {
+        id: texture.id,
+        name: texture.name,
+        base64: texture.base64,
+        mimeType: texture.mimeType,
+        timestamp: Date.now(),
+      };
+
+      const request = store.put(dataToStore);
+
+      request.onerror = () => {
+        console.error('Failed to save texture to IndexedDB:', request.error);
+        reject(request.error);
+      };
+
+      request.onsuccess = () => resolve();
+    });
+  }
+
+  async getTextures(): Promise<Texture[]> {
+    if (!this.db) await this.init();
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([STORES.TEXTURES], 'readonly');
+      const store = transaction.objectStore(STORES.TEXTURES);
+
+      const request = store.getAll();
+
+      request.onerror = () => {
+        console.error('Failed to get textures from IndexedDB:', request.error);
+        reject(request.error);
+      };
+
+      request.onsuccess = () => {
+        const results = request.result.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          base64: item.base64,
+          mimeType: item.mimeType,
+        }));
+        resolve(results);
+      };
+    });
+  }
+
+  async deleteTexture(textureId: string): Promise<void> {
+    if (!this.db) await this.init();
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([STORES.TEXTURES], 'readwrite');
+      const store = transaction.objectStore(STORES.TEXTURES);
+
+      const request = store.delete(textureId);
+
+      request.onerror = () => {
+        console.error('Failed to delete texture from IndexedDB:', request.error);
+        reject(request.error);
+      };
+
+      request.onsuccess = () => resolve();
+    });
+  }
 }
 
 // Storage Service class
@@ -193,10 +289,28 @@ class StorageService {
   async init(): Promise<void> {
     if (this.isIndexedDBSupported) {
       try {
+        console.log('Initializing storage service...');
         await this.indexedDB.init();
+        console.log('Storage service initialized successfully');
       } catch (error) {
-        console.warn('IndexedDB initialization failed, falling back to localStorage only:', error);
-        this.isIndexedDBSupported = false;
+        console.warn('IndexedDB initialization failed, attempting to recover:', error);
+        try {
+          // Try to delete and recreate the database
+          console.log('Attempting to delete old database and recreate...');
+          await new Promise<void>((resolve, reject) => {
+            const deleteRequest = indexedDB.deleteDatabase(DB_NAME);
+            deleteRequest.onsuccess = () => resolve();
+            deleteRequest.onerror = () => reject(deleteRequest.error);
+          });
+
+          // Reinitialize
+          this.indexedDB = new IndexedDBManager();
+          await this.indexedDB.init();
+          console.log('Database recovered and reinitialized');
+        } catch (recoveryError) {
+          console.warn('Failed to recover database, disabling IndexedDB:', recoveryError);
+          this.isIndexedDBSupported = false;
+        }
       }
     }
   }
@@ -400,21 +514,64 @@ class StorageService {
     }
   }
 
+  // Textures Management
+  async addTexture(texture: Texture): Promise<void> {
+    if (!this.isIndexedDBSupported) {
+      throw new Error('IndexedDB not supported - cannot save textures');
+    }
+
+    try {
+      await this.indexedDB.saveTexture(texture);
+    } catch (error) {
+      console.error('Failed to save texture to IndexedDB:', error);
+      throw error;
+    }
+  }
+
+  async getTextures(): Promise<Texture[]> {
+    if (!this.isIndexedDBSupported) {
+      return [];
+    }
+
+    try {
+      return await this.indexedDB.getTextures();
+    } catch (error) {
+      console.error('Failed to get textures from IndexedDB:', error);
+      return [];
+    }
+  }
+
+  async removeTexture(textureId: string): Promise<void> {
+    if (!this.isIndexedDBSupported) {
+      return;
+    }
+
+    try {
+      await this.indexedDB.deleteTexture(textureId);
+    } catch (error) {
+      console.error('Failed to delete texture from IndexedDB:', error);
+      throw error;
+    }
+  }
+
   // Get storage usage info
   async getStorageInfo(): Promise<{
     customColorsCount: number;
     originalImagesCount: number;
     updatedImagesCount: number;
+    texturesCount: number;
     isIndexedDBSupported: boolean;
   }> {
     const customColors = await this.getCustomColors();
     const originalImages = await this.getOriginalImages();
     const updatedImages = await this.getUpdatedImages();
+    const textures = await this.getTextures();
 
     return {
       customColorsCount: customColors.length,
       originalImagesCount: originalImages.length,
       updatedImagesCount: updatedImages.length,
+      texturesCount: textures.length,
       isIndexedDBSupported: this.isIndexedDBSupported,
     };
   }

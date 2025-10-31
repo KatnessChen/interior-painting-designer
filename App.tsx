@@ -3,17 +3,33 @@ import { SpeedInsights } from '@vercel/speed-insights/react';
 import { Storage as StorageIcon, ColorLens as RecolorIcon } from '@mui/icons-material';
 import { CircularProgress } from '@mui/material';
 import ColorSelector from './components/ColorSelector';
+import TaskSelector from './components/TaskSelector';
+import TextureSelector, { Texture } from './components/TextureSelector';
 import Gallery from './components/Gallery';
 import ConfirmationModal from './components/ConfirmationModal';
 import CustomPromptModal from './components/CustomPromptModal';
-import ImageDisplayModal from './components/ImageDisplayModal'; // Import the new modal component
+import ImageDisplayModal from './components/ImageDisplayModal';
 import StorageManager from './components/StorageManager';
 import { BenjaminMooreColor, ImageData } from './types';
-import { recolorImage } from './services/gemini/geminiService';
+import {
+  recolorWalls,
+  addTexture,
+  GEMINI_TASKS,
+  GeminiTask,
+} from './services/gemini/geminiService';
 import { storageService } from './services/storageService';
 
 const App: React.FC = () => {
+  // Task selection
+  const [selectedTaskName, setSelectedTaskName] = useState<GeminiTask>(
+    GEMINI_TASKS.RECOLOR_WALL.task_name
+  );
+
+  // Recolor task state
   const [selectedColor, setSelectedColor] = useState<BenjaminMooreColor | null>(null);
+
+  // Add texture task state
+  const [selectedTexture, setSelectedTexture] = useState<Texture | null>(null);
 
   const [originalImages, setOriginalImages] = useState<ImageData[]>([]);
   const [selectedOriginalImageIds, setSelectedOriginalImageIds] = useState<Set<string>>(new Set());
@@ -63,6 +79,19 @@ const App: React.FC = () => {
     };
 
     initializeApp();
+  }, []);
+
+  const handleSelectTask = useCallback((task: GeminiTask) => {
+    setSelectedTaskName(task);
+
+    // Reset UI state when switching tasks
+    setSelectedColor(null);
+    setSelectedTexture(null);
+    setSelectedOriginalImageIds(new Set());
+    setSelectedUpdatedImageIds(new Set());
+    setGeneratedImage(null);
+    setShowConfirmationModal(false);
+    setErrorMessage(null);
   }, []);
 
   const handleImageUpload = useCallback(async (imageData: ImageData) => {
@@ -181,18 +210,13 @@ const App: React.FC = () => {
     setImageToDisplayInModal(null);
   }, []);
 
-  const handleRecolor = useCallback(
+  const processImage = useCallback(
     async (customPrompt: string | undefined) => {
-      if (!selectedColor) {
-        setErrorMessage('Please select a color first.');
-        return;
-      }
-
-      // Get the first (and only) selected image for recolor
+      // Get the first (and only) selected image
       const selectedImageId = Array.from(selectedOriginalImageIds)[0];
       const selectedImage = originalImages.find((img) => img.id === selectedImageId);
       if (!selectedImage) {
-        setErrorMessage('Please select an original photo to recolor.');
+        setErrorMessage('Please select an original photo.');
         return;
       }
 
@@ -201,18 +225,43 @@ const App: React.FC = () => {
       setShowCustomPromptModal(false);
 
       try {
-        const recolored = await recolorImage(
-          selectedImage,
-          selectedColor.name,
-          selectedColor.hex,
-          customPrompt
-        );
-        setGeneratedImage(recolored);
+        let generatedImage: ImageData;
+
+        if (selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name) {
+          if (!selectedColor) {
+            setErrorMessage('Please select a color first.');
+            setProcessingImage(false);
+            return;
+          }
+
+          generatedImage = await recolorWalls(
+            selectedImage,
+            selectedColor.name,
+            selectedColor.hex,
+            customPrompt
+          );
+        } else if (selectedTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name) {
+          if (!selectedTexture) {
+            setErrorMessage('Please select a texture first.');
+            setProcessingImage(false);
+            return;
+          }
+
+          generatedImage = await addTexture(
+            [selectedTexture, selectedImage],
+            selectedTexture.name,
+            customPrompt
+          );
+        } else {
+          throw new Error('Unknown task type');
+        }
+
+        setGeneratedImage(generatedImage);
         setShowConfirmationModal(true);
       } catch (error: any) {
-        console.error('Recolor failed:', error);
+        console.error('Processing failed:', error);
         let msg = error instanceof Error ? error.message : String(error);
-        let displayMessage = `Recolor failed: ${msg}.`;
+        let displayMessage = `Processing failed: ${msg}.`;
 
         let apiError: any = null;
         try {
@@ -229,11 +278,11 @@ const App: React.FC = () => {
             apiError?.error?.details?.[1]?.links?.[0]?.url ||
             'https://ai.google.dev/gemini-api/docs/rate-limits';
           const usageLink = 'https://ai.dev/usage?tab=rate-limit';
-          displayMessage = `Recolor failed due to quota limits. You've exceeded your current usage limit for the Gemini API. Please check your plan and billing details. For more information, visit: ${rateLimitDocsLink} or monitor your usage at: ${usageLink}`;
+          displayMessage = `Processing failed due to quota limits. You've exceeded your current usage limit for the Gemini API. Please check your plan and billing details. For more information, visit: ${rateLimitDocsLink} or monitor your usage at: ${usageLink}`;
         } else if (msg.includes('Requested entity was not found.')) {
-          displayMessage = `Recolor failed: ${msg}. This might indicate an invalid API key or an issue with model availability. Please try again.`;
+          displayMessage = `Processing failed: ${msg}. This might indicate an invalid API key or an issue with model availability. Please try again.`;
         } else {
-          displayMessage = `Recolor failed: ${msg}. If this error persists, try again or contact support.`;
+          displayMessage = `Processing failed: ${msg}. If this error persists, try again or contact support.`;
         }
 
         setErrorMessage(displayMessage);
@@ -241,62 +290,81 @@ const App: React.FC = () => {
         setProcessingImage(false);
       }
     },
-    [selectedOriginalImageIds, originalImages, selectedColor]
+    [selectedOriginalImageIds, originalImages, selectedColor, selectedTexture, selectedTaskName]
   );
 
   const handleOpenCustomPromptModal = useCallback(async () => {
-    if (!selectedColor) {
-      setErrorMessage('Please select a color first.');
-      return;
-    }
-
-    // Get the first (and only) selected image for recolor
+    // Get the first (and only) selected image
     const selectedImageId = Array.from(selectedOriginalImageIds)[0];
     const selectedImage = originalImages.find((img) => img.id === selectedImageId);
     if (!selectedImage) {
-      setErrorMessage('Please select an original photo to recolor.');
+      setErrorMessage('Please select an original photo.');
       return;
+    }
+
+    if (selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name) {
+      if (!selectedColor) {
+        setErrorMessage('Please select a color first.');
+        return;
+      }
+    } else if (selectedTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name) {
+      if (!selectedTexture) {
+        setErrorMessage('Please select a texture first.');
+        return;
+      }
     }
 
     // Show custom prompt modal
     setShowCustomPromptModal(true);
-  }, [selectedColor, originalImages, selectedOriginalImageIds]);
+  }, [selectedColor, selectedTexture, originalImages, selectedOriginalImageIds, selectedTaskName]);
 
-  const handleConfirmRecolor = useCallback(
+  const handleConfirmPrompt = useCallback(
     async (image: ImageData) => {
       try {
-        // Append color name to the image name
-        const imageWithColorName: ImageData = {
+        // Append descriptor to the image name based on task
+        let imageName = image.name;
+        if (selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name && selectedColor) {
+          imageName = `${image.name} (${selectedColor.name})`;
+        } else if (selectedTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name && selectedTexture) {
+          imageName = `${image.name} (${selectedTexture.name})`;
+        }
+
+        const imageWithDescriptor: ImageData = {
           ...image,
-          name: selectedColor ? `${image.name} (${selectedColor.name})` : image.name,
+          name: imageName,
         };
 
         // Save to storage
-        await storageService.addUpdatedImage(imageWithColorName);
+        await storageService.addUpdatedImage(imageWithDescriptor);
 
         // Update local state
-        setUpdatedImages((prev) => [...prev, imageWithColorName]);
+        setUpdatedImages((prev) => [...prev, imageWithDescriptor]);
         setShowConfirmationModal(false);
         setGeneratedImage(null);
       } catch (error) {
-        console.error('Failed to save recolored image:', error);
-        setErrorMessage(
-          'Failed to save recolored image. It may not be available after page refresh.'
-        );
+        console.error('Failed to save result image:', error);
+        setErrorMessage('Failed to save result. It may not be available after page refresh.');
 
         // Still add to local state for current session
+        let imageName = image.name;
+        if (selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name && selectedColor) {
+          imageName = `${image.name} (${selectedColor.name})`;
+        } else if (selectedTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name && selectedTexture) {
+          imageName = `${image.name} (${selectedTexture.name})`;
+        }
+
         setUpdatedImages((prev) => [
           ...prev,
           {
             ...image,
-            name: selectedColor ? `${image.name} (${selectedColor.name})` : image.name,
+            name: imageName,
           },
         ]);
         setShowConfirmationModal(false);
         setGeneratedImage(null);
       }
     },
-    [selectedColor]
+    [selectedColor, selectedTexture, selectedTaskName]
   );
 
   const handleCancelRecolor = useCallback(() => {
@@ -447,8 +515,19 @@ const App: React.FC = () => {
 
   const selectedOriginalImageId = Array.from(selectedOriginalImageIds)[0] || null;
   const selectedOriginalImage = originalImages.find((img) => img.id === selectedOriginalImageId);
-  const isRecolorButtonEnabled =
-    selectedColor && selectedOriginalImageIds.size === 1 && !processingImage;
+
+  const isProcessingButtonEnabled =
+    selectedOriginalImageIds.size === 1 &&
+    !processingImage &&
+    ((selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name && selectedColor) ||
+      (selectedTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name && selectedTexture));
+
+  const getButtonLabel = () => {
+    if (processingImage) return 'Processing...';
+    if (selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name) return 'Recolor Walls';
+    if (selectedTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name) return 'Add Texture';
+    return 'Process';
+  };
 
   return (
     <>
@@ -491,12 +570,20 @@ const App: React.FC = () => {
           {!isLoadingData && (
             <>
               <div className="mb-8">
-                <ColorSelector selectedColor={selectedColor} onSelectColor={setSelectedColor} />
+                <TaskSelector selectedTaskName={selectedTaskName} onSelectTask={handleSelectTask} />
+              </div>
+
+              <div className="mb-8">
+                {selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name ? (
+                  <ColorSelector selectedColor={selectedColor} onSelectColor={setSelectedColor} />
+                ) : (
+                  <TextureSelector onTextureSelect={setSelectedTexture} onError={setErrorMessage} />
+                )}
               </div>
 
               <div className="mb-8">
                 <Gallery
-                  title="2. Original Photos (Select one to recolor, or multiple to delete)"
+                  title="2. Original Photos (Select one to process, or multiple to delete)"
                   images={originalImages}
                   selectedImageIds={selectedOriginalImageIds}
                   onSelectImage={handleSelectOriginalImage}
@@ -519,14 +606,14 @@ const App: React.FC = () => {
               <div className="sticky bottom-4 w-full flex justify-center z-40 p-2">
                 {/* Container with group for hover effects */}
                 <div className="group relative">
-                  {/* Main "Recolor Walls" button */}
+                  {/* Main Processing button */}
                   <button
-                    onClick={handleRecolor}
-                    disabled={!isRecolorButtonEnabled}
+                    onClick={processImage}
+                    disabled={!isProcessingButtonEnabled}
                     className={`px-8 py-4 text-xl font-semibold rounded-full shadow-lg transition-all duration-300
                               flex items-center justify-center space-x-2
                               ${
-                                isRecolorButtonEnabled
+                                isProcessingButtonEnabled
                                   ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white hover:from-blue-700 hover:to-indigo-800 focus:outline-none focus:ring-4 focus:ring-blue-300'
                                   : 'bg-gray-300 text-gray-600 cursor-not-allowed'
                               }`}
@@ -542,12 +629,12 @@ const App: React.FC = () => {
                     ) : (
                       <>
                         <RecolorIcon sx={{ fontSize: 28, marginRight: 0.5 }} />
-                        Recolor Walls
+                        {getButtonLabel()}
                       </>
                     )}
                   </button>
                   {/* Overlay "With Custom Prompt" button - appears on hover */}
-                  {isRecolorButtonEnabled && !processingImage && (
+                  {isProcessingButtonEnabled && !processingImage && (
                     <button
                       onClick={handleOpenCustomPromptModal}
                       className="absolute h-12 left-1/2 -bottom-16 -translate-x-1/2 -translate-y-1/2 px-8 py-2 text-sm font-semibold rounded-full
@@ -590,7 +677,7 @@ const App: React.FC = () => {
             isOpen={showConfirmationModal}
             originalImage={selectedOriginalImage}
             image={generatedImage}
-            onConfirm={handleConfirmRecolor}
+            onConfirm={handleConfirmPrompt}
             onCancel={handleCancelRecolor}
             colorName={selectedColor?.name || 'N/A'}
           />
@@ -598,10 +685,12 @@ const App: React.FC = () => {
           {/* Custom Prompt Modal */}
           <CustomPromptModal
             isOpen={showCustomPromptModal}
-            onConfirm={(customPrompt: string) => handleRecolor(customPrompt)}
+            onConfirm={processImage}
             onCancel={() => setShowCustomPromptModal(false)}
+            taskName={selectedTaskName}
             colorName={selectedColor?.name}
             colorHex={selectedColor?.hex}
+            textureName={selectedTexture?.name}
           />
 
           {/* New Image Display Modal */}

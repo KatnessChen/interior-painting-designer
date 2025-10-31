@@ -4,9 +4,16 @@
  */
 
 export const GEMINI_TASKS = {
-  RECOLOR_WALL: 'recolor_wall',
-  ADD_TEXTURE: 'add_texture',
+  RECOLOR_WALL: {
+    task_name: 'recolor_wall',
+    customPromptRequired: false,
+  },
+  ADD_TEXTURE: {
+    task_name: 'add_texture',
+    customPromptRequired: true,
+  },
   // Add more tasks as needed
 } as const;
 
 export type GeminiTask = (typeof GEMINI_TASKS)[keyof typeof GEMINI_TASKS];
+export type GeminiTaskName = GeminiTask['task_name'];
