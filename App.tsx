@@ -7,7 +7,6 @@ import TextureSelector, { Texture } from './components/TextureSelector';
 import Gallery from './components/Gallery';
 import ConfirmationModal from './components/ConfirmationModal';
 import CustomPromptModal from './components/CustomPromptModal';
-import ImageDisplayModal from './components/ImageDisplayModal';
 import StorageManager from './components/StorageManager';
 import ProcessButton from './components/ProcessButton';
 import { BenjaminMooreColor, ImageData } from './types';
@@ -44,10 +43,6 @@ const App: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
-
-  // State for ImageDisplayModal
-  const [showImageDisplayModal, setShowImageDisplayModal] = useState<boolean>(false);
-  const [imageToDisplayInModal, setImageToDisplayInModal] = useState<ImageData | null>(null);
 
   // State for StorageManager
   const [showStorageManager, setShowStorageManager] = useState<boolean>(false);
@@ -196,18 +191,6 @@ const App: React.FC = () => {
       setErrorMessage('Failed to save renamed image. Changes may not persist.');
       // Keep optimistic UI change for the session
     }
-  }, []);
-
-  // Generic handler to open the ImageDisplayModal for any image
-  const handleViewImage = useCallback((imageData: ImageData) => {
-    setImageToDisplayInModal(imageData);
-    setShowImageDisplayModal(true);
-  }, []);
-
-  // Handler to close the ImageDisplayModal
-  const handleCloseImageDisplayModal = useCallback(() => {
-    setShowImageDisplayModal(false);
-    setImageToDisplayInModal(null);
   }, []);
 
   const processImage = useCallback(
@@ -585,7 +568,6 @@ const App: React.FC = () => {
                   onRenameImage={handleRenameOriginalImage}
                   showRemoveButtons={selectedOriginalImageIds.size === 0}
                   emptyMessage="No photos uploaded yet."
-                  onViewImage={handleViewImage}
                   onUploadImage={handleImageUpload}
                   showUploadCard={true}
                   onUploadError={setErrorMessage}
@@ -615,7 +597,6 @@ const App: React.FC = () => {
                   onRemoveImage={handleRemoveUpdatedImage}
                   onRenameImage={handleRenameUpdatedImage}
                   emptyMessage="Satisfied recolored photos will appear here."
-                  onViewImage={handleViewImage}
                   enableMultiSelect={true}
                   onBulkDelete={handleBulkDeleteUpdated}
                   onBulkDownload={handleBulkDownloadUpdated}
@@ -644,13 +625,6 @@ const App: React.FC = () => {
             colorName={selectedColor?.name}
             colorHex={selectedColor?.hex}
             textureName={selectedTexture?.name}
-          />
-
-          {/* New Image Display Modal */}
-          <ImageDisplayModal
-            isOpen={showImageDisplayModal}
-            image={imageToDisplayInModal}
-            onClose={handleCloseImageDisplayModal}
           />
 
           {/* Storage Manager Modal */}

@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { ImageData } from '../types';
 import ImageCard from './ImageCard';
 import UploadCard from './UploadCard';
+import ImageDisplayModal from './ImageDisplayModal';
 import {
   Delete as DeleteIcon,
   Download as DownloadIcon,
@@ -22,7 +23,6 @@ interface GalleryProps {
   onRemoveImage?: (imageId: string) => void;
   showRemoveButtons?: boolean;
   emptyMessage: string;
-  onViewImage?: (imageData: ImageData) => void; // Prop for viewing images
   onUploadImage?: (imageData: ImageData) => void; // Prop for uploading images
   showUploadCard?: boolean; // Show upload card as first item
   onUploadError?: (message: string) => void; // Prop for upload errors
@@ -47,7 +47,6 @@ const Gallery: React.FC<GalleryProps> = ({
   onRemoveImage,
   showRemoveButtons = false,
   emptyMessage,
-  onViewImage,
   onUploadImage,
   showUploadCard = false,
   onUploadError,
@@ -58,6 +57,37 @@ const Gallery: React.FC<GalleryProps> = ({
   onClearSelection,
   hideDownloadAndMove = false,
 }) => {
+  // State for ImageDisplayModal
+  const [showImageDisplayModal, setShowImageDisplayModal] = useState<boolean>(false);
+  const [imageToDisplayInModal, setImageToDisplayInModal] = useState<ImageData | null>(null);
+
+  const handleViewImage = useCallback((imageData: ImageData) => {
+    setImageToDisplayInModal(imageData);
+    setShowImageDisplayModal(true);
+  }, []);
+
+  const handleCloseImageDisplayModal = useCallback(() => {
+    setShowImageDisplayModal(false);
+    setImageToDisplayInModal(null);
+  }, []);
+
+  // Calculate current image index
+  const currentImageIndex = imageToDisplayInModal
+    ? images.findIndex((img) => img.id === imageToDisplayInModal.id)
+    : -1;
+
+  const handlePrevious = useCallback(() => {
+    if (currentImageIndex > 0) {
+      setImageToDisplayInModal(images[currentImageIndex - 1]);
+    }
+  }, [currentImageIndex, images]);
+
+  const handleNext = useCallback(() => {
+    if (currentImageIndex >= 0 && currentImageIndex < images.length - 1) {
+      setImageToDisplayInModal(images[currentImageIndex + 1]);
+    }
+  }, [currentImageIndex, images]);
+
   const hasSelection = selectedImageIds.size > 0;
 
   return (
@@ -125,12 +155,23 @@ const Gallery: React.FC<GalleryProps> = ({
               onDownload={onDownloadImage}
               showDownloadButton={showDownloadButtons && !enableMultiSelect}
               onRemove={showRemoveButtons && !enableMultiSelect ? onRemoveImage : undefined}
-              onViewButtonClick={onViewImage}
+              onViewButtonClick={handleViewImage}
               onRename={onRenameImage}
             />
           ))}
         </div>
       )}
+
+      {/* Image Display Modal */}
+      <ImageDisplayModal
+        isOpen={showImageDisplayModal}
+        image={imageToDisplayInModal}
+        onClose={handleCloseImageDisplayModal}
+        currentImageIndex={currentImageIndex}
+        totalImages={images.length}
+        onPrevious={handlePrevious}
+        onNext={handleNext}
+      />
     </div>
   );
 };
