@@ -80,7 +80,7 @@ const ImageDisplayModal: React.FC<ImageDisplayModalProps> = ({
       aria-label="Image viewer"
     >
       <div
-        className="bg-white rounded-lg shadow-xl sm:p-3 lg:p-2 max-w-4xl w-full max-h-[95vh] flex flex-col bg-gray-100"
+        className="relative bg-white rounded-lg shadow-xl sm:p-3 lg:p-2 max-w-4xl w-full max-h-[95vh] flex flex-col bg-gray-100"
         onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside the modal content
       >
         <div className="relative">
@@ -143,6 +143,11 @@ const ImageDisplayModal: React.FC<ImageDisplayModalProps> = ({
         {/* Photo Name Footer */}
         <div className="border-t border-gray-300 pt-1 text-center">
           <p className="text-sm font-medium text-gray-700 truncate">{image.name}</p>
+        </div>
+
+        {/* Shortcut tooltip */}
+        <div className="absolute left-0 -bottom-8 w-full text-center px-3 py-2 text-xs text-gray-200">
+          <p>Press ⬅️ to view the Previous • ➡️ to view the Next • Esc to Close the modal</p>
         </div>
       </div>
     </div>

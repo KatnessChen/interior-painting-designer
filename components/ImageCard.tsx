@@ -89,7 +89,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
       onClick={onSelect ? handleCardClick : undefined} // Only add onClick if selectable
     >
       {/* Image container with overlay buttons */}
-      <div className="relative">
+      <div className="relative bg-gray-100">
         <img
           src={`data:${image.mimeType};base64,${image.base64}`}
           alt={image.name}
@@ -123,7 +123,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
       </div>
 
       {/* Image info and controls below the image */}
-      <div className="p-3">
+      <div className="p-3 bg-white">
         <div className="flex items-center justify-between gap-2">
           {!isEditing ? (
             <p className="text-sm font-medium text-gray-800 truncate">{image.name}</p>
