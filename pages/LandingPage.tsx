@@ -499,7 +499,7 @@ const LandingPage: React.FC = () => {
       (selectedTaskName === GEMINI_TASKS.ADD_TEXTURE && selectedTexture));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 p-16">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8 mt-4">
       <div className="container mx-auto max-w-6xl">
         {isLoadingData && (
           <div className="flex items-center justify-center py-12">

@@ -28,7 +28,7 @@ const AuthPanel: React.FC = () => {
     setError(errorMsg);
   };
 
-  const firstName = user.displayName.split(' ')[0];
+  const firstName = user?.displayName?.split(' ')[0] || '';
 
   if (isLoading) {
     return (
