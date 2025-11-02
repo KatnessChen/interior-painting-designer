@@ -1,11 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import StorageIcon from '@mui/icons-material/Storage';
 import ColorSelector from '../components/ColorSelector';
 import ConfirmationModal from '../components/ConfirmationModal';
 import CustomPromptModal from '../components/CustomPromptModal';
 import Gallery from '../components/Gallery';
 import ProcessButton from '../components/ProcessButton';
-import StorageManager from '../components/StorageManager';
 import TaskSelector from '../components/TaskSelector';
 import TextureSelector from '../components/TextureSelector';
 import { GEMINI_TASKS, GeminiTask } from '../constants/geminiTasks';
@@ -41,9 +39,6 @@ const LandingPage: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
-
-  // State for StorageManager
-  const [showStorageManager, setShowStorageManager] = useState<boolean>(false);
 
   // State for custom prompt modal
   const [showCustomPromptModal, setShowCustomPromptModal] = useState<boolean>(false);
@@ -504,25 +499,8 @@ const LandingPage: React.FC = () => {
       (selectedTaskName === GEMINI_TASKS.ADD_TEXTURE && selectedTexture));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 p-16">
       <div className="container mx-auto max-w-6xl">
-        <div className="flex items-center justify-between mb-10 mt-4">
-          <div className="flex-1">
-            <h1 className="mb-2 text-4xl font-extrabold text-gray-900 drop-shadow-sm flex-grow text-center">
-              Vizion Studio
-            </h1>
-            <h3 className="text-center">Your AI Interior Design Simulator</h3>
-          </div>
-
-          <button
-            onClick={() => setShowStorageManager(true)}
-            className="ml-4 p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors"
-            title="Manage Storage"
-          >
-            <StorageIcon sx={{ fontSize: 24, color: 'inherit' }} />
-          </button>
-        </div>
-
         {isLoadingData && (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -623,9 +601,6 @@ const LandingPage: React.FC = () => {
           colorHex={selectedColor?.hex}
           textureName={selectedTexture?.name}
         />
-
-        {/* Storage Manager Modal */}
-        <StorageManager isOpen={showStorageManager} onClose={() => setShowStorageManager(false)} />
       </div>
     </div>
   );
