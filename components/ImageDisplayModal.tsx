@@ -73,11 +73,12 @@ const ImageDisplayModal: React.FC<ImageDisplayModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center p-2 z-50 transition-opacity duration-300"
+      className="fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center p-2 transition-opacity duration-300"
       onClick={onClose}
       aria-modal="true"
       role="dialog"
       aria-label="Image viewer"
+      style={{ zIndex: 1300 }}
     >
       <div
         className="relative bg-white rounded-lg shadow-xl sm:p-3 lg:p-2 max-w-4xl w-full max-h-[95vh] flex flex-col bg-gray-100"

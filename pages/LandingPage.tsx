@@ -6,6 +6,8 @@ import Gallery from '../components/Gallery';
 import ProcessButton from '../components/ProcessButton';
 import TaskSelector from '../components/TaskSelector';
 import TextureSelector from '../components/TextureSelector';
+import ImagesComparingModal from '../components/ImagesComparingModal';
+import ImagesComparingButton from '../components/ImagesComparingButton';
 import { GEMINI_TASKS, GeminiTask } from '../constants/geminiTasks';
 import { BenjaminMooreColor, ImageData } from '../types';
 import { storageService } from '../services/storageService';
@@ -38,35 +40,33 @@ const LandingPage: React.FC = () => {
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
+  const [isLoadingData, setIsLoadingData] = useState(true);
 
   // State for custom prompt modal
   const [showCustomPromptModal, setShowCustomPromptModal] = useState<boolean>(false);
 
-  // Initialize storage and load persisted data on mount
-  useEffect(() => {
-    const initializeApp = async () => {
-      try {
-        // Initialize storage service
-        await storageService.init();
+  // State for compare photos modal
+  const [showCompareModal, setShowCompareModal] = useState<boolean>(false);
 
-        // Load persisted images
-        const [originalImagesData, updatedImagesData] = await Promise.all([
+  // Load images from storage on mount
+  useEffect(() => {
+    const loadImages = async () => {
+      try {
+        setIsLoadingData(true);
+        const [originalImgs, updatedImgs] = await Promise.all([
           storageService.getOriginalImages(),
           storageService.getUpdatedImages(),
         ]);
-
-        setOriginalImages(originalImagesData);
-        setUpdatedImages(updatedImagesData);
+        setOriginalImages(originalImgs);
+        setUpdatedImages(updatedImgs);
       } catch (error) {
-        console.error('Failed to initialize app:', error);
-        setErrorMessage('Failed to load saved data. Some features may not work properly.');
+        console.error('Failed to load images from storage:', error);
+        setErrorMessage('Failed to load saved images. Starting fresh.');
       } finally {
         setIsLoadingData(false);
       }
     };
-
-    initializeApp();
+    loadImages();
   }, []);
 
   const handleSelectTask = useCallback((task: GeminiTask) => {
@@ -498,6 +498,28 @@ const LandingPage: React.FC = () => {
     ((selectedTaskName === GEMINI_TASKS.RECOLOR_WALL && selectedColor) ||
       (selectedTaskName === GEMINI_TASKS.ADD_TEXTURE && selectedTexture));
 
+  // Compare functionality
+  const totalSelectedPhotos = selectedOriginalImageIds.size + selectedUpdatedImageIds.size;
+  const isCompareButtonEnabled = totalSelectedPhotos >= 2 && totalSelectedPhotos <= 4;
+
+  const getSelectedPhotosForComparison = useCallback(() => {
+    const selectedPhotos: ImageData[] = [];
+
+    // Add selected original images
+    selectedOriginalImageIds.forEach((id) => {
+      const img = originalImages.find((img) => img.id === id);
+      if (img) selectedPhotos.push(img);
+    });
+
+    // Add selected updated images
+    selectedUpdatedImageIds.forEach((id) => {
+      const img = updatedImages.find((img) => img.id === id);
+      if (img) selectedPhotos.push(img);
+    });
+
+    return selectedPhotos;
+  }, [selectedOriginalImageIds, selectedUpdatedImageIds, originalImages, updatedImages]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8 mt-4">
       <div className="container mx-auto max-w-6xl">
@@ -554,12 +576,21 @@ const LandingPage: React.FC = () => {
             </div>
 
             <div className="sticky bottom-4 w-full flex justify-center z-40 p-2">
-              <ProcessButton
-                isEnabled={isProcessingButtonEnabled}
-                isProcessing={processingImage}
-                selectedTaskName={selectedTaskName}
-                onOpenCustomPrompt={handleOpenCustomPromptModal}
-              />
+              <div className="flex flex-row gap-3 items-center justify-center">
+                <ProcessButton
+                  isEnabled={isProcessingButtonEnabled}
+                  isProcessing={processingImage}
+                  selectedTaskName={selectedTaskName}
+                  onOpenCustomPrompt={handleOpenCustomPromptModal}
+                />
+
+                {/* Compare Photos Button */}
+                <ImagesComparingButton
+                  totalSelectedPhotos={totalSelectedPhotos}
+                  isEnabled={isCompareButtonEnabled}
+                  onClick={() => setShowCompareModal(true)}
+                />
+              </div>
             </div>
 
             <div className="mt-8">
@@ -600,6 +631,13 @@ const LandingPage: React.FC = () => {
           colorName={selectedColor?.name}
           colorHex={selectedColor?.hex}
           textureName={selectedTexture?.name}
+        />
+
+        {/* Compare Photos Modal */}
+        <ImagesComparingModal
+          isOpen={showCompareModal}
+          images={getSelectedPhotosForComparison()}
+          onClose={() => setShowCompareModal(false)}
         />
       </div>
     </div>

@@ -8,8 +8,7 @@ const AuthPanel: React.FC = () => {
   const { user, isLoading, isAuthenticated } = useAuth();
   const [error, setError] = React.useState<string | null>(null);
 
-  const handleLoginSuccess = (userData: any) => {
-    console.log('User logged in:', userData);
+  const handleLoginSuccess = () => {
     setError(null);
   };
 
