@@ -27,7 +27,7 @@ const GoogleLoginButton: React.FC<GoogleLoginButtonProps> = ({
 
       if (result.success) {
         // Popup authentication succeeded, user data is available
-        console.log('User signed in:');
+        console.log('User signed in');
         onSuccess?.(result.user);
         setLoading(false);
       }

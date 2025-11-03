@@ -8,10 +8,11 @@ import TaskSelector from '../components/TaskSelector';
 import TextureSelector from '../components/TextureSelector';
 import ImagesComparingModal from '../components/ImagesComparingModal';
 import ImagesComparingButton from '../components/ImagesComparingButton';
-import { GEMINI_TASKS, GeminiTask } from '../constants/geminiTasks';
+import { GEMINI_TASKS, GeminiTaskName, GeminiTask } from '../services/gemini/geminiTasks';
 import { BenjaminMooreColor, ImageData } from '../types';
 import { storageService } from '../services/storageService';
-import { recolorWalls, addTexture } from '../services/gemini/geminiService';
+import { useAuth } from '../contexts/AuthContext';
+import { useImageProcessing } from '../hooks/useImageProcessing';
 
 interface Texture {
   name: string;
@@ -19,8 +20,13 @@ interface Texture {
 }
 
 const LandingPage: React.FC = () => {
+  // Get authenticated user
+  const { user } = useAuth();
+
   // Task selection
-  const [selectedTaskName, setSelectedTaskName] = useState<GeminiTask>(GEMINI_TASKS.RECOLOR_WALL);
+  const [selectedTaskName, setSelectedTaskName] = useState<GeminiTaskName>(
+    GEMINI_TASKS.RECOLOR_WALL.task_name
+  );
 
   // Recolor task state
   const [selectedColor, setSelectedColor] = useState<BenjaminMooreColor | null>(null);
@@ -36,9 +42,7 @@ const LandingPage: React.FC = () => {
   const [updatedImages, setUpdatedImages] = useState<ImageData[]>([]);
   const [selectedUpdatedImageIds, setSelectedUpdatedImageIds] = useState<Set<string>>(new Set());
 
-  const [processingImage, setProcessingImage] = useState(false);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [isLoadingData, setIsLoadingData] = useState(true);
 
@@ -47,6 +51,14 @@ const LandingPage: React.FC = () => {
 
   // State for compare photos modal
   const [showCompareModal, setShowCompareModal] = useState<boolean>(false);
+
+  // Use image processing hook
+  const { processImage, processingImage, errorMessage, setErrorMessage } = useImageProcessing({
+    userId: user?.uid,
+    selectedTaskName,
+    selectedColor,
+    selectedTexture,
+  });
 
   // Load images from storage on mount
   useEffect(() => {
@@ -186,7 +198,7 @@ const LandingPage: React.FC = () => {
     }
   }, []);
 
-  const processImage = useCallback(
+  const handleProcessImage = useCallback(
     async (customPrompt: string | undefined) => {
       // Get the first (and only) selected image
       const selectedImageId = Array.from(selectedOriginalImageIds)[0];
@@ -196,77 +208,16 @@ const LandingPage: React.FC = () => {
         return;
       }
 
-      setProcessingImage(true);
-      setErrorMessage(null);
       setShowCustomPromptModal(false);
 
-      try {
-        let generatedImage: ImageData;
+      const generatedImage = await processImage(selectedImage, customPrompt);
 
-        if (selectedTaskName === GEMINI_TASKS.RECOLOR_WALL) {
-          if (!selectedColor) {
-            setErrorMessage('Please select a color first.');
-            setProcessingImage(false);
-            return;
-          }
-
-          generatedImage = await recolorWalls(
-            selectedImage,
-            selectedColor.name,
-            selectedColor.hex,
-            customPrompt
-          );
-        } else if (selectedTaskName === GEMINI_TASKS.ADD_TEXTURE) {
-          if (!selectedTexture) {
-            setErrorMessage('Please select a texture first.');
-            setProcessingImage(false);
-            return;
-          }
-
-          generatedImage = await addTexture(
-            [selectedTexture, selectedImage],
-            selectedTexture.name,
-            customPrompt
-          );
-        } else {
-          throw new Error('Unknown task type');
-        }
-
+      if (generatedImage) {
         setGeneratedImage(generatedImage);
         setShowConfirmationModal(true);
-      } catch (error: any) {
-        console.error('Processing failed:', error);
-        let msg = error instanceof Error ? error.message : String(error);
-        let displayMessage = `Processing failed: ${msg}.`;
-
-        let apiError: any = null;
-        try {
-          const jsonStringMatch = msg.match(/\{"error":\{.*\}\}/);
-          if (jsonStringMatch) {
-            apiError = JSON.parse(jsonStringMatch[0]);
-          }
-        } catch (e) {
-          console.warn('Failed to parse error message as JSON:', e);
-        }
-
-        if (apiError?.error?.status === 'RESOURCE_EXHAUSTED' || apiError?.error?.code === 429) {
-          const rateLimitDocsLink =
-            apiError?.error?.details?.[1]?.links?.[0]?.url ||
-            'https://ai.google.dev/gemini-api/docs/rate-limits';
-          const usageLink = 'https://ai.dev/usage?tab=rate-limit';
-          displayMessage = `Processing failed due to quota limits. You've exceeded your current usage limit for the Gemini API. Please check your plan and billing details. For more information, visit: ${rateLimitDocsLink} or monitor your usage at: ${usageLink}`;
-        } else if (msg.includes('Requested entity was not found.')) {
-          displayMessage = `Processing failed: ${msg}. This might indicate an invalid API key or an issue with model availability. Please try again.`;
-        } else {
-          displayMessage = `Processing failed: ${msg}. If this error persists, try again or contact support.`;
-        }
-
-        setErrorMessage(displayMessage);
-      } finally {
-        setProcessingImage(false);
       }
     },
-    [selectedOriginalImageIds, originalImages, selectedColor, selectedTexture, selectedTaskName]
+    [selectedOriginalImageIds, originalImages, processImage]
   );
 
   const handleOpenCustomPromptModal = useCallback(async () => {
@@ -278,12 +229,12 @@ const LandingPage: React.FC = () => {
       return;
     }
 
-    if (selectedTaskName === GEMINI_TASKS.RECOLOR_WALL) {
+    if (selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name) {
       if (!selectedColor) {
         setErrorMessage('Please select a color first.');
         return;
       }
-    } else if (selectedTaskName === GEMINI_TASKS.ADD_TEXTURE) {
+    } else if (selectedTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name) {
       if (!selectedTexture) {
         setErrorMessage('Please select a texture first.');
         return;
@@ -299,9 +250,9 @@ const LandingPage: React.FC = () => {
       try {
         // Append descriptor to the image name based on task
         let imageName = image.name;
-        if (selectedTaskName === GEMINI_TASKS.RECOLOR_WALL && selectedColor) {
+        if (selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name && selectedColor) {
           imageName = `${image.name} (${selectedColor.name})`;
-        } else if (selectedTaskName === GEMINI_TASKS.ADD_TEXTURE && selectedTexture) {
+        } else if (selectedTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name && selectedTexture) {
           imageName = `${image.name} (${selectedTexture.name})`;
         }
 
@@ -323,9 +274,9 @@ const LandingPage: React.FC = () => {
 
         // Still add to local state for current session
         let imageName = image.name;
-        if (selectedTaskName === GEMINI_TASKS.RECOLOR_WALL && selectedColor) {
+        if (selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name && selectedColor) {
           imageName = `${image.name} (${selectedColor.name})`;
-        } else if (selectedTaskName === GEMINI_TASKS.ADD_TEXTURE && selectedTexture) {
+        } else if (selectedTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name && selectedTexture) {
           imageName = `${image.name} (${selectedTexture.name})`;
         }
 
@@ -495,8 +446,8 @@ const LandingPage: React.FC = () => {
   const isProcessingButtonEnabled =
     selectedOriginalImageIds.size === 1 &&
     !processingImage &&
-    ((selectedTaskName === GEMINI_TASKS.RECOLOR_WALL && selectedColor) ||
-      (selectedTaskName === GEMINI_TASKS.ADD_TEXTURE && selectedTexture));
+    ((selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name && selectedColor) ||
+      (selectedTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name && selectedTexture));
 
   // Compare functionality
   const totalSelectedPhotos = selectedOriginalImageIds.size + selectedUpdatedImageIds.size;
@@ -547,7 +498,7 @@ const LandingPage: React.FC = () => {
             </div>
 
             <div className="mb-8">
-              {selectedTaskName === GEMINI_TASKS.RECOLOR_WALL ? (
+              {selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name ? (
                 <ColorSelector selectedColor={selectedColor} onSelectColor={setSelectedColor} />
               ) : (
                 <TextureSelector onTextureSelect={setSelectedTexture} onError={setErrorMessage} />
@@ -625,7 +576,7 @@ const LandingPage: React.FC = () => {
         {/* Custom Prompt Modal */}
         <CustomPromptModal
           isOpen={showCustomPromptModal}
-          onConfirm={processImage}
+          onConfirm={handleProcessImage}
           onCancel={() => setShowCustomPromptModal(false)}
           taskName={selectedTaskName}
           colorName={selectedColor?.name}

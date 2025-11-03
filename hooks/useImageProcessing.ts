@@ -1,0 +1,122 @@
+import { useState, useCallback } from 'react';
+import { ImageData, BenjaminMooreColor } from '../types';
+import { recolorWalls, addTexture } from '../services/gemini/geminiService';
+import { GEMINI_TASKS, GeminiTaskName } from '../services/gemini/geminiTasks';
+import { incrementTaskUsage } from '../services/userService';
+
+interface Texture extends ImageData {
+  description?: string;
+}
+
+interface UseImageProcessingProps {
+  userId: string | undefined;
+  selectedTaskName: GeminiTaskName;
+  selectedColor: BenjaminMooreColor | null;
+  selectedTexture: Texture | null;
+}
+
+export const useImageProcessing = ({
+  userId,
+  selectedTaskName,
+  selectedColor,
+  selectedTexture,
+}: UseImageProcessingProps) => {
+  const [processingImage, setProcessingImage] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const processImage = useCallback(
+    async (
+      selectedImage: ImageData,
+      customPrompt: string | undefined
+    ): Promise<ImageData | null> => {
+      setProcessingImage(true);
+      setErrorMessage(null);
+
+      try {
+        let generatedImage: ImageData;
+
+        console.log({ selectedTaskName });
+
+        if (selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name) {
+          if (!selectedColor) {
+            setErrorMessage('Please select a color first.');
+            setProcessingImage(false);
+            return null;
+          }
+
+          generatedImage = await recolorWalls(
+            selectedImage,
+            selectedColor.name,
+            selectedColor.hex,
+            customPrompt
+          );
+        } else if (selectedTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name) {
+          if (!selectedTexture) {
+            setErrorMessage('Please select a texture first.');
+            setProcessingImage(false);
+            return null;
+          }
+
+          generatedImage = await addTexture(
+            [selectedTexture, selectedImage],
+            selectedTexture.name,
+            customPrompt
+          );
+        } else {
+          throw new Error('Unknown task type');
+        }
+
+        // Increment task usage in Firestore
+        if (userId) {
+          try {
+            await incrementTaskUsage(userId, selectedTaskName);
+          } catch (error) {
+            console.error('Failed to increment task usage:', error);
+            // Don't block the user flow if usage tracking fails
+          }
+        }
+
+        setProcessingImage(false);
+        return generatedImage;
+      } catch (error: any) {
+        console.error('Processing failed:', error);
+        let msg = error instanceof Error ? error.message : String(error);
+        let displayMessage = `Processing failed: ${msg}.`;
+
+        let apiError: any = null;
+        try {
+          const jsonStringMatch = msg.match(/\{"error":\{.*\}\}/);
+          if (jsonStringMatch) {
+            apiError = JSON.parse(jsonStringMatch[0]);
+          }
+        } catch (e) {
+          console.warn('Failed to parse error message as JSON:', e);
+        }
+
+        if (apiError?.error?.status === 'RESOURCE_EXHAUSTED' || apiError?.error?.code === 429) {
+          const rateLimitDocsLink =
+            apiError?.error?.details?.[1]?.links?.[0]?.url ||
+            'https://ai.google.dev/gemini-api/docs/rate-limits';
+          const usageLink = 'https://ai.dev/usage?tab=rate-limit';
+          displayMessage = `Processing failed due to quota limits. You've exceeded your current usage limit for the Gemini API. Please check your plan and billing details. For more information, visit: ${rateLimitDocsLink} or monitor your usage at: ${usageLink}`;
+        } else if (msg.includes('Requested entity was not found.')) {
+          displayMessage = `Processing failed: ${msg}. This might indicate an invalid API key or an issue with model availability. Please try again.`;
+        } else {
+          displayMessage = `Processing failed: ${msg}. If this error persists, try again or contact support.`;
+        }
+
+        setErrorMessage(displayMessage);
+        setProcessingImage(false);
+        return null;
+      }
+    },
+    [userId, selectedTaskName, selectedColor, selectedTexture]
+  );
+
+  return {
+    processImage,
+    processingImage,
+    errorMessage,
+    setErrorMessage,
+  };
+};

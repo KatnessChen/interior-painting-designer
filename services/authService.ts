@@ -8,6 +8,7 @@ import {
   browserLocalPersistence,
 } from 'firebase/auth';
 import { auth } from './firebaseService';
+import { createOrUpdateUser } from './userService';
 
 const googleProvider = new GoogleAuthProvider();
 
@@ -26,6 +27,14 @@ export const signInWithGoogle = async () => {
     // Use popup for authentication
     const result = await signInWithPopup(auth, googleProvider);
     const user = result.user;
+
+    // Create or update user in Firestore
+    await createOrUpdateUser({
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName,
+      photoURL: user.photoURL,
+    });
 
     return {
       success: true,
