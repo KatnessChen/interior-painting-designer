@@ -10,10 +10,11 @@ import ImagesComparingModal from '../components/ImagesComparingModal';
 import ImagesComparingButton from '../components/ImagesComparingButton';
 import AlertModal from '../components/AlertModal';
 import { GEMINI_TASKS, GeminiTaskName, GeminiTask } from '../services/gemini/geminiTasks';
-import { BenjaminMooreColor, ImageData } from '../types';
-import { createImage, fetchUserImages } from '../services/firestoreService';
+import { BenjaminMooreColor, ImageData, ImageOperation } from '../types';
+import { createImage, fetchUserImages, createProcessedImage } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 import { useImageProcessing } from '../hooks/useImageProcessing';
+import { formatImageOperationData } from '../utils/imageOperationUtils';
 
 interface Texture {
   name: string;
@@ -49,6 +50,15 @@ const LandingPage: React.FC = () => {
 
   // State for custom prompt modal
   const [showCustomPromptModal, setShowCustomPromptModal] = useState<boolean>(false);
+
+  // State for processing context (to track parent image and custom prompt)
+  const [processingContext, setProcessingContext] = useState<{
+    selectedImage: ImageData | null;
+    customPrompt: string | undefined;
+  }>({
+    selectedImage: null,
+    customPrompt: undefined,
+  });
 
   // State for compare photos modal
   const [showCompareModal, setShowCompareModal] = useState<boolean>(false);
@@ -251,6 +261,9 @@ const LandingPage: React.FC = () => {
 
       setShowCustomPromptModal(false);
 
+      // Save context for later use in handleConfirmPrompt
+      setProcessingContext({ selectedImage, customPrompt });
+
       const generatedImage = await processImage(selectedImage, customPrompt);
 
       if (generatedImage) {
@@ -287,34 +300,62 @@ const LandingPage: React.FC = () => {
   }, [selectedColor, selectedTexture, originalImages, selectedOriginalImageIds, selectedTaskName]);
 
   const handleConfirmPrompt = useCallback(
-    async (image: ImageData) => {
+    async (processedImageResult: { base64: string; mimeType: string }) => {
+      if (!user) {
+        setErrorMessage('Please log in to save images.');
+        return;
+      }
+
+      if (!processingContext.selectedImage) {
+        setErrorMessage('Processing context lost. Please try again.');
+        return;
+      }
+
       try {
-        // TODO: Save processed image to Firestore
         // Append descriptor to the image name based on task
-        let imageName = image.name;
+        let imageName = processingContext.selectedImage.name;
         if (selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name && selectedColor) {
-          imageName = `${image.name} (${selectedColor.name})`;
+          imageName = `${processingContext.selectedImage.name} (${selectedColor.name})`;
         } else if (selectedTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name && selectedTexture) {
-          imageName = `${image.name} (${selectedTexture.name})`;
+          imageName = `${processingContext.selectedImage.name} (${selectedTexture.name})`;
         }
 
-        const imageWithDescriptor: ImageData = {
-          ...image,
-          name: imageName,
-        };
+        // Create ImageOperation for evolution chain using utility function
+        const operation: ImageOperation = formatImageOperationData(
+          processingContext.selectedImage.id,
+          selectedTaskName,
+          processingContext.customPrompt,
+          selectedColor,
+          selectedTexture
+        );
+
+        // Save processed image to Firestore
+        const savedImage = await createProcessedImage(
+          user.uid,
+          processedImageResult.base64,
+          processedImageResult.mimeType,
+          {
+            id: crypto.randomUUID(),
+            name: imageName,
+            mimeType: processedImageResult.mimeType,
+          },
+          processingContext.selectedImage.id,
+          operation
+        );
 
         // Update local state
-        setUpdatedImages((prev) => [...prev, imageWithDescriptor]);
+        setUpdatedImages((prev) => [...prev, savedImage]);
         setShowConfirmationModal(false);
         setGeneratedImage(null);
+        setProcessingContext({ selectedImage: null, customPrompt: undefined });
       } catch (error) {
-        console.error('Failed to save result image:', error);
-        setErrorMessage('Failed to save result image.');
+        console.error('Failed to save processed image:', error);
+        setErrorMessage(error instanceof Error ? error.message : 'Failed to save processed image.');
         setShowConfirmationModal(false);
         setGeneratedImage(null);
       }
     },
-    [selectedColor, selectedTexture, selectedTaskName]
+    [user, selectedColor, selectedTexture, selectedTaskName, processingContext]
   );
 
   const handleCancelRecolor = useCallback(() => {

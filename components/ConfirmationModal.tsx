@@ -39,7 +39,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             <h4 className="text-xl font-semibold text-gray-700 mb-3">Original Photo</h4>
             <div className="relative w-full flex-1 bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center">
               <img
-                src={`data:${originalImage.mimeType};base64,${originalImage.base64}`}
+                src={originalImage.storageUrl}
                 alt="Original"
                 className="max-w-full max-h-full object-contain"
               />

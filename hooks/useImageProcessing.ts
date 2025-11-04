@@ -1,10 +1,11 @@
 import { useState, useCallback } from 'react';
-import { deprecatedImageData, BenjaminMooreColor } from '../types';
+import { ImageData, BenjaminMooreColor } from '../types';
 import { recolorWalls, addTexture } from '../services/gemini/geminiService';
 import { GEMINI_TASKS, GeminiTaskName } from '../services/gemini/geminiTasks';
 import { incrementTaskUsage } from '../services/userService';
 
-interface Texture extends deprecatedImageData {
+interface Texture {
+  name: string;
   description?: string;
 }
 
@@ -26,14 +27,14 @@ export const useImageProcessing = ({
 
   const processImage = useCallback(
     async (
-      selectedImage: deprecatedImageData,
+      parentImage: ImageData,
       customPrompt: string | undefined
-    ): Promise<deprecatedImageData | null> => {
+    ): Promise<{ base64: string; mimeType: string } | null> => {
       setProcessingImage(true);
       setErrorMessage(null);
 
       try {
-        let generatedImage: deprecatedImageData;
+        let result: { base64: string; mimeType: string };
 
         if (selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name) {
           if (!selectedColor) {
@@ -42,8 +43,8 @@ export const useImageProcessing = ({
             return null;
           }
 
-          generatedImage = await recolorWalls(
-            selectedImage,
+          result = await recolorWalls(
+            parentImage,
             selectedColor.name,
             selectedColor.hex,
             customPrompt
@@ -55,11 +56,13 @@ export const useImageProcessing = ({
             return null;
           }
 
-          generatedImage = await addTexture(
-            [selectedTexture, selectedImage],
-            selectedTexture.name,
-            customPrompt
-          );
+          // TODO: handel TextureImage storage
+          // result = await addTexture(
+          //   parentImage,
+          //   selectedImage, // Note: texture image handling may need adjustment
+          //   selectedTexture.name,
+          //   customPrompt
+          // );
         } else {
           throw new Error('Unknown task type');
         }
@@ -75,7 +78,7 @@ export const useImageProcessing = ({
         }
 
         setProcessingImage(false);
-        return generatedImage;
+        return result;
       } catch (error: any) {
         console.error('Processing failed:', error);
         let msg = error instanceof Error ? error.message : String(error);

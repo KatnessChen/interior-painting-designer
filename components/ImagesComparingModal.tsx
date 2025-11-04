@@ -51,7 +51,7 @@ const ImagesComparingModal: React.FC<ComparePhotosModalProps> = ({ isOpen, image
                 {/* Image Container */}
                 <div className="flex-1 w-full flex items-center justify-center min-h-0 overflow-visible">
                   <img
-                    src={`data:${image.mimeType};base64,${image.base64}`}
+                    src={image.storageUrl}
                     alt={image.name}
                     className="max-w-full max-h-full object-contain"
                   />
