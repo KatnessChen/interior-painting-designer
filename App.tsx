@@ -5,7 +5,7 @@ import { SpeedInsights } from '@vercel/speed-insights/react';
 import { Box } from '@mui/material';
 import Header from './components/Header';
 import LandingPage from './pages/LandingPage';
-import { storageService } from './services/storageService';
+import { deprecatedStorageService } from './services/deprecatedStorageService';
 
 const App: React.FC = () => {
   const googleClientId = process.env.VITE_GOOGLE_CLIENT_ID || '';
@@ -14,7 +14,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const initializeStorage = async () => {
       try {
-        await storageService.init();
+        await deprecatedStorageService.init();
       } catch (error) {
         console.error('Failed to initialize storage service:', error);
       }

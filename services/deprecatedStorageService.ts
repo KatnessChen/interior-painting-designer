@@ -194,5 +194,5 @@ class StorageService {
 }
 
 // Export singleton instance
-export const storageService = new StorageService();
-export default storageService;
+export const deprecatedStorageService = new StorageService();
+export default deprecatedStorageService;

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { storageService } from '../services/storageService';
+import { deprecatedStorageService } from '../services/deprecatedStorageService';
 
 interface StorageInfo {
   customColorsCount: number;
@@ -26,7 +26,7 @@ export const useStorage = (): UseStorageReturn => {
     setError(null);
 
     try {
-      const info = await storageService.getStorageInfo();
+      const info = await deprecatedStorageService.getStorageInfo();
       setStorageInfo(info);
     } catch (err) {
       console.error('Failed to get storage info:', err);
@@ -41,7 +41,7 @@ export const useStorage = (): UseStorageReturn => {
     setError(null);
 
     try {
-      await storageService.clearAllData();
+      await deprecatedStorageService.clearAllData();
       await refreshStorageInfo(); // Refresh info after clearing
       return true;
     } catch (err) {

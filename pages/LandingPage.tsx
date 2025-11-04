@@ -10,7 +10,7 @@ import ImagesComparingModal from '../components/ImagesComparingModal';
 import ImagesComparingButton from '../components/ImagesComparingButton';
 import { GEMINI_TASKS, GeminiTaskName, GeminiTask } from '../services/gemini/geminiTasks';
 import { BenjaminMooreColor, ImageData } from '../types';
-import { storageService } from '../services/storageService';
+import { deprecatedStorageService } from '../services/deprecatedStorageService';
 import { useAuth } from '../contexts/AuthContext';
 import { useImageProcessing } from '../hooks/useImageProcessing';
 
@@ -66,8 +66,8 @@ const LandingPage: React.FC = () => {
       try {
         setIsLoadingData(true);
         const [originalImgs, updatedImgs] = await Promise.all([
-          storageService.getOriginalImages(),
-          storageService.getUpdatedImages(),
+          deprecatedStorageService.getOriginalImages(),
+          deprecatedStorageService.getUpdatedImages(),
         ]);
         setOriginalImages(originalImgs || []);
         setUpdatedImages(updatedImgs || []);
@@ -97,7 +97,7 @@ const LandingPage: React.FC = () => {
   const handleImageUpload = useCallback(async (imageData: ImageData) => {
     try {
       // Save to storage
-      await storageService.addOriginalImage(imageData);
+      await deprecatedStorageService.addOriginalImage(imageData);
 
       // Update local state
       setOriginalImages((prev) => [...prev, imageData]);
@@ -130,7 +130,7 @@ const LandingPage: React.FC = () => {
   const handleRemoveUpdatedImage = useCallback(async (imageId: string) => {
     try {
       // Remove from storage
-      await storageService.removeUpdatedImage(imageId);
+      await deprecatedStorageService.removeUpdatedImage(imageId);
 
       // Update local state
       setUpdatedImages((prev) => prev.filter((image) => image.id !== imageId));
@@ -146,7 +146,7 @@ const LandingPage: React.FC = () => {
     async (imageId: string) => {
       try {
         // Remove from storage
-        await storageService.removeOriginalImage(imageId);
+        await deprecatedStorageService.removeOriginalImage(imageId);
 
         // Update local state
         setOriginalImages((prev) => prev.filter((image) => image.id !== imageId));
@@ -175,7 +175,7 @@ const LandingPage: React.FC = () => {
     );
 
     try {
-      await storageService.renameOriginalImage(imageId, newName);
+      await deprecatedStorageService.renameOriginalImage(imageId, newName);
     } catch (error) {
       console.error('Failed to persist renamed image:', error);
       setErrorMessage('Failed to save renamed image. Changes may not persist.');
@@ -190,7 +190,7 @@ const LandingPage: React.FC = () => {
     );
 
     try {
-      await storageService.renameUpdatedImage(imageId, newName);
+      await deprecatedStorageService.renameUpdatedImage(imageId, newName);
     } catch (error) {
       console.error('Failed to persist renamed image:', error);
       setErrorMessage('Failed to save renamed image. Changes may not persist.');
@@ -262,7 +262,7 @@ const LandingPage: React.FC = () => {
         };
 
         // Save to storage
-        await storageService.addUpdatedImage(imageWithDescriptor);
+        await deprecatedStorageService.addUpdatedImage(imageWithDescriptor);
 
         // Update local state
         setUpdatedImages((prev) => [...prev, imageWithDescriptor]);
@@ -333,7 +333,7 @@ const LandingPage: React.FC = () => {
     try {
       // Delete from storage
       const deletePromises = Array.from(selectedOriginalImageIds).map((id: string) =>
-        storageService.removeOriginalImage(id)
+        deprecatedStorageService.removeOriginalImage(id)
       );
       await Promise.all(deletePromises);
 
@@ -373,7 +373,7 @@ const LandingPage: React.FC = () => {
     try {
       // Delete from storage
       const deletePromises = Array.from(selectedUpdatedImageIds).map((id: string) =>
-        storageService.removeUpdatedImage(id)
+        deprecatedStorageService.removeUpdatedImage(id)
       );
       await Promise.all(deletePromises);
 
@@ -422,7 +422,7 @@ const LandingPage: React.FC = () => {
       const imagesToMove = updatedImages.filter((img) => selectedUpdatedImageIds.has(img.id));
 
       // Add to original images storage
-      const addPromises = imagesToMove.map((img) => storageService.addOriginalImage(img));
+      const addPromises = imagesToMove.map((img) => deprecatedStorageService.addOriginalImage(img));
       await Promise.all(addPromises);
 
       // Update local state - add to original and remove from updated
