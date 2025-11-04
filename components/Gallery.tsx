@@ -17,7 +17,6 @@ interface GalleryProps {
   selectedImageIds?: Set<string>; // For multi-select mode
   onSelectImage?: (imageId: string) => void;
   onSelectMultiple?: (imageId: string) => void; // For multi-select
-  onDownloadImage?: (imageData: deprecatedImageData) => void;
   onRenameImage?: (imageId: string, newName: string) => void;
   showDownloadButtons?: boolean;
   onRemoveImage?: (imageId: string) => void;
@@ -30,7 +29,7 @@ interface GalleryProps {
   onBulkDelete?: () => void; // Callback for bulk delete
   onBulkDownload?: () => void; // Callback for bulk download
   onClearSelection?: () => void; // Callback for clearing all selections
-  hideDownloadAndMove?: boolean; // Hide Download and Move buttons in multi-select
+  showDownloadIcon?: boolean; // Show Download buttons in multi-select
 }
 
 const Gallery: React.FC<GalleryProps> = ({
@@ -40,7 +39,6 @@ const Gallery: React.FC<GalleryProps> = ({
   selectedImageIds = new Set(),
   onSelectImage,
   onSelectMultiple,
-  onDownloadImage,
   onRenameImage,
   showDownloadButtons = false,
   onRemoveImage,
@@ -53,7 +51,7 @@ const Gallery: React.FC<GalleryProps> = ({
   onBulkDelete,
   onBulkDownload,
   onClearSelection,
-  hideDownloadAndMove = false,
+  showDownloadIcon = false,
 }) => {
   // State for ImageDisplayModal
   const [showImageDisplayModal, setShowImageDisplayModal] = useState<boolean>(false);
@@ -97,7 +95,7 @@ const Gallery: React.FC<GalleryProps> = ({
         {enableMultiSelect && hasSelection && (
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-600">{selectedImageIds.size} selected</span>
-            {!hideDownloadAndMove && (
+            {showDownloadIcon && (
               <>
                 <button
                   onClick={onBulkDownload}
@@ -144,7 +142,6 @@ const Gallery: React.FC<GalleryProps> = ({
                 enableMultiSelect ? selectedImageIds.has(image.id) : selectedImageId === image.id
               }
               onSelect={enableMultiSelect ? onSelectMultiple : onSelectImage}
-              onDownload={onDownloadImage}
               showDownloadButton={showDownloadButtons && !enableMultiSelect}
               onRemove={showRemoveButtons && !enableMultiSelect ? onRemoveImage : undefined}
               onViewButtonClick={handleViewImage}

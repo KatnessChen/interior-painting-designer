@@ -12,7 +12,6 @@ interface ImageCardProps {
   image: deprecatedImageData;
   isSelected?: boolean;
   onSelect?: (imageId: string) => void;
-  onDownload?: (imageData: deprecatedImageData) => void;
   showDownloadButton?: boolean;
   onRemove?: (imageId: string) => void;
   onViewButtonClick?: (imageData: deprecatedImageData) => void; // Renamed for clarity, now for a specific button
@@ -23,19 +22,11 @@ const ImageCard: React.FC<ImageCardProps> = ({
   image,
   isSelected = false,
   onSelect,
-  onDownload,
   showDownloadButton = false,
   onRemove,
   onViewButtonClick, // Destructure new prop
   onRename,
 }) => {
-  const handleDownload = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent other card actions when clicking download
-    if (onDownload) {
-      onDownload(image);
-    }
-  };
-
   const handleRemove = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent other card actions when clicking remove
     if (onRemove) {
@@ -96,7 +87,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
           className="w-full h-48 object-contain object-center"
         />
         {/* Overlay buttons - appear on hover */}
-        {(onViewButtonClick || (showDownloadButton && onDownload)) && (
+        {(onViewButtonClick || showDownloadButton) && (
           <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-200 flex flex-col items-center justify-center gap-3 opacity-0 group-hover:opacity-100">
             {onViewButtonClick && (
               <button
@@ -106,16 +97,6 @@ const ImageCard: React.FC<ImageCardProps> = ({
               >
                 <EyeIcon sx={{ fontSize: 20, marginRight: 1, color: 'inherit' }} />
                 View Photo
-              </button>
-            )}
-            {showDownloadButton && onDownload && (
-              <button
-                onClick={handleDownload}
-                className="flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors w-40"
-                aria-label={`Download image ${image.name}`}
-              >
-                <DownloadIcon sx={{ fontSize: 20, marginRight: 1, color: 'inherit' }} />
-                Download
               </button>
             )}
           </div>

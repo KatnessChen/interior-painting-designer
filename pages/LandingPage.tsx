@@ -15,6 +15,7 @@ import { createImage, fetchUserImages, createProcessedImage } from '../services/
 import { useAuth } from '../contexts/AuthContext';
 import { useImageProcessing } from '../hooks/useImageProcessing';
 import { formatImageOperationData } from '../utils/imageOperationUtils';
+import { downloadFile, buildDownloadFilename } from '../utils/downloadUtils';
 
 interface Texture {
   name: string;
@@ -174,22 +175,6 @@ const LandingPage: React.FC = () => {
     },
     [user]
   );
-
-  const handleDownload = useCallback((imageData: ImageData) => {
-    const link = document.createElement('a');
-    link.href = imageData.storageUrl; // Use storageUrl from Firebase Storage
-    const mimeTypeMap: { [key: string]: string } = {
-      'image/jpeg': '.jpg',
-      'image/png': '.png',
-      'image/gif': '.gif',
-      'image/webp': '.webp',
-    };
-    const extension = mimeTypeMap[imageData.mimeType] || '.jpg';
-    link.download = `${imageData.name}${extension}`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }, []);
 
   const handleRemoveUpdatedImage = useCallback(async (imageId: string) => {
     try {
@@ -444,19 +429,11 @@ const LandingPage: React.FC = () => {
     // Download each selected image
     updatedImages.forEach((img) => {
       if (selectedUpdatedImageIds.has(img.id)) {
-        const link = document.createElement('a');
-        link.href = img.storageUrl; // Use storageUrl from Firebase Storage
-        const mimeTypeMap: { [key: string]: string } = {
-          'image/jpeg': '.jpg',
-          'image/png': '.png',
-          'image/gif': '.gif',
-          'image/webp': '.webp',
-        };
-        const extension = mimeTypeMap[img.mimeType] || '.jpg';
-        link.download = `${img.name}${extension}`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        const filename = buildDownloadFilename(img.name, img.mimeType);
+        downloadFile(img.storageUrl, filename).catch((error) => {
+          console.error('Download failed for image:', img.id, error);
+          setErrorMessage('Failed to download one or more images. Please try again.');
+        });
       }
     });
   }, [selectedUpdatedImageIds, updatedImages]);
@@ -537,7 +514,6 @@ const LandingPage: React.FC = () => {
                 enableMultiSelect={true}
                 onBulkDelete={handleBulkDeleteOriginal}
                 onClearSelection={handleClearOriginalSelection}
-                hideDownloadAndMove={true}
               />
             </div>
 
@@ -565,7 +541,6 @@ const LandingPage: React.FC = () => {
                 images={updatedImages}
                 selectedImageIds={selectedUpdatedImageIds}
                 onSelectMultiple={handleSelectUpdatedImage}
-                onDownloadImage={handleDownload}
                 onRemoveImage={handleRemoveUpdatedImage}
                 onRenameImage={handleRenameUpdatedImage}
                 emptyMessage="Satisfied recolored photos will appear here."
@@ -573,6 +548,7 @@ const LandingPage: React.FC = () => {
                 onBulkDelete={handleBulkDeleteUpdated}
                 onBulkDownload={handleBulkDownloadUpdated}
                 onClearSelection={handleClearUpdatedSelection}
+                showDownloadIcon={true}
               />
             </div>
           </>
