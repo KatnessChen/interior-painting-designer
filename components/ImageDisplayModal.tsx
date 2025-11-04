@@ -109,7 +109,7 @@ const ImageDisplayModal: React.FC<ImageDisplayModalProps> = ({
             )}
 
             <img
-              src={`data:${image.mimeType};base64,${image.base64}`}
+              src={image.storageUrl}
               alt={image.name}
               className="max-w-full max-h-full object-contain"
               style={{

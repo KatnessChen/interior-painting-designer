@@ -1,43 +1,70 @@
 import { getFirestore, doc, setDoc, Timestamp } from 'firebase/firestore';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { app } from '../config/firebaseConfig';
-import { deprecatedImageData } from '../types';
+import { ImageData } from '../types';
 
-// Initialize Firestore with the shared Firebase app instance
-const db = getFirestore(app);
+// Initialize Firestore and Storage with the shared Firebase app instance
+export const db = getFirestore(app);
+const storage = getStorage(app);
 
 /**
- * Creates a new image document in Firestore.
- * Initially, storageUrl and storagePath are empty, as the file is not yet in Firebase Storage.
+ * Creates a new image document in Firestore with uploaded storage information.
+ * This function handles the entire workflow:
+ * 1. Upload the image file to Firebase Storage
+ * 2. Obtain the storageUrl and storagePath
+ * 3. Create the image document in Firestore
  *
  * @param userId The ID of the user uploading the image.
- * @param imageDataPartial Partial image data from the upload, must include id, name, and mimeType.
- * @returns The newly created deprecatedImageData object for local state use.
+ * @param imageFile The image file to upload (Blob or File).
+ * @param imageMetadata Basic metadata: id, name, mimeType.
+ * @returns The newly created ImageData object for local state use.
  */
-export async function addImage(
+export async function createImage(
   userId: string,
-  imageDataPartial: Pick<deprecatedImageData, 'id' | 'name' | 'mimeType'>
-): Promise<deprecatedImageData> {
+  imageFile: Blob | File,
+  imageMetadata: Pick<ImageData, 'id' | 'name' | 'mimeType'>
+): Promise<ImageData> {
   if (!userId) {
     throw new Error('User ID is required to add an image.');
   }
 
-  const now = new Date();
-
-  // Construct the full deprecatedImageData object for Firestore
-  const newImageData: deprecatedImageData = {
-    ...imageDataPartial,
-    roomId: null,
-    evolutionChain: [],
-    parentImageId: null,
-    storageUrl: '', // Placeholder, to be updated after storage upload
-    storagePath: '', // Placeholder, to be updated after storage upload
-    isDeleted: false,
-    deletedAt: null,
-    createdAt: now,
-    updatedAt: now,
-  };
-
   try {
+    // Step 1: Upload the image file to Firebase Storage
+    console.log('Uploading image to Firebase Storage...');
+    let extension = 'jpg';
+    if (imageFile.type) {
+      extension = imageFile.type.split('/')[1] || 'jpg';
+    } else if (imageFile instanceof File) {
+      const parts = imageFile.name.split('.');
+      extension = parts[parts.length - 1] || 'jpg';
+    }
+
+    const storagePath = `users/${userId}/images/${imageMetadata.id}.${extension}`;
+    const storageRef = ref(storage, storagePath);
+
+    // Upload the file to Firebase Storage
+    await uploadBytes(storageRef, imageFile);
+    console.log('Image uploaded to Firebase Storage:', storagePath);
+
+    // Get the download URL
+    const storageUrl = await getDownloadURL(storageRef);
+    console.log('Image download URL obtained:', storageUrl);
+
+    // Step 2: Create the image document in Firestore with storage information
+    const now = new Date();
+    const newImageData: ImageData = {
+      ...imageMetadata,
+      roomId: null,
+      evolutionChain: [],
+      parentImageId: null,
+      storageUrl,
+      storagePath,
+      isDeleted: false,
+      deletedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+
     const docRef = doc(db, 'users', userId, 'images', newImageData.id);
 
     // Convert Date objects to Firestore Timestamps for storage
@@ -53,7 +80,10 @@ export async function addImage(
     // Return the object with standard Date objects for use in the local state
     return newImageData;
   } catch (error) {
-    console.error('Failed to create image document in Firestore:', error);
-    throw new Error('Failed to save image metadata to Firestore.');
+    console.error('Failed to add image:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to add image: ${error.message}`);
+    }
+    throw new Error('Failed to add image to Firebase.');
   }
 }

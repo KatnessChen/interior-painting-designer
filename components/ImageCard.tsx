@@ -91,7 +91,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
       {/* Image container with overlay buttons */}
       <div className="relative bg-gray-100">
         <img
-          src={`data:${image.mimeType};base64,${image.base64}`}
+          src={image.storageUrl}
           alt={image.name}
           className="w-full h-48 object-contain object-center"
         />

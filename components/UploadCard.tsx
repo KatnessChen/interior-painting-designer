@@ -1,31 +1,15 @@
 import React, { useRef, useState } from 'react';
-import { deprecatedImageData } from '../types';
 import { MAX_FILE_SIZE_MB } from '../constants';
 import { CloudUpload as UploadIcon } from '@mui/icons-material';
 
 interface UploadCardProps {
-  onImageUpload: (imageData: deprecatedImageData) => void;
+  onImageUpload: (file: File) => void;
   onError: (message: string) => void;
 }
 
 const UploadCard: React.FC<UploadCardProps> = ({ onImageUpload, onError }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
-
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => {
-        if (typeof reader.result === 'string') {
-          resolve(reader.result.split(',')[1]); // Get base64 part only
-        } else {
-          reject('Failed to read file as base64');
-        }
-      };
-      reader.onerror = (error) => reject(error);
-    });
-  };
 
   const handleFileChange = async (files: FileList | null) => {
     if (files && files.length > 0) {
@@ -40,14 +24,7 @@ const UploadCard: React.FC<UploadCardProps> = ({ onImageUpload, onError }) => {
       }
 
       try {
-        const base64 = await fileToBase64(file);
-        const imageData: deprecatedImageData = {
-          id: crypto.randomUUID(),
-          name: file.name,
-          base64: base64,
-          mimeType: file.type,
-        };
-        onImageUpload(imageData);
+        onImageUpload(file);
       } catch (error) {
         onError('Failed to process image file.');
         console.error('File upload error:', error);

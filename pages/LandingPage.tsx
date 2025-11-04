@@ -10,8 +10,8 @@ import ImagesComparingModal from '../components/ImagesComparingModal';
 import ImagesComparingButton from '../components/ImagesComparingButton';
 import AlertModal from '../components/AlertModal';
 import { GEMINI_TASKS, GeminiTaskName, GeminiTask } from '../services/gemini/geminiTasks';
-import { BenjaminMooreColor, deprecatedImageData } from '../types';
-import { storageService } from '../services/storageService';
+import { BenjaminMooreColor, ImageData } from '../types';
+import { createImage } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 import { useImageProcessing } from '../hooks/useImageProcessing';
 
@@ -35,12 +35,12 @@ const LandingPage: React.FC = () => {
   // Add texture task state
   const [selectedTexture, setSelectedTexture] = useState<Texture | null>(null);
 
-  const [originalImages, setOriginalImages] = useState<deprecatedImageData[]>([]);
+  const [originalImages, setOriginalImages] = useState<ImageData[]>([]);
   const [selectedOriginalImageIds, setSelectedOriginalImageIds] = useState<Set<string>>(new Set());
 
-  const [generatedImage, setGeneratedImage] = useState<deprecatedImageData | null>(null);
+  const [generatedImage, setGeneratedImage] = useState<ImageData | null>(null);
 
-  const [updatedImages, setUpdatedImages] = useState<deprecatedImageData[]>([]);
+  const [updatedImages, setUpdatedImages] = useState<ImageData[]>([]);
   const [selectedUpdatedImageIds, setSelectedUpdatedImageIds] = useState<Set<string>>(new Set());
 
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
@@ -90,12 +90,10 @@ const LandingPage: React.FC = () => {
     const loadImages = async () => {
       try {
         setIsLoadingData(true);
-        const [originalImgs, updatedImgs] = await Promise.all([
-          storageService.getOriginalImages(),
-          storageService.getUpdatedImages(),
-        ]);
-        setOriginalImages(originalImgs || []);
-        setUpdatedImages(updatedImgs || []);
+        // TODO: Load images from Firestore for authenticated user
+        // For now, start with empty arrays
+        setOriginalImages([]);
+        setUpdatedImages([]);
       } catch (error) {
         console.error('Failed to load images from storage:', error);
         setErrorMessage('Failed to load saved images. Starting fresh.');
@@ -119,26 +117,39 @@ const LandingPage: React.FC = () => {
     setErrorMessage(null);
   }, []);
 
-  const handleImageUpload = useCallback(async (imageData: deprecatedImageData) => {
-    try {
-      // Save to storage
-      await storageService.addOriginalImage(imageData);
+  const handleImageUpload = useCallback(
+    async (file: File) => {
+      if (!user) {
+        // TODO: redirect user to login steps instead of error
+        setErrorMessage('Please log in to upload images.');
+        return;
+      }
 
-      // Update local state
-      setOriginalImages((prev) => [...prev, imageData]);
-      setErrorMessage(null); // Clear error on successful upload
-    } catch (error) {
-      console.error('Failed to save uploaded image:', error);
-      setErrorMessage('Failed to save uploaded image. It may not be available after page refresh.');
+      try {
+        // Call firestoreService.createImage() to upload the file to Firebase Storage
+        // and create the image document in Firestore
+        const imageData = await createImage(user.uid, file, {
+          id: crypto.randomUUID(),
+          name: file.name,
+          mimeType: file.type,
+        });
 
-      // Still add to local state for current session
-      setOriginalImages((prev) => [...prev, imageData]);
-    }
-  }, []);
+        // Update local state
+        setOriginalImages((prev) => [...prev, imageData]);
+        setErrorMessage(null); // Clear error on successful upload
+      } catch (error) {
+        console.error('Failed to upload image:', error);
+        setErrorMessage(
+          error instanceof Error ? error.message : 'Failed to upload image to Firebase.'
+        );
+      }
+    },
+    [user]
+  );
 
-  const handleDownload = useCallback((imageData: deprecatedImageData) => {
+  const handleDownload = useCallback((imageData: ImageData) => {
     const link = document.createElement('a');
-    link.href = `data:${imageData.mimeType};base64,${imageData.base64}`;
+    link.href = imageData.storageUrl; // Use storageUrl from Firebase Storage
     const mimeTypeMap: { [key: string]: string } = {
       'image/jpeg': '.jpg',
       'image/png': '.png',
@@ -146,7 +157,7 @@ const LandingPage: React.FC = () => {
       'image/webp': '.webp',
     };
     const extension = mimeTypeMap[imageData.mimeType] || '.jpg';
-    link.download = `recolored_${imageData.name}${extension}`;
+    link.download = `${imageData.name}${extension}`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -154,25 +165,19 @@ const LandingPage: React.FC = () => {
 
   const handleRemoveUpdatedImage = useCallback(async (imageId: string) => {
     try {
-      // Remove from storage
-      await storageService.removeUpdatedImage(imageId);
-
+      // TODO: Delete image from Firestore
       // Update local state
       setUpdatedImages((prev) => prev.filter((image) => image.id !== imageId));
     } catch (error) {
-      console.error('Failed to remove image from storage:', error);
-
-      // Still remove from local state
-      setUpdatedImages((prev) => prev.filter((image) => image.id !== imageId));
+      console.error('Failed to remove image:', error);
+      setErrorMessage('Failed to remove image.');
     }
   }, []);
 
   const handleRemoveOriginalImage = useCallback(
     async (imageId: string) => {
       try {
-        // Remove from storage
-        await storageService.removeOriginalImage(imageId);
-
+        // TODO: Delete image from Firestore
         // Update local state
         setOriginalImages((prev) => prev.filter((image) => image.id !== imageId));
 
@@ -181,13 +186,8 @@ const LandingPage: React.FC = () => {
           setSelectedOriginalImageIds(new Set());
         }
       } catch (error) {
-        console.error('Failed to remove original image from storage:', error);
-
-        // Still remove from local state
-        setOriginalImages((prev) => prev.filter((image) => image.id !== imageId));
-        if (selectedOriginalImageIds.has(imageId)) {
-          setSelectedOriginalImageIds(new Set());
-        }
+        console.error('Failed to remove image:', error);
+        setErrorMessage('Failed to remove image.');
       }
     },
     [selectedOriginalImageIds]
@@ -200,11 +200,10 @@ const LandingPage: React.FC = () => {
     );
 
     try {
-      await storageService.renameOriginalImage(imageId, newName);
+      // TODO: Update image name in Firestore
     } catch (error) {
-      console.error('Failed to persist renamed image:', error);
+      console.error('Failed to rename image:', error);
       setErrorMessage('Failed to save renamed image. Changes may not persist.');
-      // Keep optimistic UI change for the session
     }
   }, []);
 
@@ -215,11 +214,10 @@ const LandingPage: React.FC = () => {
     );
 
     try {
-      await storageService.renameUpdatedImage(imageId, newName);
+      // TODO: Update image name in Firestore
     } catch (error) {
-      console.error('Failed to persist renamed image:', error);
+      console.error('Failed to rename image:', error);
       setErrorMessage('Failed to save renamed image. Changes may not persist.');
-      // Keep optimistic UI change for the session
     }
   }, []);
 
@@ -271,8 +269,9 @@ const LandingPage: React.FC = () => {
   }, [selectedColor, selectedTexture, originalImages, selectedOriginalImageIds, selectedTaskName]);
 
   const handleConfirmPrompt = useCallback(
-    async (image: deprecatedImageData) => {
+    async (image: ImageData) => {
       try {
+        // TODO: Save processed image to Firestore
         // Append descriptor to the image name based on task
         let imageName = image.name;
         if (selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name && selectedColor) {
@@ -281,13 +280,10 @@ const LandingPage: React.FC = () => {
           imageName = `${image.name} (${selectedTexture.name})`;
         }
 
-        const imageWithDescriptor: deprecatedImageData = {
+        const imageWithDescriptor: ImageData = {
           ...image,
           name: imageName,
         };
-
-        // Save to storage
-        await storageService.addUpdatedImage(imageWithDescriptor);
 
         // Update local state
         setUpdatedImages((prev) => [...prev, imageWithDescriptor]);
@@ -295,23 +291,7 @@ const LandingPage: React.FC = () => {
         setGeneratedImage(null);
       } catch (error) {
         console.error('Failed to save result image:', error);
-        setErrorMessage('Failed to save result. It may not be available after page refresh.');
-
-        // Still add to local state for current session
-        let imageName = image.name;
-        if (selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name && selectedColor) {
-          imageName = `${image.name} (${selectedColor.name})`;
-        } else if (selectedTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name && selectedTexture) {
-          imageName = `${image.name} (${selectedTexture.name})`;
-        }
-
-        setUpdatedImages((prev) => [
-          ...prev,
-          {
-            ...image,
-            name: imageName,
-          },
-        ]);
+        setErrorMessage('Failed to save result image.');
         setShowConfirmationModal(false);
         setGeneratedImage(null);
       }
@@ -356,22 +336,14 @@ const LandingPage: React.FC = () => {
     if (selectedOriginalImageIds.size === 0) return;
 
     try {
-      // Delete from storage
-      const deletePromises = Array.from(selectedOriginalImageIds).map((id: string) =>
-        storageService.removeOriginalImage(id)
-      );
-      await Promise.all(deletePromises);
-
+      // TODO: Delete images from Firestore
       // Update local state
       setOriginalImages((prev) => prev.filter((img) => !selectedOriginalImageIds.has(img.id)));
       setSelectedOriginalImageIds(new Set());
       setErrorMessage(null);
     } catch (error) {
-      console.error('Failed to delete images from storage:', error);
-      setErrorMessage('Failed to delete images. They may still exist.');
-      // Still try to remove from local state
-      setOriginalImages((prev) => prev.filter((img) => !selectedOriginalImageIds.has(img.id)));
-      setSelectedOriginalImageIds(new Set());
+      console.error('Failed to delete images:', error);
+      setErrorMessage('Failed to delete images.');
     }
   }, [selectedOriginalImageIds]);
 
@@ -396,41 +368,31 @@ const LandingPage: React.FC = () => {
     if (selectedUpdatedImageIds.size === 0) return;
 
     try {
-      // Delete from storage
-      const deletePromises = Array.from(selectedUpdatedImageIds).map((id: string) =>
-        storageService.removeUpdatedImage(id)
-      );
-      await Promise.all(deletePromises);
-
+      // TODO: Delete images from Firestore
       // Update local state
       setUpdatedImages((prev) => prev.filter((img) => !selectedUpdatedImageIds.has(img.id)));
       setSelectedUpdatedImageIds(new Set());
       setErrorMessage(null);
     } catch (error) {
-      console.error('Failed to delete images from storage:', error);
-      setErrorMessage('Failed to delete images. They may still exist.');
-      // Still try to remove from local state
-      setUpdatedImages((prev) => prev.filter((img) => !selectedUpdatedImageIds.has(img.id)));
-      setSelectedUpdatedImageIds(new Set());
+      console.error('Failed to delete images:', error);
+      setErrorMessage('Failed to delete images.');
     }
   }, [selectedUpdatedImageIds]);
 
   const handleBulkDownloadUpdated = useCallback(() => {
     if (selectedUpdatedImageIds.size === 0) return;
 
-    // Map mimeType to extension
-    const mimeTypeMap: { [key: string]: string } = {
-      'image/jpeg': '.jpg',
-      'image/png': '.png',
-      'image/gif': '.gif',
-      'image/webp': '.webp',
-    };
-
     // Download each selected image
     updatedImages.forEach((img) => {
       if (selectedUpdatedImageIds.has(img.id)) {
         const link = document.createElement('a');
-        link.href = `data:${img.mimeType};base64,${img.base64}`;
+        link.href = img.storageUrl; // Use storageUrl from Firebase Storage
+        const mimeTypeMap: { [key: string]: string } = {
+          'image/jpeg': '.jpg',
+          'image/png': '.png',
+          'image/gif': '.gif',
+          'image/webp': '.webp',
+        };
         const extension = mimeTypeMap[img.mimeType] || '.jpg';
         link.download = `${img.name}${extension}`;
         document.body.appendChild(link);
@@ -446,17 +408,14 @@ const LandingPage: React.FC = () => {
     try {
       const imagesToMove = updatedImages.filter((img) => selectedUpdatedImageIds.has(img.id));
 
-      // Add to original images storage
-      const addPromises = imagesToMove.map((img) => storageService.addOriginalImage(img));
-      await Promise.all(addPromises);
-
+      // TODO: Add images to original images in Firestore
       // Update local state - add to original and remove from updated
       setOriginalImages((prev) => [...prev, ...imagesToMove]);
       setUpdatedImages((prev) => prev.filter((img) => !selectedUpdatedImageIds.has(img.id)));
       setSelectedUpdatedImageIds(new Set());
       setErrorMessage(null);
     } catch (error) {
-      console.error('Failed to move images to original:', error);
+      console.error('Failed to move images:', error);
       setErrorMessage('Failed to move images. Please try again.');
     }
   }, [selectedUpdatedImageIds, updatedImages]);
@@ -479,7 +438,7 @@ const LandingPage: React.FC = () => {
   const isCompareButtonEnabled = totalSelectedPhotos >= 2 && totalSelectedPhotos <= 4;
 
   const getSelectedPhotosForComparison = useCallback(() => {
-    const selectedPhotos: deprecatedImageData[] = [];
+    const selectedPhotos: ImageData[] = [];
 
     // Add selected original images
     selectedOriginalImageIds.forEach((id) => {
@@ -503,16 +462,6 @@ const LandingPage: React.FC = () => {
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             <span className="ml-3 text-lg text-gray-600">Loading your saved data...</span>
-          </div>
-        )}
-
-        {!isLoadingData && errorMessage && (
-          <div
-            className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-md shadow-sm"
-            role="alert"
-          >
-            <p className="font-bold">Error!</p>
-            <p>{errorMessage}</p>
           </div>
         )}
 
@@ -614,6 +563,15 @@ const LandingPage: React.FC = () => {
           isOpen={showCompareModal}
           images={getSelectedPhotosForComparison()}
           onClose={() => setShowCompareModal(false)}
+        />
+
+        {/* Alert Modal */}
+        <AlertModal
+          isOpen={showAlert}
+          type={alertType}
+          title={alertTitle}
+          message={alertMessage}
+          onClose={() => setShowAlert(false)}
         />
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { doc, setDoc, getDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
-import { db } from './firebaseService';
+import { db } from './firestoreService';
 import { User } from '../types';
 import { GEMINI_TASKS, GeminiTaskName } from './gemini/geminiTasks';
 
