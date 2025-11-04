@@ -1,10 +1,10 @@
 import { useState, useCallback } from 'react';
-import { ImageData, BenjaminMooreColor } from '../types';
+import { deprecatedImageData, BenjaminMooreColor } from '../types';
 import { recolorWalls, addTexture } from '../services/gemini/geminiService';
 import { GEMINI_TASKS, GeminiTaskName } from '../services/gemini/geminiTasks';
 import { incrementTaskUsage } from '../services/userService';
 
-interface Texture extends ImageData {
+interface Texture extends deprecatedImageData {
   description?: string;
 }
 
@@ -26,14 +26,14 @@ export const useImageProcessing = ({
 
   const processImage = useCallback(
     async (
-      selectedImage: ImageData,
+      selectedImage: deprecatedImageData,
       customPrompt: string | undefined
-    ): Promise<ImageData | null> => {
+    ): Promise<deprecatedImageData | null> => {
       setProcessingImage(true);
       setErrorMessage(null);
 
       try {
-        let generatedImage: ImageData;
+        let generatedImage: deprecatedImageData;
 
         if (selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name) {
           if (!selectedColor) {

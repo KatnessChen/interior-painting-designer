@@ -1,5 +1,5 @@
 import { GoogleGenAI, Modality, GenerateContentResponse } from '@google/genai';
-import { ImageData } from '../../types';
+import { deprecatedImageData } from '../../types';
 import { getPromptByTask } from './prompts';
 import { GeminiTask, GEMINI_TASKS } from './geminiTasks';
 
@@ -10,11 +10,11 @@ export type { GeminiTask };
 const defaultModel = 'gemini-2.5-flash-image';
 
 export const recolorWalls = async (
-  imageData: ImageData,
+  imageData: deprecatedImageData,
   colorName: string,
   colorHex: string,
   customPrompt?: string
-): Promise<ImageData> => {
+): Promise<deprecatedImageData> => {
   return processImageWithTask(GEMINI_TASKS.RECOLOR_WALL, [imageData], {
     colorName,
     colorHex,
@@ -23,10 +23,10 @@ export const recolorWalls = async (
 };
 
 export const addTexture = async (
-  imageList: ImageData[],
+  imageList: deprecatedImageData[],
   textureName: string,
   customPrompt?: string
-): Promise<ImageData> => {
+): Promise<deprecatedImageData> => {
   return processImageWithTask(GEMINI_TASKS.ADD_TEXTURE, imageList, {
     textureName,
     customPrompt,
@@ -42,7 +42,7 @@ export const addTexture = async (
  */
 export const processImageWithTask = async (
   task: GeminiTask,
-  imageList: ImageData[],
+  imageList: deprecatedImageData[],
   options: {
     customPrompt?: string;
     model?: string;
@@ -50,7 +50,7 @@ export const processImageWithTask = async (
     colorHex?: string;
     textureName?: string;
   } = {}
-): Promise<ImageData> => {
+): Promise<deprecatedImageData> => {
   if (!process.env.API_KEY) {
     throw new Error('API_KEY is not set in environment variables.');
   }

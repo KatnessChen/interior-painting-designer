@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback } from 'react';
-import { ImageData } from '../types';
+import { deprecatedImageData } from '../types';
 import {
   Close as CloseIcon,
   ChevronLeft as PrevIcon,
@@ -8,7 +8,7 @@ import {
 
 interface ImageDisplayModalProps {
   isOpen: boolean;
-  image: ImageData | null;
+  image: deprecatedImageData | null;
   onClose: () => void;
   currentImageIndex?: number;
   totalImages?: number;

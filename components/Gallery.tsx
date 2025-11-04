@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { ImageData } from '../types';
+import { deprecatedImageData } from '../types';
 import ImageCard from './ImageCard';
 import UploadCard from './UploadCard';
 import ImageDisplayModal from './ImageDisplayModal';
@@ -12,18 +12,18 @@ import {
 
 interface GalleryProps {
   title: string;
-  images: ImageData[];
+  images: deprecatedImageData[];
   selectedImageId?: string | null;
   selectedImageIds?: Set<string>; // For multi-select mode
   onSelectImage?: (imageId: string) => void;
   onSelectMultiple?: (imageId: string) => void; // For multi-select
-  onDownloadImage?: (imageData: ImageData) => void;
+  onDownloadImage?: (imageData: deprecatedImageData) => void;
   onRenameImage?: (imageId: string, newName: string) => void;
   showDownloadButtons?: boolean;
   onRemoveImage?: (imageId: string) => void;
   showRemoveButtons?: boolean;
   emptyMessage: string;
-  onUploadImage?: (imageData: ImageData) => void; // Prop for uploading images
+  onUploadImage?: (imageData: deprecatedImageData) => void; // Prop for uploading images
   showUploadCard?: boolean; // Show upload card as first item
   onUploadError?: (message: string) => void; // Prop for upload errors
   enableMultiSelect?: boolean; // Enable multi-select mode
@@ -59,9 +59,11 @@ const Gallery: React.FC<GalleryProps> = ({
 }) => {
   // State for ImageDisplayModal
   const [showImageDisplayModal, setShowImageDisplayModal] = useState<boolean>(false);
-  const [imageToDisplayInModal, setImageToDisplayInModal] = useState<ImageData | null>(null);
+  const [imageToDisplayInModal, setImageToDisplayInModal] = useState<deprecatedImageData | null>(
+    null
+  );
 
-  const handleViewImage = useCallback((imageData: ImageData) => {
+  const handleViewImage = useCallback((imageData: deprecatedImageData) => {
     setImageToDisplayInModal(imageData);
     setShowImageDisplayModal(true);
   }, []);

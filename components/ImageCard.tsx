@@ -1,5 +1,5 @@
 import React from 'react';
-import { ImageData } from '../types';
+import { deprecatedImageData } from '../types';
 import {
   Visibility as EyeIcon,
   Download as DownloadIcon,
@@ -9,13 +9,13 @@ import {
 } from '@mui/icons-material';
 
 interface ImageCardProps {
-  image: ImageData;
+  image: deprecatedImageData;
   isSelected?: boolean;
   onSelect?: (imageId: string) => void;
-  onDownload?: (imageData: ImageData) => void;
+  onDownload?: (imageData: deprecatedImageData) => void;
   showDownloadButton?: boolean;
   onRemove?: (imageId: string) => void;
-  onViewButtonClick?: (imageData: ImageData) => void; // Renamed for clarity, now for a specific button
+  onViewButtonClick?: (imageData: deprecatedImageData) => void; // Renamed for clarity, now for a specific button
   onRename?: (imageId: string, newName: string) => void;
 }
 

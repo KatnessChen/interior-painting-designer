@@ -6,7 +6,7 @@ export interface BenjaminMooreColor {
   hex: string;
 }
 
-export interface ImageData {
+export interface deprecatedImageData {
   id: string;
   name: string;
   base64: string;

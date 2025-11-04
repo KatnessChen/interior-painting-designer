@@ -1,9 +1,9 @@
 import React, { useEffect, useCallback } from 'react';
-import { ImageData } from '../types';
+import { deprecatedImageData } from '../types';
 
 interface ComparePhotosModalProps {
   isOpen: boolean;
-  images: ImageData[];
+  images: deprecatedImageData[];
   onClose: () => void;
 }
 

@@ -1,10 +1,10 @@
 import React, { useRef, useState } from 'react';
-import { ImageData } from '../types';
+import { deprecatedImageData } from '../types';
 import { MAX_FILE_SIZE_MB } from '../constants';
 import { CloudUpload as UploadIcon } from '@mui/icons-material';
 
 interface UploadCardProps {
-  onImageUpload: (imageData: ImageData) => void;
+  onImageUpload: (imageData: deprecatedImageData) => void;
   onError: (message: string) => void;
 }
 
@@ -41,7 +41,7 @@ const UploadCard: React.FC<UploadCardProps> = ({ onImageUpload, onError }) => {
 
       try {
         const base64 = await fileToBase64(file);
-        const imageData: ImageData = {
+        const imageData: deprecatedImageData = {
           id: crypto.randomUUID(),
           name: file.name,
           base64: base64,

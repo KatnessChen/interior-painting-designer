@@ -1,4 +1,4 @@
-import { BenjaminMooreColor, ImageData } from '../types';
+import { BenjaminMooreColor, deprecatedImageData } from '../types';
 import { Texture } from '../components/TextureSelector';
 
 // Constants for storage keys
@@ -52,7 +52,7 @@ class StorageService {
   }
 
   // TODO: Images Management by Firestore
-  async saveOriginalImages(images: ImageData[]): Promise<void> {
+  async saveOriginalImages(images: deprecatedImageData[]): Promise<void> {
     try {
     } catch (error) {
       console.error('', error);
@@ -60,7 +60,7 @@ class StorageService {
     }
   }
 
-  async getOriginalImages(): Promise<ImageData[]> {
+  async getOriginalImages(): Promise<deprecatedImageData[]> {
     try {
     } catch (error) {
       console.error('', error);
@@ -68,7 +68,7 @@ class StorageService {
     }
   }
 
-  async addOriginalImage(image: ImageData): Promise<void> {
+  async addOriginalImage(image: deprecatedImageData): Promise<void> {
     try {
     } catch (error) {
       console.error('', error);
@@ -103,7 +103,7 @@ class StorageService {
   }
 
   // Updated Images Management
-  async saveUpdatedImages(images: ImageData[]): Promise<void> {
+  async saveUpdatedImages(images: deprecatedImageData[]): Promise<void> {
     try {
     } catch (error) {
       console.error('Failed to save updated images to IndexedDB:', error);
@@ -111,7 +111,7 @@ class StorageService {
     }
   }
 
-  async getUpdatedImages(): Promise<ImageData[]> {
+  async getUpdatedImages(): Promise<deprecatedImageData[]> {
     try {
     } catch (error) {
       console.error('Failed to get updated images from IndexedDB:', error);
@@ -119,7 +119,7 @@ class StorageService {
     }
   }
 
-  async addUpdatedImage(image: ImageData): Promise<void> {
+  async addUpdatedImage(image: deprecatedImageData): Promise<void> {
     try {
     } catch (error) {
       console.error('Failed to save updated image to IndexedDB:', error);
