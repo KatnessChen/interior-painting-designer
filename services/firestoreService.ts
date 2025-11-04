@@ -1,4 +1,13 @@
-import { getFirestore, doc, setDoc, Timestamp } from 'firebase/firestore';
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  Timestamp,
+  collection,
+  query,
+  where,
+  getDocs,
+} from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { app } from '../config/firebaseConfig';
 import { ImageData } from '../types';
@@ -85,5 +94,59 @@ export async function createImage(
       throw new Error(`Failed to add image: ${error.message}`);
     }
     throw new Error('Failed to add image to Firebase.');
+  }
+}
+
+/**
+ * Fetches all images from Firestore for a specific user.
+ * Converts Firestore Timestamps back to Date objects.
+ *
+ * @param userId The ID of the user whose images to fetch.
+ * @returns An array of ImageData objects.
+ */
+export async function fetchUserImages(userId: string): Promise<ImageData[]> {
+  if (!userId) {
+    throw new Error('User ID is required to fetch images.');
+  }
+
+  try {
+    console.log('Fetching images from Firestore for user:', userId);
+
+    // Create a reference to the images subcollection
+    const imagesRef = collection(db, 'users', userId, 'images');
+
+    // Query for non-deleted images
+    const q = query(imagesRef, where('isDeleted', '==', false));
+
+    // Execute the query
+    const querySnapshot = await getDocs(q);
+
+    // Convert Firestore documents to ImageData objects
+    const images: ImageData[] = querySnapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: data.id,
+        name: data.name,
+        mimeType: data.mimeType,
+        storageUrl: data.storageUrl,
+        storagePath: data.storagePath,
+        roomId: data.roomId || null,
+        evolutionChain: data.evolutionChain || [],
+        parentImageId: data.parentImageId || null,
+        isDeleted: data.isDeleted || false,
+        deletedAt: data.deletedAt ? (data.deletedAt as Timestamp).toDate() : null,
+        createdAt: (data.createdAt as Timestamp).toDate(),
+        updatedAt: (data.updatedAt as Timestamp).toDate(),
+      };
+    });
+
+    console.log('Images fetched from Firestore:', images.length);
+    return images;
+  } catch (error) {
+    console.error('Failed to fetch images:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to fetch images: ${error.message}`);
+    }
+    throw new Error('Failed to fetch images from Firebase.');
   }
 }

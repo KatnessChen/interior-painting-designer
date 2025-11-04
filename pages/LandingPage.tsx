@@ -11,7 +11,7 @@ import ImagesComparingButton from '../components/ImagesComparingButton';
 import AlertModal from '../components/AlertModal';
 import { GEMINI_TASKS, GeminiTaskName, GeminiTask } from '../services/gemini/geminiTasks';
 import { BenjaminMooreColor, ImageData } from '../types';
-import { createImage } from '../services/firestoreService';
+import { createImage, fetchUserImages } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 import { useImageProcessing } from '../hooks/useImageProcessing';
 
@@ -90,19 +90,37 @@ const LandingPage: React.FC = () => {
     const loadImages = async () => {
       try {
         setIsLoadingData(true);
-        // TODO: Load images from Firestore for authenticated user
-        // For now, start with empty arrays
-        setOriginalImages([]);
-        setUpdatedImages([]);
+
+        if (!user) {
+          // User not authenticated, start with empty arrays
+          setOriginalImages([]);
+          setUpdatedImages([]);
+        } else {
+          // Fetch user's images from Firestore
+          const images = await fetchUserImages(user.uid);
+
+          // Separate images into original and updated based on parentImageId
+          const originalImgs = images.filter((img) => !img.parentImageId);
+          const updatedImgs = images.filter((img) => img.parentImageId);
+
+          setOriginalImages(originalImgs);
+          setUpdatedImages(updatedImgs);
+          console.log(
+            `Loaded ${originalImgs.length} original and ${updatedImgs.length} updated images`
+          );
+        }
       } catch (error) {
         console.error('Failed to load images from storage:', error);
         setErrorMessage('Failed to load saved images. Starting fresh.');
+        setOriginalImages([]);
+        setUpdatedImages([]);
       } finally {
         setIsLoadingData(false);
       }
     };
+
     loadImages();
-  }, []);
+  }, [user]);
 
   const handleSelectTask = useCallback((task: GeminiTask) => {
     setSelectedTaskName(task);
