@@ -30,7 +30,7 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({ onTextureSelect, onEr
       try {
         setIsLoadingTextures(true);
         const textures = await storageService.getTextures();
-        setAvailableTextures(textures);
+        setAvailableTextures(textures || []);
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to load textures';
         setUploadError(message);

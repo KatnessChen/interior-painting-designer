@@ -35,8 +35,6 @@ export const useImageProcessing = ({
       try {
         let generatedImage: ImageData;
 
-        console.log({ selectedTaskName });
-
         if (selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name) {
           if (!selectedColor) {
             setErrorMessage('Please select a color first.');

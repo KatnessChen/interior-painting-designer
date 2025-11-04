@@ -8,314 +8,17 @@ const STORAGE_KEYS = {
   UPDATED_PHOTOS: 'interior_designer_updated_photos',
 } as const;
 
-// IndexedDB configuration
-const DB_NAME = 'VizionStudioDB';
-const DB_VERSION = 2;
-const STORES = {
-  IMAGES: 'images',
-  COLORS: 'colors',
-  TEXTURES: 'textures',
-} as const;
-
-// IndexedDB wrapper class
-class IndexedDBManager {
-  private db: IDBDatabase | null = null;
-
-  async init(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-      // Add a timeout to prevent indefinite waiting
-      const timeout = setTimeout(() => {
-        reject(new Error('IndexedDB initialization timeout'));
-      }, 5000);
-
-      const cleanup = () => clearTimeout(timeout);
-
-      request.onerror = () => {
-        cleanup();
-        console.error('IndexedDB failed to open:', request.error);
-        reject(request.error);
-      };
-
-      request.onsuccess = () => {
-        cleanup();
-        this.db = request.result;
-        console.log('IndexedDB initialized successfully');
-        resolve();
-      };
-
-      request.onupgradeneeded = (event) => {
-        console.log('IndexedDB upgrading to version', DB_VERSION);
-        const db = (event.target as IDBOpenDBRequest).result;
-
-        // Create images store if it doesn't exist
-        if (!db.objectStoreNames.contains(STORES.IMAGES)) {
-          console.log('Creating IMAGES store');
-          const imageStore = db.createObjectStore(STORES.IMAGES, {
-            keyPath: 'id',
-          });
-          imageStore.createIndex('type', 'type', { unique: false });
-          imageStore.createIndex('timestamp', 'timestamp', { unique: false });
-          imageStore.createIndex('size', 'size', { unique: false });
-        }
-
-        // Create textures store if it doesn't exist
-        if (!db.objectStoreNames.contains(STORES.TEXTURES)) {
-          console.log('Creating TEXTURES store');
-          const textureStore = db.createObjectStore(STORES.TEXTURES, {
-            keyPath: 'id',
-          });
-          textureStore.createIndex('name', 'name', { unique: false });
-          textureStore.createIndex('timestamp', 'timestamp', { unique: false });
-        }
-
-        console.log('IndexedDB upgrade complete');
-      };
-    });
-  }
-
-  async saveImage(imageData: ImageData, type: 'original' | 'updated'): Promise<void> {
-    if (!this.db) await this.init();
-
-    return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([STORES.IMAGES], 'readwrite');
-      const store = transaction.objectStore(STORES.IMAGES);
-
-      // Convert base64 to Blob for more efficient storage
-      const binaryString = atob(imageData.base64);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-      const blob = new Blob([bytes], { type: imageData.mimeType });
-
-      const dataToStore = {
-        id: imageData.id,
-        name: imageData.name,
-        mimeType: imageData.mimeType,
-        blob: blob, // Store as Blob instead of base64 string
-        type,
-        timestamp: Date.now(),
-        size: blob.size, // Track file size
-      };
-
-      const request = store.put(dataToStore);
-
-      request.onerror = () => {
-        console.error('Failed to save image to IndexedDB:', request.error);
-        reject(request.error);
-      };
-
-      request.onsuccess = () => resolve();
-    });
-  }
-
-  async getImages(type?: 'original' | 'updated'): Promise<ImageData[]> {
-    if (!this.db) await this.init();
-
-    return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([STORES.IMAGES], 'readonly');
-      const store = transaction.objectStore(STORES.IMAGES);
-
-      let request: IDBRequest;
-
-      if (type) {
-        const index = store.index('type');
-        request = index.getAll(type);
-      } else {
-        request = store.getAll();
-      }
-
-      request.onerror = () => {
-        console.error('Failed to get images from IndexedDB:', request.error);
-        reject(request.error);
-      };
-
-      request.onsuccess = async () => {
-        const results = await Promise.all(
-          request.result.map(async (item: any) => {
-            // Convert Blob back to base64 for compatibility with existing components
-            let base64 = '';
-            if (item.blob) {
-              const arrayBuffer = await item.blob.arrayBuffer();
-              const bytes = new Uint8Array(arrayBuffer);
-              const binaryString = bytes.reduce(
-                (data, byte) => data + String.fromCharCode(byte),
-                ''
-              );
-              base64 = btoa(binaryString);
-            } else if (item.base64) {
-              // Fallback for old data stored as base64
-              base64 = item.base64;
-            }
-
-            return {
-              id: item.id,
-              name: item.name,
-              base64: base64,
-              mimeType: item.mimeType,
-            };
-          })
-        );
-        resolve(results);
-      };
-    });
-  }
-
-  async updateImageName(imageId: string, newName: string): Promise<void> {
-    if (!this.db) await this.init();
-
-    return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([STORES.IMAGES], 'readwrite');
-      const store = transaction.objectStore(STORES.IMAGES);
-      const getRequest = store.get(imageId);
-
-      getRequest.onerror = () => reject(getRequest.error);
-      getRequest.onsuccess = () => {
-        const entry = getRequest.result;
-        if (!entry) {
-          reject(new Error('Image not found in IndexedDB'));
-          return;
-        }
-        entry.name = newName;
-        const putReq = store.put(entry);
-        putReq.onerror = () => reject(putReq.error);
-        putReq.onsuccess = () => resolve();
-      };
-    });
-  }
-
-  async deleteImage(imageId: string): Promise<void> {
-    if (!this.db) await this.init();
-
-    return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([STORES.IMAGES], 'readwrite');
-      const store = transaction.objectStore(STORES.IMAGES);
-
-      const request = store.delete(imageId);
-
-      request.onerror = () => {
-        console.error('Failed to delete image from IndexedDB:', request.error);
-        reject(request.error);
-      };
-
-      request.onsuccess = () => resolve();
-    });
-  }
-
-  async saveTexture(texture: Texture): Promise<void> {
-    if (!this.db) await this.init();
-
-    return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([STORES.TEXTURES], 'readwrite');
-      const store = transaction.objectStore(STORES.TEXTURES);
-
-      const dataToStore = {
-        id: texture.id,
-        name: texture.name,
-        base64: texture.base64,
-        mimeType: texture.mimeType,
-        timestamp: Date.now(),
-      };
-
-      const request = store.put(dataToStore);
-
-      request.onerror = () => {
-        console.error('Failed to save texture to IndexedDB:', request.error);
-        reject(request.error);
-      };
-
-      request.onsuccess = () => resolve();
-    });
-  }
-
-  async getTextures(): Promise<Texture[]> {
-    if (!this.db) await this.init();
-
-    return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([STORES.TEXTURES], 'readonly');
-      const store = transaction.objectStore(STORES.TEXTURES);
-
-      const request = store.getAll();
-
-      request.onerror = () => {
-        console.error('Failed to get textures from IndexedDB:', request.error);
-        reject(request.error);
-      };
-
-      request.onsuccess = () => {
-        const results = request.result.map((item: any) => ({
-          id: item.id,
-          name: item.name,
-          base64: item.base64,
-          mimeType: item.mimeType,
-        }));
-        resolve(results);
-      };
-    });
-  }
-
-  async deleteTexture(textureId: string): Promise<void> {
-    if (!this.db) await this.init();
-
-    return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([STORES.TEXTURES], 'readwrite');
-      const store = transaction.objectStore(STORES.TEXTURES);
-
-      const request = store.delete(textureId);
-
-      request.onerror = () => {
-        console.error('Failed to delete texture from IndexedDB:', request.error);
-        reject(request.error);
-      };
-
-      request.onsuccess = () => resolve();
-    });
-  }
-}
-
 // Storage Service class
 class StorageService {
-  private indexedDB: IndexedDBManager;
-  private isIndexedDBSupported: boolean;
-
-  constructor() {
-    this.indexedDB = new IndexedDBManager();
-    this.isIndexedDBSupported = typeof window !== 'undefined' && 'indexedDB' in window;
-  }
+  constructor() {}
 
   // Initialize the storage service
   async init(): Promise<void> {
-    if (this.isIndexedDBSupported) {
-      try {
-        console.log('Initializing storage service...');
-        await this.indexedDB.init();
-        console.log('Storage service initialized successfully');
-      } catch (error) {
-        console.warn('IndexedDB initialization failed, attempting to recover:', error);
-        try {
-          // Try to delete and recreate the database
-          console.log('Attempting to delete old database and recreate...');
-          await new Promise<void>((resolve, reject) => {
-            const deleteRequest = indexedDB.deleteDatabase(DB_NAME);
-            deleteRequest.onsuccess = () => resolve();
-            deleteRequest.onerror = () => reject(deleteRequest.error);
-          });
-
-          // Reinitialize
-          this.indexedDB = new IndexedDBManager();
-          await this.indexedDB.init();
-          console.log('Database recovered and reinitialized');
-        } catch (recoveryError) {
-          console.warn('Failed to recover database, disabling IndexedDB:', recoveryError);
-          this.isIndexedDBSupported = false;
-        }
-      }
-    }
+    // Init Firestore
   }
 
   // Custom Colors Management
+  // TODO: save custom color to Firestore
   async saveCustomColors(colors: BenjaminMooreColor[]): Promise<void> {
     try {
       localStorage.setItem(STORAGE_KEYS.CUSTOM_COLORS, JSON.stringify(colors));
@@ -325,6 +28,7 @@ class StorageService {
     }
   }
 
+  // TODO: get custom color from Firestore
   async getCustomColors(): Promise<BenjaminMooreColor[]> {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.CUSTOM_COLORS);
@@ -347,97 +51,60 @@ class StorageService {
     await this.saveCustomColors(updatedColors);
   }
 
-  // Original Images Management
+  // TODO: Images Management by Firestore
   async saveOriginalImages(images: ImageData[]): Promise<void> {
-    if (!this.isIndexedDBSupported) {
-      throw new Error('IndexedDB not supported - cannot save images');
-    }
-
     try {
-      await Promise.all(images.map((img) => this.indexedDB.saveImage(img, 'original')));
     } catch (error) {
-      console.error('Failed to save images to IndexedDB:', error);
+      console.error('', error);
       throw error;
     }
   }
 
   async getOriginalImages(): Promise<ImageData[]> {
-    if (!this.isIndexedDBSupported) {
-      return [];
-    }
-
     try {
-      return await this.indexedDB.getImages('original');
     } catch (error) {
-      console.error('Failed to get images from IndexedDB:', error);
+      console.error('', error);
       return [];
     }
   }
 
   async addOriginalImage(image: ImageData): Promise<void> {
-    if (!this.isIndexedDBSupported) {
-      throw new Error('IndexedDB not supported - cannot save images');
-    }
-
     try {
-      await this.indexedDB.saveImage(image, 'original');
     } catch (error) {
-      console.error('Failed to save image to IndexedDB:', error);
+      console.error('', error);
       throw error;
     }
   }
 
   async removeOriginalImage(imageId: string): Promise<void> {
-    if (!this.isIndexedDBSupported) {
-      return;
-    }
-
     try {
-      await this.indexedDB.deleteImage(imageId);
     } catch (error) {
-      console.error('Failed to delete image from IndexedDB:', error);
+      console.error('', error);
       throw error;
     }
   }
 
   // Rename original image metadata (keeps blob intact)
   async renameOriginalImage(imageId: string, newName: string): Promise<void> {
-    if (!this.isIndexedDBSupported) {
-      // nothing to do if no IndexedDB; original images are not persisted
-      return;
-    }
-
     try {
-      await this.indexedDB.updateImageName(imageId, newName);
     } catch (error) {
-      console.error('Failed to rename image in IndexedDB:', error);
+      console.error('', error);
       throw error;
     }
   }
 
   // Rename updated image metadata (keeps blob intact)
   async renameUpdatedImage(imageId: string, newName: string): Promise<void> {
-    if (!this.isIndexedDBSupported) {
-      // nothing to do if no IndexedDB; updated images are not persisted
-      return;
-    }
-
     try {
-      await this.indexedDB.updateImageName(imageId, newName);
     } catch (error) {
-      console.error('Failed to rename updated image in IndexedDB:', error);
+      console.error('', error);
       throw error;
     }
   }
 
   // Updated Images Management
   async saveUpdatedImages(images: ImageData[]): Promise<void> {
-    if (!this.isIndexedDBSupported) {
-      throw new Error('IndexedDB not supported - cannot save images');
-    }
-
     try {
-      await Promise.all(images.map((img) => this.indexedDB.saveImage(img, 'updated')));
     } catch (error) {
       console.error('Failed to save updated images to IndexedDB:', error);
       throw error;
@@ -445,12 +112,7 @@ class StorageService {
   }
 
   async getUpdatedImages(): Promise<ImageData[]> {
-    if (!this.isIndexedDBSupported) {
-      return [];
-    }
-
     try {
-      return await this.indexedDB.getImages('updated');
     } catch (error) {
       console.error('Failed to get updated images from IndexedDB:', error);
       return [];
@@ -458,12 +120,7 @@ class StorageService {
   }
 
   async addUpdatedImage(image: ImageData): Promise<void> {
-    if (!this.isIndexedDBSupported) {
-      throw new Error('IndexedDB not supported - cannot save images');
-    }
-
     try {
-      await this.indexedDB.saveImage(image, 'updated');
     } catch (error) {
       console.error('Failed to save updated image to IndexedDB:', error);
       throw error;
@@ -471,12 +128,7 @@ class StorageService {
   }
 
   async removeUpdatedImage(imageId: string): Promise<void> {
-    if (!this.isIndexedDBSupported) {
-      return;
-    }
-
     try {
-      await this.indexedDB.deleteImage(imageId);
     } catch (error) {
       console.error('Failed to delete updated image from IndexedDB:', error);
       throw error;
@@ -492,36 +144,12 @@ class StorageService {
       console.error('Failed to clear localStorage:', error);
     }
 
-    // Clear IndexedDB (clear all image data)
-    if (this.isIndexedDBSupported) {
-      try {
-        // Delete and recreate the database for a clean slate
-        if (this.indexedDB['db']) {
-          this.indexedDB['db'].close();
-        }
-
-        await new Promise<void>((resolve, reject) => {
-          const deleteRequest = indexedDB.deleteDatabase(DB_NAME);
-          deleteRequest.onerror = () => reject(deleteRequest.error);
-          deleteRequest.onsuccess = () => resolve();
-        });
-
-        // Reinitialize
-        await this.indexedDB.init();
-      } catch (error) {
-        console.error('Failed to clear IndexedDB:', error);
-      }
-    }
+    // TODO: Clear Images
   }
 
   // Textures Management
   async addTexture(texture: Texture): Promise<void> {
-    if (!this.isIndexedDBSupported) {
-      throw new Error('IndexedDB not supported - cannot save textures');
-    }
-
     try {
-      await this.indexedDB.saveTexture(texture);
     } catch (error) {
       console.error('Failed to save texture to IndexedDB:', error);
       throw error;
@@ -529,12 +157,7 @@ class StorageService {
   }
 
   async getTextures(): Promise<Texture[]> {
-    if (!this.isIndexedDBSupported) {
-      return [];
-    }
-
     try {
-      return await this.indexedDB.getTextures();
     } catch (error) {
       console.error('Failed to get textures from IndexedDB:', error);
       return [];
@@ -542,12 +165,7 @@ class StorageService {
   }
 
   async removeTexture(textureId: string): Promise<void> {
-    if (!this.isIndexedDBSupported) {
-      return;
-    }
-
     try {
-      await this.indexedDB.deleteTexture(textureId);
     } catch (error) {
       console.error('Failed to delete texture from IndexedDB:', error);
       throw error;
@@ -560,7 +178,6 @@ class StorageService {
     originalImagesCount: number;
     updatedImagesCount: number;
     texturesCount: number;
-    isIndexedDBSupported: boolean;
   }> {
     const customColors = await this.getCustomColors();
     const originalImages = await this.getOriginalImages();
@@ -572,7 +189,6 @@ class StorageService {
       originalImagesCount: originalImages.length,
       updatedImagesCount: updatedImages.length,
       texturesCount: textures.length,
-      isIndexedDBSupported: this.isIndexedDBSupported,
     };
   }
 }

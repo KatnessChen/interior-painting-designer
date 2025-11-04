@@ -69,8 +69,8 @@ const LandingPage: React.FC = () => {
           storageService.getOriginalImages(),
           storageService.getUpdatedImages(),
         ]);
-        setOriginalImages(originalImgs);
-        setUpdatedImages(updatedImgs);
+        setOriginalImages(originalImgs || []);
+        setUpdatedImages(updatedImgs || []);
       } catch (error) {
         console.error('Failed to load images from storage:', error);
         setErrorMessage('Failed to load saved images. Starting fresh.');
