@@ -8,6 +8,7 @@ import TaskSelector from '../components/TaskSelector';
 import TextureSelector from '../components/TextureSelector';
 import ImagesComparingModal from '../components/ImagesComparingModal';
 import ImagesComparingButton from '../components/ImagesComparingButton';
+import AlertModal from '../components/AlertModal';
 import { GEMINI_TASKS, GeminiTaskName, GeminiTask } from '../services/gemini/geminiTasks';
 import { BenjaminMooreColor, deprecatedImageData } from '../types';
 import { storageService } from '../services/storageService';
@@ -52,6 +53,23 @@ const LandingPage: React.FC = () => {
   // State for compare photos modal
   const [showCompareModal, setShowCompareModal] = useState<boolean>(false);
 
+  // State for alert modal
+  const [showAlert, setShowAlert] = useState<boolean>(false);
+  const [alertType, setAlertType] = useState<'error' | 'success' | 'info' | 'warning'>('error');
+  const [alertTitle, setAlertTitle] = useState<string>('');
+  const [alertMessage, setAlertMessage] = useState<string>('');
+
+  // Helper function to show alert
+  const showAlertModal = useCallback(
+    (type: 'error' | 'success' | 'info' | 'warning', title: string, message: string) => {
+      setAlertType(type);
+      setAlertTitle(title);
+      setAlertMessage(message);
+      setShowAlert(true);
+    },
+    []
+  );
+
   // Use image processing hook
   const { processImage, processingImage, errorMessage, setErrorMessage } = useImageProcessing({
     userId: user?.uid,
@@ -59,6 +77,13 @@ const LandingPage: React.FC = () => {
     selectedColor,
     selectedTexture,
   });
+
+  // Show alert when errorMessage changes
+  useEffect(() => {
+    if (errorMessage) {
+      showAlertModal('error', 'Error', errorMessage);
+    }
+  }, [errorMessage, showAlertModal]);
 
   // Load images from storage on mount
   useEffect(() => {
