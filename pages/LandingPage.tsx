@@ -461,24 +461,6 @@ const LandingPage: React.FC = () => {
     });
   }, [selectedUpdatedImageIds, updatedImages]);
 
-  const handleBulkMoveToOriginal = useCallback(async () => {
-    if (selectedUpdatedImageIds.size === 0) return;
-
-    try {
-      const imagesToMove = updatedImages.filter((img) => selectedUpdatedImageIds.has(img.id));
-
-      // TODO: Add images to original images in Firestore
-      // Update local state - add to original and remove from updated
-      setOriginalImages((prev) => [...prev, ...imagesToMove]);
-      setUpdatedImages((prev) => prev.filter((img) => !selectedUpdatedImageIds.has(img.id)));
-      setSelectedUpdatedImageIds(new Set());
-      setErrorMessage(null);
-    } catch (error) {
-      console.error('Failed to move images:', error);
-      setErrorMessage('Failed to move images. Please try again.');
-    }
-  }, [selectedUpdatedImageIds, updatedImages]);
-
   const handleClearUpdatedSelection = useCallback(() => {
     setSelectedUpdatedImageIds(new Set());
   }, []);
@@ -590,7 +572,6 @@ const LandingPage: React.FC = () => {
                 enableMultiSelect={true}
                 onBulkDelete={handleBulkDeleteUpdated}
                 onBulkDownload={handleBulkDownloadUpdated}
-                onBulkMove={handleBulkMoveToOriginal}
                 onClearSelection={handleClearUpdatedSelection}
               />
             </div>

@@ -29,7 +29,6 @@ interface GalleryProps {
   enableMultiSelect?: boolean; // Enable multi-select mode
   onBulkDelete?: () => void; // Callback for bulk delete
   onBulkDownload?: () => void; // Callback for bulk download
-  onBulkMove?: () => void; // Callback for bulk move
   onClearSelection?: () => void; // Callback for clearing all selections
   hideDownloadAndMove?: boolean; // Hide Download and Move buttons in multi-select
 }
@@ -53,7 +52,6 @@ const Gallery: React.FC<GalleryProps> = ({
   enableMultiSelect = false,
   onBulkDelete,
   onBulkDownload,
-  onBulkMove,
   onClearSelection,
   hideDownloadAndMove = false,
 }) => {
@@ -108,14 +106,6 @@ const Gallery: React.FC<GalleryProps> = ({
                 >
                   <DownloadIcon sx={{ fontSize: 18, marginRight: 0.5 }} />
                   Download
-                </button>
-                <button
-                  onClick={onBulkMove}
-                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                  title="Move selected photos"
-                >
-                  <MoveIcon sx={{ fontSize: 18, marginRight: 0.5 }} />
-                  Move to Original
                 </button>
               </>
             )}
