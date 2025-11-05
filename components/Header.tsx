@@ -1,118 +1,53 @@
 import React, { useState } from 'react';
-import { AppBar, Toolbar, Typography, Avatar, IconButton, Popover, Box } from '@mui/material';
-import StorageIcon from '@mui/icons-material/Storage';
-import { useAuth } from '../contexts/AuthContext';
 import AuthPanel from './AuthPanel';
-import StorageManager from './StorageManager';
+import { useAuth } from '../contexts/AuthContext';
 
 const Header: React.FC = () => {
   const { user } = useAuth();
-  const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
-  const [showStorageManager, setShowStorageManager] = useState(false);
+  const [isAuthPanelOpen, setIsAuthPanelOpen] = useState(false);
 
-  const handleProfileClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    setAnchorEl(event.currentTarget);
+  const toggleAuthPopover = () => {
+    setIsAuthPanelOpen((isOpen) => !isOpen);
   };
-
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-
-  const open = Boolean(anchorEl);
 
   return (
     <>
-      <AppBar
-        position="fixed"
-        sx={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          boxShadow: '0 4px 20px 0 rgba(0,0,0,0.1)',
-        }}
-      >
-        <Toolbar sx={{ justifyContent: 'space-between', p: 2 }}>
+      {/* Header Bar */}
+      <nav className="fixed top-0 left-0 w-full z-50 bg-gradient-to-r from-indigo-400 to-purple-600 shadow-lg">
+        <div className="flex items-center justify-between px-6 py-4">
           {/* Brand Section */}
-          <Box>
-            <Typography
-              variant="h5"
-              component="div"
-              sx={{
-                fontWeight: 700,
-                color: 'white',
-                letterSpacing: '0.5px',
-              }}
-            >
-              Vizion Studio
-            </Typography>
-            <Typography
-              sx={{
-                color: 'rgba(255, 255, 255, 0.85)',
-                fontWeight: 500,
-              }}
-            >
+          <div className="flex items-center">
+            <div className="text-2xl text-white">Vizion</div>
+            <div className="text-white/85 font-light mt-1 ml-2">
               Your AI Interior Design Simulator
-            </Typography>
-          </Box>
-
+            </div>
+          </div>
           {/* Right Section - Storage Manager & Profile */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <IconButton
-              onClick={() => setShowStorageManager(true)}
-              sx={{
-                color: 'white',
-                '&:hover': {
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                },
-              }}
-              title="Manage Storage"
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleAuthPopover}
+              className="p-0 border-2 border-white/30 rounded-full hover:border-white/50"
             >
-              <StorageIcon />
-            </IconButton>
-
-            <IconButton
-              onClick={handleProfileClick}
-              sx={{
-                p: 0,
-                border: '2px solid rgba(255, 255, 255, 0.3)',
-                '&:hover': {
-                  border: '2px solid rgba(255, 255, 255, 0.5)',
-                },
-              }}
-            >
-              <Avatar
+              <img
                 alt={user?.displayName || 'User'}
                 src={user?.photoURL || undefined}
-                sx={{ width: 40, height: 40 }}
+                className="w-10 h-10 rounded-full"
               />
-            </IconButton>
-          </Box>
-        </Toolbar>
-      </AppBar>
-
-      {/* Toolbar spacer to prevent content from going under fixed AppBar */}
-      <Toolbar />
-
+            </button>
+          </div>
+        </div>
+      </nav>
+      {/* Spacer to prevent content from going under fixed header */}
+      <div className="w-full" style={{ height: 76 }} />
       {/* Auth Panel Popover */}
-      <Popover
-        open={open}
-        anchorEl={anchorEl}
-        onClose={handleClose}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'right',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-        sx={{ mt: 1 }}
-      >
-        <Box sx={{ width: 400, maxWidth: '90vw' }}>
+      {isAuthPanelOpen && (
+        <div
+          className="absolute right-6 bg-white rounded-lg shadow-xl border border-gray-200"
+          style={{ top: 70, width: 400, maxWidth: '90vw', zIndex: 1000 }}
+        >
           <AuthPanel />
-        </Box>
-      </Popover>
-
-      {/* Storage Manager Modal */}
-      <StorageManager isOpen={showStorageManager} onClose={() => setShowStorageManager(false)} />
+        </div>
+      )}
     </>
   );
 };

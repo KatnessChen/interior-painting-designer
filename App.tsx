@@ -2,10 +2,10 @@ import React, { useEffect } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider } from './contexts/AuthContext';
 import { SpeedInsights } from '@vercel/speed-insights/react';
-import { Box } from '@mui/material';
 import Header from './components/Header';
 import LandingPage from './pages/LandingPage';
 import { deprecatedStorageService } from './services/deprecatedStorageService';
+import AsideSection from './components/layout/AsideSection';
 
 const App: React.FC = () => {
   const googleClientId = process.env.VITE_GOOGLE_CLIENT_ID || '';
@@ -26,12 +26,17 @@ const App: React.FC = () => {
   return (
     <GoogleOAuthProvider clientId={googleClientId}>
       <AuthProvider>
-        <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <div className="min-h-screen flex flex-col">
           <Header />
-          <Box sx={{ flex: 1 }}>
-            <LandingPage />
-          </Box>
-        </Box>
+          <div className="flex-1 flex" style={{ maxHeight: 'calc(100vh - 64px)' }}>
+            {/* Fixed Aside Section */}
+            <AsideSection />
+            {/* Main Content with left margin to avoid overlap */}
+            <div className="flex-1 overflow-scroll">
+              <LandingPage />
+            </div>
+          </div>
+        </div>
         <SpeedInsights />
       </AuthProvider>
     </GoogleOAuthProvider>

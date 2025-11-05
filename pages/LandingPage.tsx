@@ -578,7 +578,7 @@ const LandingPage: React.FC = () => {
   }, [selectedOriginalImageIds, selectedUpdatedImageIds, originalImages, updatedImages]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8 mt-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
       <div className="container mx-auto max-w-6xl">
         {isLoadingData && (
           <div className="flex items-center justify-center py-12">
