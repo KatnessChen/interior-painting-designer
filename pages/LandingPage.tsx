@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import ColorSelector from '../components/ColorSelector';
-import ConfirmationModal from '../components/ConfirmationModal';
+import ConfirmImageUpdateModal from '../components/ConfirmImageUpdateModal';
 import CustomPromptModal from '../components/CustomPromptModal';
 import Gallery from '../components/Gallery';
 import ProcessButton from '../components/ProcessButton';
@@ -9,9 +9,15 @@ import TextureSelector from '../components/TextureSelector';
 import ImagesComparingModal from '../components/ImagesComparingModal';
 import ImagesComparingButton from '../components/ImagesComparingButton';
 import AlertModal from '../components/AlertModal';
+import GenericConfirmModal from '../components/GenericConfirmModal';
 import { GEMINI_TASKS, GeminiTaskName, GeminiTask } from '../services/gemini/geminiTasks';
 import { BenjaminMooreColor, ImageData, ImageOperation } from '../types';
-import { createImage, fetchUserImages, createProcessedImage } from '../services/firestoreService';
+import {
+  createImage,
+  fetchUserImages,
+  createProcessedImage,
+  deleteImages,
+} from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 import { useImageProcessing } from '../hooks/useImageProcessing';
 import { formatImageOperationData } from '../utils/imageOperationUtils';
@@ -69,6 +75,15 @@ const LandingPage: React.FC = () => {
   const [alertType, setAlertType] = useState<'error' | 'success' | 'info' | 'warning'>('error');
   const [alertTitle, setAlertTitle] = useState<string>('');
   const [alertMessage, setAlertMessage] = useState<string>('');
+
+  // State for generic confirm modal (for delete operations)
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState<boolean>(false);
+  const [deleteConfirmConfig, setDeleteConfirmConfig] = useState<{
+    title: string;
+    message: string;
+    onConfirm: () => Promise<void>;
+  } | null>(null);
+  const [isDeletingImages, setIsDeletingImages] = useState<boolean>(false);
 
   // Helper function to show alert
   const showAlertModal = useCallback(
@@ -176,34 +191,81 @@ const LandingPage: React.FC = () => {
     [user]
   );
 
-  const handleRemoveUpdatedImage = useCallback(async (imageId: string) => {
-    try {
-      // TODO: Delete image from Firestore
-      // Update local state
-      setUpdatedImages((prev) => prev.filter((image) => image.id !== imageId));
-    } catch (error) {
-      console.error('Failed to remove image:', error);
-      setErrorMessage('Failed to remove image.');
-    }
-  }, []);
+  const handleRemoveUpdatedImage = useCallback(
+    async (imageId: string) => {
+      if (!user) {
+        setErrorMessage('Please log in to delete images.');
+        return;
+      }
+
+      // Show confirmation modal
+      const imageName = updatedImages.find((img) => img.id === imageId)?.name || 'this image';
+      setDeleteConfirmConfig({
+        title: 'Delete Updated Photo',
+        message: `Are you sure you want to delete "${imageName}"?\n\nThis action cannot be undone.`,
+        onConfirm: async () => {
+          try {
+            setIsDeletingImages(true);
+            // Delete image from Firestore and Firebase Storage
+            await deleteImages(user.uid, [imageId]);
+
+            // Update local state
+            setUpdatedImages((prev) => prev.filter((image) => image.id !== imageId));
+
+            setShowDeleteConfirmModal(false);
+            setDeleteConfirmConfig(null);
+          } catch (error) {
+            console.error('Failed to remove image:', error);
+            setErrorMessage('Failed to remove image.');
+          } finally {
+            setIsDeletingImages(false);
+          }
+        },
+      });
+      setShowDeleteConfirmModal(true);
+    },
+    [user, updatedImages]
+  );
 
   const handleRemoveOriginalImage = useCallback(
     async (imageId: string) => {
-      try {
-        // TODO: Delete image from Firestore
-        // Update local state
-        setOriginalImages((prev) => prev.filter((image) => image.id !== imageId));
-
-        // Clear selection if the removed image was selected
-        if (selectedOriginalImageIds.has(imageId)) {
-          setSelectedOriginalImageIds(new Set());
-        }
-      } catch (error) {
-        console.error('Failed to remove image:', error);
-        setErrorMessage('Failed to remove image.');
+      if (!user) {
+        setErrorMessage('Please log in to delete images.');
+        return;
       }
+
+      // Show confirmation modal
+      const imageName = originalImages.find((img) => img.id === imageId)?.name || 'this image';
+      setDeleteConfirmConfig({
+        title: 'Delete Original Photo',
+        message: `Are you sure you want to delete "${imageName}"?\n\nThis action cannot be undone.`,
+        onConfirm: async () => {
+          try {
+            setIsDeletingImages(true);
+            // Delete image from Firestore and Firebase Storage
+            await deleteImages(user.uid, [imageId]);
+
+            // Update local state
+            setOriginalImages((prev) => prev.filter((image) => image.id !== imageId));
+
+            // Clear selection if the removed image was selected
+            if (selectedOriginalImageIds.has(imageId)) {
+              setSelectedOriginalImageIds(new Set());
+            }
+
+            setShowDeleteConfirmModal(false);
+            setDeleteConfirmConfig(null);
+          } catch (error) {
+            console.error('Failed to remove image:', error);
+            setErrorMessage('Failed to remove image.');
+          } finally {
+            setIsDeletingImages(false);
+          }
+        },
+      });
+      setShowDeleteConfirmModal(true);
     },
-    [selectedOriginalImageIds]
+    [user, originalImages, selectedOriginalImageIds]
   );
 
   const handleRenameOriginalImage = useCallback(async (imageId: string, newName: string) => {
@@ -379,17 +441,38 @@ const LandingPage: React.FC = () => {
   const handleBulkDeleteOriginal = useCallback(async () => {
     if (selectedOriginalImageIds.size === 0) return;
 
-    try {
-      // TODO: Delete images from Firestore
-      // Update local state
-      setOriginalImages((prev) => prev.filter((img) => !selectedOriginalImageIds.has(img.id)));
-      setSelectedOriginalImageIds(new Set());
-      setErrorMessage(null);
-    } catch (error) {
-      console.error('Failed to delete images:', error);
-      setErrorMessage('Failed to delete images.');
+    if (!user) {
+      setErrorMessage('Please log in to delete images.');
+      return;
     }
-  }, [selectedOriginalImageIds]);
+
+    // Show confirmation modal
+    setDeleteConfirmConfig({
+      title: 'Delete Photo',
+      message: `Are you sure you want to delete ${selectedOriginalImageIds.size} selected original photo(s)?\n\nThis action cannot be undone.`,
+      onConfirm: async () => {
+        try {
+          setIsDeletingImages(true);
+          // Delete images from Firestore and Firebase Storage
+          await deleteImages(user.uid, Array.from(selectedOriginalImageIds));
+
+          // Update local state
+          setOriginalImages((prev) => prev.filter((img) => !selectedOriginalImageIds.has(img.id)));
+          setSelectedOriginalImageIds(new Set());
+          setErrorMessage(null);
+
+          setShowDeleteConfirmModal(false);
+          setDeleteConfirmConfig(null);
+        } catch (error) {
+          console.error('Failed to delete images:', error);
+          setErrorMessage('Failed to delete images.');
+        } finally {
+          setIsDeletingImages(false);
+        }
+      },
+    });
+    setShowDeleteConfirmModal(true);
+  }, [selectedOriginalImageIds, user]);
 
   const handleClearOriginalSelection = useCallback(() => {
     setSelectedOriginalImageIds(new Set());
@@ -411,17 +494,38 @@ const LandingPage: React.FC = () => {
   const handleBulkDeleteUpdated = useCallback(async () => {
     if (selectedUpdatedImageIds.size === 0) return;
 
-    try {
-      // TODO: Delete images from Firestore
-      // Update local state
-      setUpdatedImages((prev) => prev.filter((img) => !selectedUpdatedImageIds.has(img.id)));
-      setSelectedUpdatedImageIds(new Set());
-      setErrorMessage(null);
-    } catch (error) {
-      console.error('Failed to delete images:', error);
-      setErrorMessage('Failed to delete images.');
+    if (!user) {
+      setErrorMessage('Please log in to delete images.');
+      return;
     }
-  }, [selectedUpdatedImageIds]);
+
+    // Show confirmation modal
+    setDeleteConfirmConfig({
+      title: 'Delete Photo',
+      message: `Are you sure you want to delete ${selectedUpdatedImageIds.size} selected updated photo(s)?\n\nThis action cannot be undone.`,
+      onConfirm: async () => {
+        try {
+          setIsDeletingImages(true);
+          // Delete images from Firestore and Firebase Storage
+          await deleteImages(user.uid, Array.from(selectedUpdatedImageIds));
+
+          // Update local state
+          setUpdatedImages((prev) => prev.filter((img) => !selectedUpdatedImageIds.has(img.id)));
+          setSelectedUpdatedImageIds(new Set());
+          setErrorMessage(null);
+
+          setShowDeleteConfirmModal(false);
+          setDeleteConfirmConfig(null);
+        } catch (error) {
+          console.error('Failed to delete images:', error);
+          setErrorMessage('Failed to delete images.');
+        } finally {
+          setIsDeletingImages(false);
+        }
+      },
+    });
+    setShowDeleteConfirmModal(true);
+  }, [selectedUpdatedImageIds, user]);
 
   const handleBulkDownloadUpdated = useCallback(() => {
     if (selectedUpdatedImageIds.size === 0) return;
@@ -554,7 +658,7 @@ const LandingPage: React.FC = () => {
           </>
         )}
 
-        <ConfirmationModal
+        <ConfirmImageUpdateModal
           isOpen={showConfirmationModal}
           originalImage={selectedOriginalImage}
           image={generatedImage}
@@ -580,6 +684,24 @@ const LandingPage: React.FC = () => {
           images={getSelectedPhotosForComparison()}
           onClose={() => setShowCompareModal(false)}
         />
+
+        {/* Generic Delete Confirmation Modal */}
+        {deleteConfirmConfig && (
+          <GenericConfirmModal
+            isOpen={showDeleteConfirmModal}
+            title={deleteConfirmConfig.title}
+            message={deleteConfirmConfig.message}
+            confirmButtonText="Delete"
+            cancelButtonText="Cancel"
+            confirmButtonColor="red"
+            onConfirm={deleteConfirmConfig.onConfirm}
+            onCancel={() => {
+              setShowDeleteConfirmModal(false);
+              setDeleteConfirmConfig(null);
+            }}
+            isLoading={isDeletingImages}
+          />
+        )}
 
         {/* Alert Modal */}
         <AlertModal

@@ -7,6 +7,7 @@ import {
   query,
   where,
   getDocs,
+  updateDoc,
 } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { app } from '../config/firebaseConfig';
@@ -132,7 +133,7 @@ export async function fetchUserImages(userId: string): Promise<ImageData[]> {
   try {
     console.log('Fetching images from Firestore for user:', userId);
 
-    // Create a reference to the images subcollection
+    // Create a reference to the images sub-collection
     const imagesRef = collection(db, 'users', userId, 'images');
 
     // Query for non-deleted images
@@ -229,5 +230,54 @@ export async function createProcessedImage(
       throw new Error(`Failed to create processed image: ${error.message}`);
     }
     throw new Error('Failed to create processed image in Firebase.');
+  }
+}
+
+/**
+ * Soft deletes images by marking them as deleted in Firestore.
+ * Keeps the image file in Firebase Storage for potential recovery or archival.
+ *
+ * @param userId The ID of the user.
+ * @param imageIds The IDs of the images to delete.
+ */
+export async function deleteImages(userId: string, imageIds: string[]): Promise<void> {
+  if (!userId) {
+    throw new Error('User ID is required to delete images.');
+  }
+
+  if (imageIds.length === 0) {
+    return;
+  }
+
+  try {
+    console.log(`Soft deleting ${imageIds.length} images for user ${userId}`);
+
+    // Mark each image as deleted in Firestore
+    for (const imageId of imageIds) {
+      try {
+        const docRef = doc(db, 'users', userId, 'images', imageId);
+        const now = new Date();
+
+        // Update the document to mark it as deleted
+        await updateDoc(docRef, {
+          isDeleted: true,
+          deletedAt: Timestamp.fromDate(now),
+          updatedAt: Timestamp.fromDate(now),
+        });
+
+        console.log(`Soft deleted image: ${imageId}`);
+      } catch (error) {
+        console.error(`Failed to delete image ${imageId}:`, error);
+        // Continue with next image even if one fails
+      }
+    }
+
+    console.log(`Completed soft deletion of ${imageIds.length} images`);
+  } catch (error) {
+    console.error('Failed to delete images:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to delete images: ${error.message}`);
+    }
+    throw new Error('Failed to delete images from Firebase.');
   }
 }

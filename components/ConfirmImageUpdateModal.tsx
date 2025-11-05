@@ -1,7 +1,7 @@
 import React from 'react';
 import { deprecatedImageData } from '../types';
 
-interface ConfirmationModalProps {
+interface ConfirmImageUpdateModalProps {
   isOpen: boolean;
   originalImage: deprecatedImageData | null; // New prop for the original image
   image: deprecatedImageData | null; // This is the generated/recolored image
@@ -10,7 +10,7 @@ interface ConfirmationModalProps {
   colorName: string;
 }
 
-const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
+const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
   isOpen,
   originalImage, // Destructure new prop
   image,
@@ -76,4 +76,4 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   );
 };
 
-export default ConfirmationModal;
+export default ConfirmImageUpdateModal;
