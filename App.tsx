@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider } from './contexts/AuthContext';
 import { SpeedInsights } from '@vercel/speed-insights/react';
-import Header from './components/Header';
+import Header from './components/layout/Header';
 import LandingPage from './pages/LandingPage';
 import { deprecatedStorageService } from './services/deprecatedStorageService';
 import AsideSection from './components/layout/AsideSection';

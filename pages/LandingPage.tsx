@@ -578,7 +578,7 @@ const LandingPage: React.FC = () => {
   }, [selectedOriginalImageIds, selectedUpdatedImageIds, originalImages, updatedImages]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+    <div className="min-h-screen bg-gray-100 p-6">
       <div className="container mx-auto max-w-6xl">
         {isLoadingData && (
           <div className="flex items-center justify-center py-12">
@@ -641,7 +641,7 @@ const LandingPage: React.FC = () => {
 
             <div className="mt-8">
               <Gallery
-                title="3. Updated Photos (Download your favorites)"
+                title="3. Updated Photos"
                 images={updatedImages}
                 selectedImageIds={selectedUpdatedImageIds}
                 onSelectMultiple={handleSelectUpdatedImage}

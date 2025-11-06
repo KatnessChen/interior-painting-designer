@@ -80,16 +80,6 @@ const AuthPanel: React.FC = () => {
           </Typography>
 
           <Stack spacing={2} sx={{ mb: 3 }}>
-            {user?.photoURL && (
-              <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-                <Avatar
-                  alt={user.displayName || 'User'}
-                  src={user.photoURL}
-                  sx={{ width: 80, height: 80 }}
-                />
-              </Box>
-            )}
-
             <Box>
               <Typography variant="subtitle2" color="textSecondary">
                 Name
@@ -103,15 +93,6 @@ const AuthPanel: React.FC = () => {
               </Typography>
               <Typography variant="body1">{user?.email}</Typography>
             </Box>
-
-            {/* <Box>
-                <Typography variant="subtitle2" color="textSecondary">
-                  User ID
-                </Typography>
-                <Typography variant="caption" sx={{ wordBreak: 'break-all' }}>
-                  {user?.uid}
-                </Typography>
-              </Box> */}
           </Stack>
 
           <Divider sx={{ my: 3 }} />

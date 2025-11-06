@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import AuthPanel from './AuthPanel';
-import { useAuth } from '../contexts/AuthContext';
+import AuthPanel from '../AuthPanel';
+import { useAuth } from '../../contexts/AuthContext';
 
 const Header: React.FC = () => {
   const { user } = useAuth();
@@ -17,10 +17,8 @@ const Header: React.FC = () => {
         <div className="flex items-center justify-between px-6 py-4">
           {/* Brand Section */}
           <div className="flex items-center">
-            <div className="text-2xl text-white">Vizion</div>
-            <div className="text-white/85 font-light mt-1 ml-2">
-              Your AI Interior Design Simulator
-            </div>
+            <div className="text-2xl text-white/85">Vizion</div>
+            <div className="text-white/70 font-light mt-1 ml-2">Your AI Interior Designer</div>
           </div>
           {/* Right Section - Storage Manager & Profile */}
           <div className="flex items-center gap-2">
@@ -38,7 +36,7 @@ const Header: React.FC = () => {
         </div>
       </nav>
       {/* Spacer to prevent content from going under fixed header */}
-      <div className="w-full" style={{ height: 76 }} />
+      <div className="w-full" style={{ height: 'var(--header-height)' }} />
       {/* Auth Panel Popover */}
       {isAuthPanelOpen && (
         <div

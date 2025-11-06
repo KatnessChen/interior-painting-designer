@@ -124,7 +124,7 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({ selectedColor, onSelectCo
 
   return (
     <div className="p-4 bg-white rounded-lg shadow-md mb-6">
-      <h2 className="text-xl font-semibold mb-4 text-gray-800">1. Select a Color</h2>
+      <h2 className="text-lg mb-4 text-gray-800">1. Select a Color</h2>
 
       {isLoading ? (
         <div className="flex items-center justify-center py-8">
@@ -171,7 +171,7 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({ selectedColor, onSelectCo
             </div>
             {/* New section for adding custom colors */}
             <div className="pt-4 border-t border-gray-200 md:pl-4 md:pt-0 md:border-l md:border-t-0">
-              <h3 className="text-lg font-semibold mb-3 text-gray-800">Add Custom Color</h3>
+              <h3 className="text-lg mb-3 text-gray-800">Add Custom Color</h3>
               <div className="space-y-3">
                 <div>
                   <label htmlFor="newColorName" className="block text-sm font-medium text-gray-700">

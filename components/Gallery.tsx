@@ -91,7 +91,7 @@ const Gallery: React.FC<GalleryProps> = ({
   return (
     <div className="p-4 bg-white rounded-lg shadow-md">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-gray-800">{title}</h2>
+        <h2 className="text-lg text-gray-800">{title}</h2>
         {enableMultiSelect && hasSelection && (
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-600">{selectedImageIds.size} selected</span>
