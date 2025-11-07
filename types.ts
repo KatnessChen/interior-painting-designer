@@ -16,7 +16,9 @@ export interface deprecatedImageData {
 export interface ImageData {
   id: string;
   name: string;
-  roomId: string | null;
+
+  // The room this image belongs to
+  roomId: string;
 
   // Evolution chain
   evolutionChain: ImageOperation[];
@@ -96,4 +98,19 @@ export interface User {
     [key in GeminiTaskName]: number;
   };
   lastLoginAt: Date;
+}
+
+export interface Room {
+  id: string;
+  homeId: string;
+  name: string;
+  images: ImageData[];
+  createdAt: Date;
+}
+
+export interface Home {
+  id: string;
+  name: string;
+  rooms: Room[];
+  createdAt: Date;
 }

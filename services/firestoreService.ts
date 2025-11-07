@@ -7,11 +7,17 @@ import {
   query,
   where,
   getDocs,
+  getDoc,
   updateDoc,
+  deleteDoc,
+  writeBatch,
+  arrayUnion,
+  arrayRemove,
+  orderBy,
 } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { app } from '../config/firebaseConfig';
-import { ImageData, ImageOperation } from '../types';
+import { ImageData, ImageOperation, Home, Room } from '../types';
 
 // Initialize Firestore and Storage with the shared Firebase app instance
 export const db = getFirestore(app);
@@ -279,5 +285,344 @@ export async function deleteImages(userId: string, imageIds: string[]): Promise<
       throw new Error(`Failed to delete images: ${error.message}`);
     }
     throw new Error('Failed to delete images from Firebase.');
+  }
+}
+
+/**
+ * Creates a new home in Firestore for a user.
+ *
+ * @param userId The ID of the user.
+ * @param homeName The name of the home.
+ * @returns The newly created Home object.
+ */
+export async function createHome(userId: string, homeName: string): Promise<Home> {
+  if (!userId) {
+    throw new Error('User ID is required to create a home.');
+  }
+
+  if (!homeName.trim()) {
+    throw new Error('Home name is required.');
+  }
+
+  try {
+    const homeId = crypto.randomUUID();
+    const now = new Date();
+    const newHome: Home = {
+      id: homeId,
+      name: homeName.trim(),
+      rooms: [],
+      createdAt: now,
+    };
+
+    const docRef = doc(db, 'users', userId, 'homes', homeId);
+    await setDoc(docRef, {
+      ...newHome,
+      createdAt: Timestamp.fromDate(now),
+    });
+
+    console.log('Home created in Firestore:', homeId);
+    return newHome;
+  } catch (error) {
+    console.error('Failed to create home:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to create home: ${error.message}`);
+    }
+    throw new Error('Failed to create home in Firebase.');
+  }
+}
+
+/**
+ * Fetches all homes for a specific user from Firestore.
+ *
+ * @param userId The ID of the user.
+ * @returns An array of Home objects (note: Home type doesn't include rooms array, but this fetches all room data for caching).
+ */
+export async function fetchHomes(userId: string): Promise<Home[]> {
+  if (!userId) {
+    throw new Error('User ID is required to fetch homes.');
+  }
+
+  try {
+    console.log('Fetching homes with rooms from Firestore for user:', userId);
+
+    const homesRef = collection(db, 'users', userId, 'homes');
+    const q = query(homesRef, orderBy('createdAt', 'desc'));
+    const homesSnapshot = await getDocs(q);
+
+    const homes: Home[] = homesSnapshot.docs.map((homeDoc) => {
+      const homeData = homeDoc.data();
+      const homeName = homeData.name;
+      // Sort rooms by createdAt in descending order
+      const rooms = (homeData.rooms || []).sort(
+        (a: Room, b: Room) =>
+          (b.createdAt as unknown as Timestamp).toMillis() -
+          (a.createdAt as unknown as Timestamp).toMillis()
+      );
+
+      return {
+        id: homeDoc.id,
+        name: homeName,
+        rooms,
+        createdAt: (homeData.createdAt as Timestamp).toDate(),
+      };
+    });
+
+    console.log('Homes and rooms fetched from Firestore:', homes.length, 'homes');
+    return homes;
+  } catch (error) {
+    console.error('Failed to fetch homes:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to fetch homes: ${error.message}`);
+    }
+    throw new Error('Failed to fetch homes from Firebase.');
+  }
+}
+
+/**
+ * Updates a home's name in Firestore.
+ *
+ * @param userId The ID of the user.
+ * @param homeId The ID of the home to update.
+ * @param newName The new name for the home.
+ */
+export async function updateHome(userId: string, homeId: string, newName: string): Promise<void> {
+  console.log({ userId, homeId, newName });
+  if (!userId) {
+    throw new Error('User ID is required to update a home.');
+  }
+
+  if (!newName.trim()) {
+    throw new Error('Home name cannot be empty.');
+  }
+
+  try {
+    const docRef = doc(db, 'users', userId, 'homes', homeId);
+    await updateDoc(docRef, { name: newName.trim() });
+
+    console.log('Home updated in Firestore:', homeId);
+  } catch (error) {
+    console.error('Failed to update home:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to update home: ${error.message}`);
+    }
+    throw new Error('Failed to update home in Firebase.');
+  }
+}
+
+/**
+ * Deletes a home and all its associated rooms from Firestore.
+ * Note: Images associated with the rooms will NOT be deleted.
+ *
+ * @param userId The ID of the user.
+ * @param homeId The ID of the home to delete.
+ */
+export async function deleteHome(userId: string, homeId: string): Promise<void> {
+  if (!userId) {
+    throw new Error('User ID is required to delete a home.');
+  }
+
+  const homeRef = doc(db, 'users', userId, 'homes', homeId);
+
+  try {
+    // First, get the home document to check its rooms array.
+    const homeDoc = await getDoc(homeRef);
+
+    if (!homeDoc.exists()) {
+      throw new Error('Home not found.');
+    }
+
+    const homeData = homeDoc.data() as Home;
+
+    // Check if the rooms array is empty.
+    if (homeData.rooms && homeData.rooms.length > 0) {
+      // If rooms exist, throw an error to prevent deletion.
+      throw new Error(
+        `Cannot delete "${homeData.name}" because it still contains rooms. Please delete all rooms first.`
+      );
+    }
+
+    // If there are no rooms, proceed with deleting the home document.
+    await deleteDoc(homeRef);
+
+    console.log('Home deleted successfully:', homeId);
+  } catch (error) {
+    console.error('Failed to delete home:', error);
+    // Re-throw the error so the UI can catch it and display a message.
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('An unknown error occurred while deleting the home.');
+  }
+}
+
+/**
+ * Creates a new room in a home.
+ *
+ * @param userId The ID of the user.
+ * @param homeId The ID of the home.
+ * @param roomName The name of the room.
+ * @returns The newly created Room object.
+ */
+export async function createRoom(userId: string, homeId: string, roomName: string): Promise<Room> {
+  if (!userId) {
+    throw new Error('User ID is required to create a room.');
+  }
+
+  if (!roomName.trim()) {
+    throw new Error('Room name is required.');
+  }
+
+  try {
+    const roomId = crypto.randomUUID();
+    const now = new Date();
+    const newRoom: Room = {
+      id: roomId,
+      homeId,
+      name: roomName.trim(),
+      images: [],
+      createdAt: now,
+    };
+
+    const batch = writeBatch(db);
+
+    // Create the room document in the subcollection
+    const roomDocRef = doc(db, 'users', userId, 'homes', homeId, 'rooms', roomId);
+    batch.set(roomDocRef, {
+      ...newRoom,
+      createdAt: Timestamp.fromDate(now),
+    });
+
+    // Update the home document to add the new room to its rooms array
+    const homeDocRef = doc(db, 'users', userId, 'homes', homeId);
+    batch.update(homeDocRef, {
+      rooms: arrayUnion({
+        ...newRoom,
+        createdAt: Timestamp.fromDate(now),
+      }),
+    });
+
+    await batch.commit();
+
+    console.log('Room created in Firestore:', roomId);
+    return newRoom;
+  } catch (error) {
+    console.error('Failed to create room:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to create room: ${error.message}`);
+    }
+    throw new Error('Failed to create room in Firebase.');
+  }
+}
+
+/**
+ * Fetches all rooms for a specific home.
+ *
+ * @param userId The ID of the user.
+ * @param homeId The ID of the home.
+ * @returns An array of Room objects.
+ */
+/**
+ * Updates a room's name in Firestore.
+ *
+ * @param userId The ID of the user.
+ * @param homeId The ID of the home.
+ * @param roomId The ID of the room to update.
+ * @param newName The new name for the room.
+ */
+export async function updateRoom(
+  userId: string,
+  homeId: string,
+  roomId: string,
+  newName: string
+): Promise<void> {
+  if (!userId) {
+    throw new Error('User ID is required to update a room.');
+  }
+
+  if (!newName.trim()) {
+    throw new Error('Room name cannot be empty.');
+  }
+
+  try {
+    const batch = writeBatch(db);
+
+    // Update the room document in the subcollection
+    const roomDocRef = doc(db, 'users', userId, 'homes', homeId, 'rooms', roomId);
+    batch.update(roomDocRef, { name: newName.trim() });
+
+    // Update the home document's rooms array
+    // First, get the home to find the old room object
+    const homeDocRef = doc(db, 'users', userId, 'homes', homeId);
+    const homeDoc = await getDocs(collection(db, 'users', userId, 'homes')).then((snapshot) =>
+      snapshot.docs.find((doc) => doc.id === homeId)
+    );
+
+    if (homeDoc) {
+      const homeData = homeDoc.data();
+      const updatedRooms = (homeData.rooms || []).map((room: Room) =>
+        room.id === roomId ? { ...room, name: newName.trim() } : room
+      );
+      batch.update(homeDocRef, { rooms: updatedRooms });
+    }
+
+    await batch.commit();
+
+    console.log('Room updated in Firestore:', roomId);
+  } catch (error) {
+    console.error('Failed to update room:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to update room: ${error.message}`);
+    }
+    throw new Error('Failed to update room in Firebase.');
+  }
+}
+
+/**
+ * Deletes a room from Firestore.
+ * Note: Images associated with the room will NOT be deleted.
+ *
+ * @param userId The ID of the user.
+ * @param homeId The ID of the home.
+ * @param roomId The ID of the room to delete.
+ */
+export async function deleteRoom(userId: string, homeId: string, roomId: string): Promise<void> {
+  console.log({ userId, homeId, roomId });
+  if (!userId) {
+    throw new Error('User ID is required to delete a room.');
+  }
+  if (!homeId) {
+    throw new Error('Home ID is required to delete a room.');
+  }
+
+  try {
+    const batch = writeBatch(db);
+
+    // Delete the room document from the subcollection
+    const roomDocRef = doc(db, 'users', userId, 'homes', homeId, 'rooms', roomId);
+    batch.delete(roomDocRef);
+
+    const homeDocRef = doc(db, 'users', userId, 'homes', homeId);
+    const homeDoc = await getDoc(homeDocRef);
+
+    if (homeDoc.exists()) {
+      const homeData = homeDoc.data() as Home;
+      const roomToRemove = homeData.rooms.find((room) => room.id === roomId);
+
+      if (roomToRemove) {
+        batch.update(homeDocRef, {
+          rooms: arrayRemove(roomToRemove),
+        });
+      }
+    }
+
+    await batch.commit();
+
+    console.log('Room deleted from Firestore:', roomId);
+  } catch (error) {
+    console.error('Failed to delete room:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to delete room: ${error.message}`);
+    }
+    throw new Error('Failed to delete room from Firebase.');
   }
 }
