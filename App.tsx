@@ -1,18 +1,53 @@
 import React, { useEffect } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { SpeedInsights } from '@vercel/speed-insights/react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Header from './components/layout/Header';
 import LandingPage from './pages/LandingPage';
+import AuthPage from './pages/AuthPage';
 import AsideSection from './components/layout/AsideSection';
 
-const App: React.FC = () => {
+// Protected Layout Component
+const ProtectedLayout: React.FC = () => {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  return (
+    <div className="h-screen flex flex-col overflow-scroll">
+      <Header />
+      <div className="flex-1 flex" style={{ maxHeight: 'calc(100vh - var(--header-height))' }}>
+        {/* Fixed Aside Section */}
+        <AsideSection />
+        {/* Main Content with left margin to avoid overlap */}
+        <div className="flex-1 overflow-scroll">
+          <LandingPage />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// App Content (inside AuthProvider)
+const AppContent: React.FC = () => {
   const googleClientId = process.env.VITE_GOOGLE_CLIENT_ID || '';
 
   // Initialize storage service on mount
   useEffect(() => {
     const initializeStorage = async () => {
       try {
+        // Initialize storage service if needed
       } catch (error) {
         console.error('Failed to initialize storage service:', error);
       }
@@ -23,21 +58,23 @@ const App: React.FC = () => {
 
   return (
     <GoogleOAuthProvider clientId={googleClientId}>
-      <AuthProvider>
-        <div className="h-screen flex flex-col overflow-scroll">
-          <Header />
-          <div className="flex-1 flex" style={{ maxHeight: 'calc(100vh - var(--header-height))' }}>
-            {/* Fixed Aside Section */}
-            <AsideSection />
-            {/* Main Content with left margin to avoid overlap */}
-            <div className="flex-1 overflow-scroll">
-              <LandingPage />
-            </div>
-          </div>
-        </div>
+      <Router>
+        <Routes>
+          <Route path="/auth" element={<AuthPage />} />
+          <Route path="/" element={<ProtectedLayout />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
         <SpeedInsights />
-      </AuthProvider>
+      </Router>
     </GoogleOAuthProvider>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 };
 
