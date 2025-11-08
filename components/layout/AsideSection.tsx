@@ -66,6 +66,7 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onHomeSelected, onRoomSelec
   useEffect(() => {
     if (!user) {
       setHomes([]);
+      setLoading(false);
       return;
     }
 

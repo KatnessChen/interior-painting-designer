@@ -1,9 +1,9 @@
 import React from 'react';
-import { GEMINI_TASKS, GeminiTask } from '../services/gemini/geminiTasks';
+import { GEMINI_TASKS, GeminiTaskName } from '../services/gemini/geminiTasks';
 
 interface TaskSelectorProps {
-  selectedTaskName: GeminiTask;
-  onSelectTask: (task: GeminiTask) => void;
+  selectedTaskName: GeminiTaskName;
+  onSelectTask: (taskName: GeminiTaskName) => void;
 }
 
 const TaskSelector: React.FC<TaskSelectorProps> = ({ selectedTaskName, onSelectTask }) => {
@@ -23,7 +23,7 @@ const TaskSelector: React.FC<TaskSelectorProps> = ({ selectedTaskName, onSelectT
         {tasks.map((task) => (
           <button
             key={task.id}
-            onClick={() => onSelectTask(task.id)}
+            onClick={() => onSelectTask(task.id as GeminiTaskName)}
             className={`px-8 py-4 rounded-lg font-semibold transition-all duration-300 flex items-center gap-2 ${
               selectedTaskName === task.id
                 ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-lg ring-2 ring-blue-300'

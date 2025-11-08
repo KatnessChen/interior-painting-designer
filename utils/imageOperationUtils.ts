@@ -31,9 +31,9 @@ export function formatImageOperationData(
     customPrompt: customPrompt || null,
     options: {
       colorId: null,
-      colorSnapshot: null,
+      colorSnapshot: undefined,
       textureId: null,
-      textureSnapshot: null,
+      textureSnapshot: undefined,
     },
     timestamp: new Date(),
   };

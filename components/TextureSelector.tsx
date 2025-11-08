@@ -1,5 +1,4 @@
 import React, { useState, useCallback } from 'react';
-import { deprecatedStorageService } from '../services/deprecatedStorageService';
 
 export interface Texture {
   id: string;
@@ -29,8 +28,8 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({ onTextureSelect, onEr
     const loadTextures = async () => {
       try {
         setIsLoadingTextures(true);
-        const textures = await deprecatedStorageService.getTextures();
-        setAvailableTextures(textures || []);
+        // TODO: Implement texture feature
+        setAvailableTextures([]);
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to load textures';
         setUploadError(message);
@@ -48,7 +47,7 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({ onTextureSelect, onEr
     async (texture: Texture) => {
       try {
         // Save to storage
-        await deprecatedStorageService.addTexture(texture);
+        // TODO: Implement add texture
 
         // Update local state
         setAvailableTextures((prev) => [...prev, texture]);

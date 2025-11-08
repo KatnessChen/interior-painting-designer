@@ -1,11 +1,11 @@
 import React from 'react';
-import { deprecatedImageData } from '../types';
+import { ImageData } from '../types';
 
 interface ConfirmImageUpdateModalProps {
   isOpen: boolean;
-  originalImage: deprecatedImageData | null; // New prop for the original image
-  image: deprecatedImageData | null; // This is the generated/recolored image
-  onConfirm: (imageData: deprecatedImageData) => void;
+  originalImage: ImageData | null; // New prop for the original image
+  image: { base64: string; mimeType: string } | null; // This is the generated/recolored image (temporary format before saving)
+  onConfirm: (imageData: { base64: string; mimeType: string }) => void;
   onCancel: () => void;
   colorName: string;
 }

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BenjaminMooreColor } from '../types';
 import { BENJAMIN_MOORE_COLORS } from '../constants';
-import { deprecatedStorageService } from '../services/deprecatedStorageService';
 import { Check as CheckIcon } from '@mui/icons-material';
 
 interface ColorSelectorProps {
@@ -62,9 +61,7 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({ selectedColor, onSelectCo
   useEffect(() => {
     const loadCustomColors = async () => {
       try {
-        await deprecatedStorageService.init();
-        const customColors = await deprecatedStorageService.getCustomColors();
-        const allColors = [...BENJAMIN_MOORE_COLORS, ...customColors];
+        const allColors = [...BENJAMIN_MOORE_COLORS];
         setAvailableColors(allColors);
       } catch (error) {
         console.error('Failed to load custom colors:', error);
@@ -107,9 +104,6 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({ selectedColor, onSelectCo
     }
 
     try {
-      // Save to storage
-      await deprecatedStorageService.addCustomColor(newColor);
-
       // Update local state
       setAvailableColors((prevColors) => [...prevColors, newColor]);
       setNewColorName('');

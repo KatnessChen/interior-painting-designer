@@ -6,19 +6,12 @@ export interface BenjaminMooreColor {
   hex: string;
 }
 
-export interface deprecatedImageData {
-  id: string;
-  name: string;
-  base64: string;
-  mimeType: string;
-}
-
 export interface ImageData {
   id: string;
   name: string;
 
-  // The room this image belongs to
-  roomId: string;
+  // The room this image belongs to (null if not yet assigned to a room)
+  roomId: string | null;
 
   // Evolution chain
   evolutionChain: ImageOperation[];

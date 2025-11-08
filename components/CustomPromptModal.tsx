@@ -17,7 +17,7 @@ const CustomPromptModal: React.FC<CustomPromptModalProps> = ({
   isOpen,
   onConfirm,
   onCancel,
-  taskName,
+  task,
   colorName = '',
   colorHex = '',
   textureName = '',
@@ -25,7 +25,7 @@ const CustomPromptModal: React.FC<CustomPromptModalProps> = ({
   const [prompt, setPrompt] = useState<string>('');
   const [isDefaultPromptExpanded, setIsDefaultPromptExpanded] = useState<boolean>(false);
 
-  const geminiTask = GEMINI_TASKS[taskName.toUpperCase()];
+  const taskName = task.task_name;
 
   const isRecolorTask = taskName === GEMINI_TASKS.RECOLOR_WALL.task_name;
   const isTextureTask = taskName === GEMINI_TASKS.ADD_TEXTURE.task_name;
@@ -77,7 +77,7 @@ const CustomPromptModal: React.FC<CustomPromptModalProps> = ({
 
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Custom Prompt {geminiTask.customPromptRequired ? `(Required)` : `(Optional)`}
+            Custom Prompt {task.customPromptRequired ? `(Required)` : `(Optional)`}
           </label>
           <textarea
             value={prompt}
@@ -123,7 +123,7 @@ const CustomPromptModal: React.FC<CustomPromptModalProps> = ({
         </div>
 
         <div className="flex flex-col sm:flex-row justify-center gap-4">
-          {geminiTask.customPromptRequired ? (
+          {task.customPromptRequired ? (
             <button
               disabled={prompt.trim().length === 0}
               onClick={handleConfirm}

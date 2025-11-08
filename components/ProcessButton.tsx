@@ -1,13 +1,12 @@
 import React from 'react';
 import { Tooltip, CircularProgress } from '@mui/material';
 import { ColorLens as RecolorIcon } from '@mui/icons-material';
-import { GeminiTask, getTaskEntry } from '../services/gemini/geminiTasks';
+import { GeminiTaskName, getTaskEntry } from '../services/gemini/geminiTasks';
 
 interface ProcessButtonProps {
   isEnabled: boolean;
   isProcessing: boolean;
-  selectedTaskName: GeminiTask;
-  onProcess: (customPrompt?: string) => void;
+  selectedTaskName: GeminiTaskName;
   onOpenCustomPrompt: () => void;
 }
 
@@ -17,7 +16,8 @@ const ProcessButton: React.FC<ProcessButtonProps> = ({
   selectedTaskName,
   onOpenCustomPrompt,
 }) => {
-  const [_, task] = getTaskEntry(selectedTaskName);
+  const taskEntry = getTaskEntry(selectedTaskName);
+  const task = taskEntry?.[1];
 
   const getButtonLabel = () => {
     if (isProcessing) return 'Processing...';

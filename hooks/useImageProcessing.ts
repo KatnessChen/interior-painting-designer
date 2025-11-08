@@ -57,12 +57,7 @@ export const useImageProcessing = ({
           }
 
           // TODO: handel TextureImage storage
-          // result = await addTexture(
-          //   parentImage,
-          //   selectedImage, // Note: texture image handling may need adjustment
-          //   selectedTexture.name,
-          //   customPrompt
-          // );
+          throw new Error('Add Texture feature is not yet implemented.');
         } else {
           throw new Error('Unknown task type');
         }

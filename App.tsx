@@ -4,7 +4,6 @@ import { AuthProvider } from './contexts/AuthContext';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import Header from './components/layout/Header';
 import LandingPage from './pages/LandingPage';
-import { deprecatedStorageService } from './services/deprecatedStorageService';
 import AsideSection from './components/layout/AsideSection';
 
 const App: React.FC = () => {
@@ -14,7 +13,6 @@ const App: React.FC = () => {
   useEffect(() => {
     const initializeStorage = async () => {
       try {
-        await deprecatedStorageService.init();
       } catch (error) {
         console.error('Failed to initialize storage service:', error);
       }
@@ -26,9 +24,9 @@ const App: React.FC = () => {
   return (
     <GoogleOAuthProvider clientId={googleClientId}>
       <AuthProvider>
-        <div className="min-h-screen flex flex-col">
+        <div className="h-screen flex flex-col overflow-scroll">
           <Header />
-          <div className="flex-1 flex" style={{ maxHeight: 'calc(100vh - 64px)' }}>
+          <div className="flex-1 flex" style={{ maxHeight: 'calc(100vh - var(--header-height))' }}>
             {/* Fixed Aside Section */}
             <AsideSection />
             {/* Main Content with left margin to avoid overlap */}

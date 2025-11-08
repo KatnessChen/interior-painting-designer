@@ -10,7 +10,7 @@ import ImagesComparingModal from '../components/ImagesComparingModal';
 import ImagesComparingButton from '../components/ImagesComparingButton';
 import AlertModal from '../components/AlertModal';
 import GenericConfirmModal from '../components/GenericConfirmModal';
-import { GEMINI_TASKS, GeminiTaskName, GeminiTask } from '../services/gemini/geminiTasks';
+import { GEMINI_TASKS, GeminiTaskName } from '../services/gemini/geminiTasks';
 import { BenjaminMooreColor, ImageData, ImageOperation } from '../types';
 import {
   createImage,
@@ -46,7 +46,9 @@ const LandingPage: React.FC = () => {
   const [originalImages, setOriginalImages] = useState<ImageData[]>([]);
   const [selectedOriginalImageIds, setSelectedOriginalImageIds] = useState<Set<string>>(new Set());
 
-  const [generatedImage, setGeneratedImage] = useState<ImageData | null>(null);
+  const [generatedImage, setGeneratedImage] = useState<{ base64: string; mimeType: string } | null>(
+    null
+  );
 
   const [updatedImages, setUpdatedImages] = useState<ImageData[]>([]);
   const [selectedUpdatedImageIds, setSelectedUpdatedImageIds] = useState<Set<string>>(new Set());
@@ -148,8 +150,8 @@ const LandingPage: React.FC = () => {
     loadImages();
   }, [user]);
 
-  const handleSelectTask = useCallback((task: GeminiTask) => {
-    setSelectedTaskName(task);
+  const handleSelectTask = useCallback((taskName: GeminiTaskName) => {
+    setSelectedTaskName(taskName);
 
     // Reset UI state when switching tasks
     setSelectedColor(null);
@@ -547,13 +549,14 @@ const LandingPage: React.FC = () => {
   }, []);
 
   const selectedOriginalImageId = Array.from(selectedOriginalImageIds)[0] || null;
-  const selectedOriginalImage = originalImages.find((img) => img.id === selectedOriginalImageId);
+  const selectedOriginalImage =
+    originalImages.find((img) => img.id === selectedOriginalImageId) || null;
 
   const isProcessingButtonEnabled =
     selectedOriginalImageIds.size === 1 &&
     !processingImage &&
-    ((selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name && selectedColor) ||
-      (selectedTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name && selectedTexture));
+    ((selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name && !!selectedColor) ||
+      (selectedTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name && !!selectedTexture));
 
   // Compare functionality
   const totalSelectedPhotos = selectedOriginalImageIds.size + selectedUpdatedImageIds.size;
@@ -672,7 +675,13 @@ const LandingPage: React.FC = () => {
           isOpen={showCustomPromptModal}
           onConfirm={handleProcessImage}
           onCancel={() => setShowCustomPromptModal(false)}
-          taskName={selectedTaskName}
+          task={
+            GEMINI_TASKS[
+              selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name
+                ? 'RECOLOR_WALL'
+                : 'ADD_TEXTURE'
+            ]
+          }
           colorName={selectedColor?.name}
           colorHex={selectedColor?.hex}
           textureName={selectedTexture?.name}
