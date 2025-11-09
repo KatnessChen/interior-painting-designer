@@ -98,12 +98,12 @@ export interface Room {
   homeId: string;
   name: string;
   images: ImageData[];
-  createdAt: Date;
+  createdAt: string; // ISO 8601 date string for Redux serialization
 }
 
 export interface Home {
   id: string;
   name: string;
   rooms: Room[];
-  createdAt: Date;
+  createdAt: string; // ISO 8601 date string for Redux serialization
 }

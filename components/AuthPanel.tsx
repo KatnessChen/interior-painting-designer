@@ -45,9 +45,6 @@ const AuthPanel: React.FC = () => {
           <Typography variant="h5" component="h2" gutterBottom sx={{ mb: 3 }}>
             Welcome to Vizion Studio
           </Typography>
-          <Typography variant="body2" color="textSecondary" sx={{ mb: 3 }}>
-            Sign in with your Google account to get started
-          </Typography>
 
           {error && (
             <Box

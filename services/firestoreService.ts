@@ -311,12 +311,14 @@ export async function createHome(userId: string, homeName: string): Promise<Home
       id: homeId,
       name: homeName.trim(),
       rooms: [],
-      createdAt: now,
+      createdAt: now.toISOString(),
     };
 
     const docRef = doc(db, 'users', userId, 'homes', homeId);
     await setDoc(docRef, {
-      ...newHome,
+      id: newHome.id,
+      name: newHome.name,
+      rooms: newHome.rooms,
       createdAt: Timestamp.fromDate(now),
     });
 
@@ -352,19 +354,22 @@ export async function fetchHomes(userId: string): Promise<Home[]> {
     const homes: Home[] = homesSnapshot.docs.map((homeDoc) => {
       const homeData = homeDoc.data();
       const homeName = homeData.name;
-      // Sort rooms by createdAt in descending order
-      const rooms = (homeData.rooms || []).sort(
-        (a: Room, b: Room) =>
-          (b.createdAt as unknown as Timestamp).toMillis() -
-          (a.createdAt as unknown as Timestamp).toMillis()
-      );
+      // Sort rooms by createdAt in descending order and convert Timestamp to ISO string
+      const rooms = (homeData.rooms || [])
+        .map((room: any) => ({
+          ...room,
+          createdAt: (room.createdAt as Timestamp).toDate().toISOString(),
+        }))
+        .sort(
+          (a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
 
       return {
         id: homeDoc.id,
         name: homeName,
         rooms,
-        createdAt: (homeData.createdAt as Timestamp).toDate(),
-      };
+        createdAt: (homeData.createdAt as Timestamp).toDate().toISOString(),
+      } as any;
     });
 
     console.log('Homes and rooms fetched from Firestore:', homes.length, 'homes');
@@ -480,7 +485,7 @@ export async function createRoom(userId: string, homeId: string, roomName: strin
       homeId,
       name: roomName.trim(),
       images: [],
-      createdAt: now,
+      createdAt: now.toISOString(),
     };
 
     const batch = writeBatch(db);
@@ -488,7 +493,10 @@ export async function createRoom(userId: string, homeId: string, roomName: strin
     // Create the room document in the subcollection
     const roomDocRef = doc(db, 'users', userId, 'homes', homeId, 'rooms', roomId);
     batch.set(roomDocRef, {
-      ...newRoom,
+      id: newRoom.id,
+      homeId: newRoom.homeId,
+      name: newRoom.name,
+      images: newRoom.images,
       createdAt: Timestamp.fromDate(now),
     });
 
@@ -496,7 +504,10 @@ export async function createRoom(userId: string, homeId: string, roomName: strin
     const homeDocRef = doc(db, 'users', userId, 'homes', homeId);
     batch.update(homeDocRef, {
       rooms: arrayUnion({
-        ...newRoom,
+        id: newRoom.id,
+        homeId: newRoom.homeId,
+        name: newRoom.name,
+        images: newRoom.images,
         createdAt: Timestamp.fromDate(now),
       }),
     });

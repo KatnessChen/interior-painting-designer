@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -8,6 +9,18 @@ import { Tooltip, Button } from '@mui/material';
 import CircularProgress from '@mui/material/CircularProgress';
 import GenericConfirmModal from '../GenericConfirmModal';
 import { useAuth } from '../../contexts/AuthContext';
+import { RootState, AppDispatch } from '../../stores/store';
+import {
+  setHomes,
+  addHome,
+  updateHome as updateHomeAction,
+  removeHome,
+  addRoom,
+  updateRoom as updateRoomAction,
+  removeRoom,
+  setActiveHomeId,
+  setActiveRoomId,
+} from '../../stores/homeSlice';
 import {
   fetchHomes,
   createHome,
@@ -17,7 +30,6 @@ import {
   updateRoom,
   deleteRoom,
 } from '../../services/firestoreService';
-import { Home } from '../../types';
 
 export const ModalMode = {
   ADD_HOME: 'add-home',
@@ -36,16 +48,17 @@ interface AsideSectionProps {
 const AsideSection: React.FC<AsideSectionProps> = ({ onHomeSelected, onRoomSelected }) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [homes, setHomes] = useState<Home[]>([]);
+
+  // Redux store
+  const dispatch = useDispatch<AppDispatch>();
+  const homes = useSelector((state: RootState) => state.home.homes);
+  const activeHomeId = useSelector((state: RootState) => state.home.activeHomeId);
+  const activeRoomId = useSelector((state: RootState) => state.home.activeRoomId);
 
   // Add Home/Room Modal state
   const [modalMode, setModalMode] = useState<ModalMode | null>(null);
   const [modalInput, setModalInput] = useState<string>('');
   const [modalProcessing, setModalProcessing] = useState<boolean>(false);
-
-  // Navigation Selection state
-  const [selectedHomeId, setSelectedHomeId] = useState<string | null>(null);
-  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
 
   // Editing Name Home/Room Input state
   type EditingEntityIds = { homeId: string | null; roomId: string | null };
@@ -65,7 +78,7 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onHomeSelected, onRoomSelec
   // Fetch homes when user changes
   useEffect(() => {
     if (!user) {
-      setHomes([]);
+      dispatch(setHomes([]));
       setLoading(false);
       return;
     }
@@ -73,7 +86,8 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onHomeSelected, onRoomSelec
     const fetchUserHomes = async () => {
       try {
         const homes = await fetchHomes(user.uid);
-        setHomes(homes);
+        console.log({ homes });
+        dispatch(setHomes(homes));
       } catch (error) {
         console.error('Error fetching homes:', error);
       } finally {
@@ -82,7 +96,7 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onHomeSelected, onRoomSelec
     };
 
     fetchUserHomes();
-  }, [user]);
+  }, [user, dispatch]);
 
   // Handle delete home
   const handleDeleteHome = useCallback(
@@ -96,11 +110,7 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onHomeSelected, onRoomSelec
 
           try {
             await deleteHome(user.uid, homeId);
-            setHomes((prev) => prev.filter((h) => h.id !== homeId));
-            if (selectedHomeId === homeId) {
-              setSelectedHomeId(null);
-              setSelectedRoomId(null);
-            }
+            dispatch(removeHome(homeId));
             setConfirmModal({ ...confirmModal, isOpen: false });
           } catch (error) {
             console.error('Error deleting home:', error);
@@ -109,7 +119,7 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onHomeSelected, onRoomSelec
         },
       });
     },
-    [user, selectedHomeId, confirmModal]
+    [user, activeHomeId, confirmModal, dispatch]
   );
 
   // Handle delete room
@@ -124,16 +134,7 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onHomeSelected, onRoomSelec
 
           try {
             await deleteRoom(user.uid, homeId, roomId);
-            setHomes((prev) =>
-              prev.map((home) =>
-                home.id === homeId
-                  ? { ...home, rooms: home.rooms.filter((r) => r.id !== roomId) }
-                  : home
-              )
-            );
-            if (selectedRoomId === roomId && selectedHomeId === homeId) {
-              setSelectedRoomId(null);
-            }
+            dispatch(removeRoom({ homeId, roomId }));
             setConfirmModal({ ...confirmModal, isOpen: false });
           } catch (error) {
             console.error('Error deleting room:', error);
@@ -142,27 +143,32 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onHomeSelected, onRoomSelec
         },
       });
     },
-    [user, selectedRoomId, selectedHomeId, confirmModal]
+    [user, activeRoomId, activeHomeId, confirmModal, dispatch]
   );
 
   // Handle home selection
   const handleSelectHome = useCallback(
     (homeId: string) => {
-      setSelectedHomeId(homeId);
-      setSelectedRoomId(null);
+      const selectedHome = homes.find((home) => home.id === homeId);
+      dispatch(setActiveHomeId(homeId));
+
+      // If the home has rooms, set the first room as active, otherwise set null
+      const firstRoomId = selectedHome?.rooms?.[0]?.id;
+      dispatch(setActiveRoomId(firstRoomId || null));
+
       onHomeSelected?.(homeId);
     },
-    [onHomeSelected]
+    [onHomeSelected, dispatch, homes]
   );
 
   // Handle room selection
   const handleSelectRoom = useCallback(
     (homeId: string, roomId: string) => {
-      setSelectedHomeId(homeId);
-      setSelectedRoomId(roomId);
+      dispatch(setActiveHomeId(homeId));
+      dispatch(setActiveRoomId(roomId));
       onRoomSelected?.(homeId, roomId);
     },
-    [onRoomSelected]
+    [onRoomSelected, dispatch]
   );
 
   // Handle modal submission
@@ -178,30 +184,20 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onHomeSelected, onRoomSelec
       switch (modalMode) {
         case ModalMode.ADD_HOME: {
           const newHome = await createHome(user.uid, userInputValue);
-          setHomes((prev) => [...prev, newHome]);
+          dispatch(addHome(newHome));
           break;
         }
         case ModalMode.ADD_ROOM: {
           if (!editingEntityIds.homeId) throw Error('Home Id not exist');
 
           const newRoom = await createRoom(user.uid, editingEntityIds.homeId, userInputValue);
-          setHomes((prev) =>
-            prev.map((home) =>
-              home.id === editingEntityIds.homeId
-                ? { ...home, rooms: [...home.rooms, newRoom] }
-                : home
-            )
-          );
+          dispatch(addRoom({ homeId: editingEntityIds.homeId, room: newRoom }));
           break;
         }
         case ModalMode.EDIT_HOME: {
           if (!editingEntityIds.homeId) throw Error('Home Id not exist');
           await updateHome(user.uid, editingEntityIds.homeId, userInputValue);
-          setHomes((prev) =>
-            prev.map((home) =>
-              home.id === editingEntityIds.homeId ? { ...home, name: userInputValue } : home
-            )
-          );
+          dispatch(updateHomeAction({ homeId: editingEntityIds.homeId, name: userInputValue }));
           break;
         }
         case ModalMode.EDIT_ROOM: {
@@ -214,19 +210,12 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onHomeSelected, onRoomSelec
             editingEntityIds.roomId,
             userInputValue
           );
-          setHomes((prev) =>
-            prev.map((home) =>
-              home.id === editingEntityIds!.homeId
-                ? {
-                    ...home,
-                    rooms: home.rooms.map((room) =>
-                      room.id === editingEntityIds!.roomId
-                        ? { ...room, name: userInputValue }
-                        : room
-                    ),
-                  }
-                : home
-            )
+          dispatch(
+            updateRoomAction({
+              homeId: editingEntityIds.homeId,
+              roomId: editingEntityIds.roomId,
+              name: userInputValue,
+            })
           );
           break;
         }
@@ -239,11 +228,12 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onHomeSelected, onRoomSelec
     } finally {
       handleCloseModal();
     }
-  }, [user, modalInput, editingEntityIds, modalMode]);
+  }, [user, modalInput, editingEntityIds, modalMode, dispatch]);
 
   const handleCloseModal = useCallback(() => {
     setModalInput('');
     setModalMode(null);
+    setModalProcessing(false);
     setEditingEntityIds({ homeId: null, roomId: null });
   }, []);
 
@@ -300,14 +290,14 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onHomeSelected, onRoomSelec
             <div key={home.id}>
               <div
                 className={`flex items-center justify-between group py-2 cursor-pointer transition-all ${
-                  selectedHomeId === home.id ? '' : 'hover:bg-gray-50'
+                  activeHomeId === home.id ? '' : 'hover:bg-gray-50'
                 }`}
                 onClick={() => handleSelectHome(home.id)}
               >
                 <>
                   <div
                     className={`cursor-pointer ${
-                      selectedHomeId === home.id
+                      activeHomeId === home.id
                         ? 'font-bold text-indigo-600'
                         : 'font-normal text-gray-600 hover:text-gray-900'
                     }`}
@@ -372,11 +362,11 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onHomeSelected, onRoomSelec
                   <div
                     key={room.id}
                     className={`flex items-center justify-between group pl-4 py-1.5 px-1 text-sm cursor-pointer transition-all ${
-                      selectedRoomId === room.id && selectedHomeId === home.id
+                      activeRoomId === room.id && activeHomeId === home.id
                         ? 'font-bold text-indigo-600'
                         : 'font-normal text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                     }`}
-                    onClick={() => selectedRoomId !== room.id && handleSelectRoom(home.id, room.id)}
+                    onClick={() => activeRoomId !== room.id && handleSelectRoom(home.id, room.id)}
                   >
                     <>
                       <span className="cursor-pointer">{room.name}</span>

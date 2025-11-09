@@ -162,13 +162,6 @@ const AuthPage: React.FC = () => {
               fullWidth
             />
           </Box>
-
-          {/* Footer */}
-          <Box sx={{ mt: 4, textAlign: 'center' }}>
-            <Typography variant="caption" color="textSecondary">
-              By signing in, you agree to our Terms of Service and Privacy Policy
-            </Typography>
-          </Box>
         </Paper>
 
         {/* Background Decoration */}

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useSelector } from 'react-redux';
 import ColorSelector from '../components/ColorSelector';
 import ConfirmImageUpdateModal from '../components/ConfirmImageUpdateModal';
 import CustomPromptModal from '../components/CustomPromptModal';
@@ -22,6 +23,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useImageProcessing } from '../hooks/useImageProcessing';
 import { formatImageOperationData } from '../utils/imageOperationUtils';
 import { downloadFile, buildDownloadFilename } from '../utils/downloadUtils';
+import { selectActiveHome, selectActiveRoom } from '../stores/homeSlice';
+import { RootState } from '../stores/store';
 
 interface Texture {
   name: string;
@@ -31,6 +34,12 @@ interface Texture {
 const LandingPage: React.FC = () => {
   // Get authenticated user
   const { user } = useAuth();
+
+  // Get active room from store
+  const activeHomeId = useSelector((state: RootState) => state.home.activeHomeId);
+  const activeRoomId = useSelector((state: RootState) => state.home.activeRoomId);
+  const activeHome = useSelector(selectActiveHome);
+  const activeRoom = useSelector(selectActiveRoom);
 
   // Task selection
   const [selectedTaskName, setSelectedTaskName] = useState<GeminiTaskName>(
@@ -581,8 +590,8 @@ const LandingPage: React.FC = () => {
   }, [selectedOriginalImageIds, selectedUpdatedImageIds, originalImages, updatedImages]);
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
-      <div className="container mx-auto max-w-6xl">
+    <div className="h-full bg-gray-100 p-6">
+      <div className="h-full container mx-auto max-w-6xl">
         {isLoadingData && (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -590,7 +599,20 @@ const LandingPage: React.FC = () => {
           </div>
         )}
 
-        {!isLoadingData && (
+        {!isLoadingData && !activeRoomId && (
+          <div className="h-full -mt-8 bg-gray-100 p-6 flex items-center justify-center">
+            <div className="container mx-auto max-w-2xl text-center">
+              <div className="bg-white rounded-lg shadow-sm p-8">
+                <h2 className="text-2xl text-gray-800 mb-4">No Room Selected</h2>
+                <div className="inline-block bg-indigo-50 border-l-4 border-indigo-600 p-4">
+                  <p className="text-sm text-indigo-800">💡 Select a room to get started!</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!isLoadingData && activeRoomId && (
           <>
             <div className="mb-8">
               <TaskSelector selectedTaskName={selectedTaskName} onSelectTask={handleSelectTask} />
