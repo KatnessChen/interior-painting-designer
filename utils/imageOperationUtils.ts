@@ -17,7 +17,7 @@ interface Texture {
  * @param selectedTexture Optional texture selected for adding texture
  * @returns A properly formatted ImageOperation object
  */
-export function formatImageOperationData(
+function formatImageOperationData(
   imageId: string,
   taskName: GeminiTaskName,
   customPrompt: string | undefined,
@@ -31,9 +31,9 @@ export function formatImageOperationData(
     customPrompt: customPrompt || null,
     options: {
       colorId: null,
-      colorSnapshot: undefined,
+      colorSnapshot: null,
       textureId: null,
-      textureSnapshot: undefined,
+      textureSnapshot: null,
     },
     timestamp: new Date(),
   };
@@ -58,3 +58,5 @@ export function formatImageOperationData(
 
   return operation;
 }
+
+export { formatImageOperationData };

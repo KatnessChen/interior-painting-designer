@@ -10,7 +10,7 @@ export interface ImageData {
   id: string;
   name: string;
 
-  // The room this image belongs to (null if not yet assigned to a room)
+  // The room this image belongs to
   roomId: string | null;
 
   // Evolution chain
@@ -26,11 +26,11 @@ export interface ImageData {
 
   // Soft delete
   isDeleted: boolean;
-  deletedAt: Date | null;
+  deletedAt: string | null; // ISO 8601 date string for Redux serialization
 
-  // Timestamps
-  createdAt: Date;
-  updatedAt: Date;
+  // Timestamps (ISO 8601 date strings for Redux serialization)
+  createdAt: string;
+  updatedAt: string;
 }
 
 /**
@@ -60,10 +60,10 @@ export interface ImageOperation {
      * A snapshot of the color's details at the time of the operation.
      * This is to preserve the color information even if the original color definition changes later.
      */
-    colorSnapshot?: {
+    colorSnapshot: {
       name: string;
       hex: string;
-    };
+    } | null;
 
     /**
      * The ID of the texture used, if applicable.
@@ -73,10 +73,10 @@ export interface ImageOperation {
     /**
      * A snapshot of the texture's details at the time of the operation.
      */
-    textureSnapshot?: {
+    textureSnapshot: {
       name: string;
       url: string; // The URL of the texture image at that time
-    };
+    } | null;
   };
 
   timestamp: Date;

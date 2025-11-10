@@ -13,18 +13,12 @@ import AlertModal from '../components/AlertModal';
 import GenericConfirmModal from '../components/GenericConfirmModal';
 import { GEMINI_TASKS, GeminiTaskName } from '../services/gemini/geminiTasks';
 import { BenjaminMooreColor, ImageData, ImageOperation } from '../types';
-import {
-  createImage,
-  fetchUserImages,
-  createProcessedImage,
-  deleteImages,
-} from '../services/firestoreService';
+import { createImage, createProcessedImage, deleteImages } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 import { useImageProcessing } from '../hooks/useImageProcessing';
-import { formatImageOperationData } from '../utils/imageOperationUtils';
-import { downloadFile, buildDownloadFilename } from '../utils/downloadUtils';
-import { selectActiveHome, selectActiveRoom } from '../stores/homeSlice';
+import { formatImageOperationData, downloadFile, buildDownloadFilename } from '../utils';
 import { RootState } from '../stores/store';
+import { selectOriginalImages, selectUpdatedImages } from '../stores/imageSlice';
 
 interface Texture {
   name: string;
@@ -38,8 +32,10 @@ const LandingPage: React.FC = () => {
   // Get active room from store
   const activeHomeId = useSelector((state: RootState) => state.home.activeHomeId);
   const activeRoomId = useSelector((state: RootState) => state.home.activeRoomId);
-  const activeHome = useSelector(selectActiveHome);
-  const activeRoom = useSelector(selectActiveRoom);
+
+  // Get images from store (computed from rooms)
+  const originalImages = useSelector(selectOriginalImages);
+  const updatedImages = useSelector(selectUpdatedImages);
 
   // Task selection
   const [selectedTaskName, setSelectedTaskName] = useState<GeminiTaskName>(
@@ -52,14 +48,12 @@ const LandingPage: React.FC = () => {
   // Add texture task state
   const [selectedTexture, setSelectedTexture] = useState<Texture | null>(null);
 
-  const [originalImages, setOriginalImages] = useState<ImageData[]>([]);
   const [selectedOriginalImageIds, setSelectedOriginalImageIds] = useState<Set<string>>(new Set());
 
   const [generatedImage, setGeneratedImage] = useState<{ base64: string; mimeType: string } | null>(
     null
   );
 
-  const [updatedImages, setUpdatedImages] = useState<ImageData[]>([]);
   const [selectedUpdatedImageIds, setSelectedUpdatedImageIds] = useState<Set<string>>(new Set());
 
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
@@ -124,40 +118,10 @@ const LandingPage: React.FC = () => {
 
   // Load images from storage on mount
   useEffect(() => {
-    const loadImages = async () => {
-      try {
-        setIsLoadingData(true);
-
-        if (!user) {
-          // User not authenticated, start with empty arrays
-          setOriginalImages([]);
-          setUpdatedImages([]);
-        } else {
-          // Fetch user's images from Firestore
-          const images = await fetchUserImages(user.uid);
-
-          // Separate images into original and updated based on parentImageId
-          const originalImgs = images.filter((img) => !img.parentImageId);
-          const updatedImgs = images.filter((img) => img.parentImageId);
-
-          setOriginalImages(originalImgs);
-          setUpdatedImages(updatedImgs);
-          console.log(
-            `Loaded ${originalImgs.length} original and ${updatedImgs.length} updated images`
-          );
-        }
-      } catch (error) {
-        console.error('Failed to load images from storage:', error);
-        setErrorMessage('Failed to load saved images. Starting fresh.');
-        setOriginalImages([]);
-        setUpdatedImages([]);
-      } finally {
-        setIsLoadingData(false);
-      }
-    };
-
-    loadImages();
-  }, [user]);
+    // Images are now loaded from Redux store (fetched in AsideSection)
+    // No need for local state management
+    setIsLoadingData(false);
+  }, []);
 
   const handleSelectTask = useCallback((taskName: GeminiTaskName) => {
     setSelectedTaskName(taskName);
@@ -180,26 +144,29 @@ const LandingPage: React.FC = () => {
         return;
       }
 
-      try {
-        // Call firestoreService.createImage() to upload the file to Firebase Storage
-        // and create the image document in Firestore
-        const imageData = await createImage(user.uid, file, {
-          id: crypto.randomUUID(),
-          name: file.name,
-          mimeType: file.type,
-        });
+      if (!activeHomeId || !activeRoomId) {
+        setErrorMessage('Please select home/room to upload image.');
+      } else {
+        try {
+          // Call firestoreService.createImage() to upload the file to Firebase Storage
+          // and create the image document in Firestore
+          await createImage(user.uid, activeHomeId, activeRoomId, file, {
+            id: crypto.randomUUID(),
+            name: file.name,
+            mimeType: file.type,
+          });
 
-        // Update local state
-        setOriginalImages((prev) => [...prev, imageData]);
-        setErrorMessage(null); // Clear error on successful upload
-      } catch (error) {
-        console.error('Failed to upload image:', error);
-        setErrorMessage(
-          error instanceof Error ? error.message : 'Failed to upload image to Firebase.'
-        );
+          // Image will be updated automatically in Redux store via imageSlice selectors
+          setErrorMessage(null); // Clear error on successful upload
+        } catch (error) {
+          console.error('Failed to upload image:', error);
+          setErrorMessage(
+            error instanceof Error ? error.message : 'Failed to upload image to Firebase.'
+          );
+        }
       }
     },
-    [user]
+    [user, activeHomeId, activeRoomId]
   );
 
   const handleRemoveUpdatedImage = useCallback(
@@ -220,8 +187,7 @@ const LandingPage: React.FC = () => {
             // Delete image from Firestore and Firebase Storage
             await deleteImages(user.uid, [imageId]);
 
-            // Update local state
-            setUpdatedImages((prev) => prev.filter((image) => image.id !== imageId));
+            // Image will be removed automatically from Redux store
 
             setShowDeleteConfirmModal(false);
             setDeleteConfirmConfig(null);
@@ -256,8 +222,7 @@ const LandingPage: React.FC = () => {
             // Delete image from Firestore and Firebase Storage
             await deleteImages(user.uid, [imageId]);
 
-            // Update local state
-            setOriginalImages((prev) => prev.filter((image) => image.id !== imageId));
+            // Image will be removed automatically from Redux store
 
             // Clear selection if the removed image was selected
             if (selectedOriginalImageIds.has(imageId)) {
@@ -280,11 +245,6 @@ const LandingPage: React.FC = () => {
   );
 
   const handleRenameOriginalImage = useCallback(async (imageId: string, newName: string) => {
-    // Optimistically update UI
-    setOriginalImages((prev) =>
-      prev.map((img) => (img.id === imageId ? { ...img, name: newName } : img))
-    );
-
     try {
       // TODO: Update image name in Firestore
     } catch (error) {
@@ -294,11 +254,6 @@ const LandingPage: React.FC = () => {
   }, []);
 
   const handleRenameUpdatedImage = useCallback(async (imageId: string, newName: string) => {
-    // Optimistically update UI
-    setUpdatedImages((prev) =>
-      prev.map((img) => (img.id === imageId ? { ...img, name: newName } : img))
-    );
-
     try {
       // TODO: Update image name in Firestore
     } catch (error) {
@@ -319,7 +274,7 @@ const LandingPage: React.FC = () => {
 
       setShowCustomPromptModal(false);
 
-      // Save context for later use in handleConfirmPrompt
+      // Save context for later use in handleImageSatisfied
       setProcessingContext({ selectedImage, customPrompt });
 
       const generatedImage = await processImage(selectedImage, customPrompt);
@@ -357,7 +312,7 @@ const LandingPage: React.FC = () => {
     setShowCustomPromptModal(true);
   }, [selectedColor, selectedTexture, originalImages, selectedOriginalImageIds, selectedTaskName]);
 
-  const handleConfirmPrompt = useCallback(
+  const handleImageSatisfied = useCallback(
     async (processedImageResult: { base64: string; mimeType: string }) => {
       if (!user) {
         setErrorMessage('Please log in to save images.');
@@ -387,9 +342,13 @@ const LandingPage: React.FC = () => {
           selectedTexture
         );
 
+        console.log({ operation });
+
         // Save processed image to Firestore
-        const savedImage = await createProcessedImage(
+        await createProcessedImage(
           user.uid,
+          activeHomeId!,
+          activeRoomId!,
           processedImageResult.base64,
           processedImageResult.mimeType,
           {
@@ -401,8 +360,7 @@ const LandingPage: React.FC = () => {
           operation
         );
 
-        // Update local state
-        setUpdatedImages((prev) => [...prev, savedImage]);
+        // Image will be updated automatically in Redux store
         setShowConfirmationModal(false);
         setGeneratedImage(null);
         setProcessingContext({ selectedImage: null, customPrompt: undefined });
@@ -467,8 +425,7 @@ const LandingPage: React.FC = () => {
           // Delete images from Firestore and Firebase Storage
           await deleteImages(user.uid, Array.from(selectedOriginalImageIds));
 
-          // Update local state
-          setOriginalImages((prev) => prev.filter((img) => !selectedOriginalImageIds.has(img.id)));
+          // Images will be removed automatically from Redux store
           setSelectedOriginalImageIds(new Set());
           setErrorMessage(null);
 
@@ -520,8 +477,7 @@ const LandingPage: React.FC = () => {
           // Delete images from Firestore and Firebase Storage
           await deleteImages(user.uid, Array.from(selectedUpdatedImageIds));
 
-          // Update local state
-          setUpdatedImages((prev) => prev.filter((img) => !selectedUpdatedImageIds.has(img.id)));
+          // Images will be removed automatically from Redux store
           setSelectedUpdatedImageIds(new Set());
           setErrorMessage(null);
 
@@ -687,7 +643,7 @@ const LandingPage: React.FC = () => {
           isOpen={showConfirmationModal}
           originalImage={selectedOriginalImage}
           image={generatedImage}
-          onConfirm={handleConfirmPrompt}
+          onConfirm={handleImageSatisfied}
           onCancel={handleCancelRecolor}
           colorName={selectedColor?.name || 'N/A'}
         />

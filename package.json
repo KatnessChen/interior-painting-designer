@@ -28,7 +28,7 @@
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "@vitejs/plugin-react": "^5.0.0",
-    "typescript": "~5.8.2",
+    "typescript": "~5.9.3",
     "vite": "^6.2.0"
   },
   "packageManager": "pnpm@8.0.0+sha512.0abb2f77c2ca6fe4a8101fdb431459aed4ade518bc83d8e63e0e8c2b27b1313235a5d2dde3880fc1557a7192eada36183efe6afa00033e46136d8afc49e14278"

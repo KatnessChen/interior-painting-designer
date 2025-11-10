@@ -13,6 +13,7 @@ export type { GeminiTask };
 const defaultModel = 'gemini-2.5-flash-image';
 
 export const recolorWalls = async (
+  userId: string,
   imageData: ImageData,
   colorName: string,
   colorHex: string,
@@ -22,10 +23,12 @@ export const recolorWalls = async (
     colorName,
     colorHex,
     customPrompt,
+    userId,
   });
 };
 
 export const addTexture = async (
+  userId: string,
   parentImage: ImageData,
   textureImage: ImageData,
   textureName: string,
@@ -34,6 +37,7 @@ export const addTexture = async (
   return processImageWithTask(GEMINI_TASKS.ADD_TEXTURE, parentImage, {
     textureName,
     customPrompt,
+    userId,
   });
 };
 
@@ -53,6 +57,7 @@ export const processImageWithTask = async (
     colorName?: string;
     colorHex?: string;
     textureName?: string;
+    userId?: string;
   } = {}
 ): Promise<{ base64: string; mimeType: string }> => {
   if (!process.env.API_KEY) {
@@ -66,7 +71,12 @@ export const processImageWithTask = async (
 
   try {
     // Fetch the image from Firebase Storage using SDK
-    const storageRef = ref(storage, imageData.storagePath);
+    // TODO: image dependency inversion
+    const extension = imageData.mimeType.split('/')[1] || 'jpg';
+    const storagePath = options.userId
+      ? `users/${options.userId}/images/${imageData.id}.${extension}`
+      : imageData.storagePath;
+    const storageRef = ref(storage, storagePath);
     const bytes = await getBytes(storageRef);
     const blob = new Blob([bytes], { type: imageData.mimeType });
     const base64String = await blobToBase64(blob);

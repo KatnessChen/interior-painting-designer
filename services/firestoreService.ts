@@ -5,7 +5,6 @@ import {
   Timestamp,
   collection,
   query,
-  where,
   getDocs,
   getDoc,
   updateDoc,
@@ -18,6 +17,7 @@ import {
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { app } from '../config/firebaseConfig';
 import { ImageData, ImageOperation, Home, Room } from '../types';
+import { base64ToFile, FirestoreDataConverter } from '../utils';
 
 // Initialize Firestore and Storage with the shared Firebase app instance
 export const db = getFirestore(app);
@@ -39,6 +39,8 @@ export const storage = getStorage(app);
  */
 export async function createImage(
   userId: string,
+  homeId: string,
+  roomId: string,
   imageFile: Blob | File,
   imageMetadata: Pick<ImageData, 'id' | 'name' | 'mimeType'>,
   parentImageId?: string | null,
@@ -59,8 +61,8 @@ export async function createImage(
       extension = parts[parts.length - 1] || 'jpg';
     }
 
-    const storagePath = `users/${userId}/images/${imageMetadata.id}.${extension}`;
-    const storageRef = ref(storage, storagePath);
+    const storagePath = `users/${userId}/homes/${homeId}/rooms/${roomId}/images/${imageMetadata.id}.${extension}`;
+    const storageRef = ref(storage, `users/${userId}/images/${imageMetadata.id}.${extension}`);
 
     // Upload the file to Firebase Storage
     await uploadBytes(storageRef, imageFile);
@@ -72,6 +74,7 @@ export async function createImage(
 
     // Step 2: Create the image document in Firestore with storage information
     const now = new Date();
+    const nowISOString = now.toISOString();
     const newImageData: ImageData = {
       ...imageMetadata,
       roomId: null,
@@ -81,11 +84,26 @@ export async function createImage(
       storagePath,
       isDeleted: false,
       deletedAt: null,
-      createdAt: now,
-      updatedAt: now,
+      createdAt: nowISOString,
+      updatedAt: nowISOString,
     };
 
-    const docRef = doc(db, 'users', userId, 'images', newImageData.id);
+    console.log({ newImageData });
+
+    const batch = writeBatch(db);
+
+    // Create the image document in the room's images subcollection
+    const docRef = doc(
+      db,
+      'users',
+      userId,
+      'homes',
+      homeId,
+      'rooms',
+      roomId,
+      'images',
+      newImageData.id
+    );
 
     // Convert Date objects to Firestore Timestamps for storage
     const firestoreData = {
@@ -94,23 +112,44 @@ export async function createImage(
       mimeType: newImageData.mimeType,
       storageUrl: newImageData.storageUrl,
       storagePath: newImageData.storagePath,
-      roomId: newImageData.roomId,
-      parentImageId: newImageData.parentImageId,
+      roomId: newImageData.roomId || null,
+      parentImageId: newImageData.parentImageId || null,
       isDeleted: newImageData.isDeleted,
-      deletedAt: newImageData.deletedAt,
+      deletedAt: newImageData.deletedAt || null,
       evolutionChain: operation
         ? [
             {
               ...operation,
-              timestamp: Timestamp.fromDate(operation.timestamp),
+              timestamp: Timestamp.fromDate(new Date(operation.timestamp)),
             },
           ]
         : [],
-      createdAt: Timestamp.fromDate(newImageData.createdAt),
-      updatedAt: Timestamp.fromDate(newImageData.updatedAt),
+      createdAt: Timestamp.fromDate(new Date(newImageData.createdAt)),
+      updatedAt: Timestamp.fromDate(new Date(newImageData.updatedAt)),
     };
 
-    await setDoc(docRef, firestoreData);
+    batch.set(docRef, firestoreData);
+
+    // Also update the home document's rooms array to include the new image in the denormalized images array
+    const homeDocRef = doc(db, 'users', userId, 'homes', homeId);
+    const homeDoc = await getDoc(homeDocRef);
+
+    if (homeDoc.exists()) {
+      const homeData = homeDoc.data() as Home;
+      const updatedRooms = (homeData.rooms || []).map((room: any) => {
+        if (room.id === roomId) {
+          return {
+            ...room,
+            images: [...(room.images || []), firestoreData],
+          };
+        }
+        return room;
+      });
+
+      batch.update(homeDocRef, { rooms: updatedRooms });
+    }
+
+    await batch.commit();
     console.log('Image metadata document created in Firestore:', newImageData.id);
 
     // Return the object with standard Date objects for use in the local state
@@ -125,85 +164,12 @@ export async function createImage(
 }
 
 /**
- * Fetches all images from Firestore for a specific user.
- * Converts Firestore Timestamps back to Date objects.
- *
- * @param userId The ID of the user whose images to fetch.
- * @returns An array of ImageData objects.
- */
-export async function fetchUserImages(userId: string): Promise<ImageData[]> {
-  if (!userId) {
-    throw new Error('User ID is required to fetch images.');
-  }
-
-  try {
-    console.log('Fetching images from Firestore for user:', userId);
-
-    // Create a reference to the images sub-collection
-    const imagesRef = collection(db, 'users', userId, 'images');
-
-    // Query for non-deleted images
-    const q = query(imagesRef, where('isDeleted', '==', false));
-
-    // Execute the query
-    const querySnapshot = await getDocs(q);
-
-    // Convert Firestore documents to ImageData objects
-    const images: ImageData[] = querySnapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        id: data.id,
-        name: data.name,
-        mimeType: data.mimeType,
-        storageUrl: data.storageUrl,
-        storagePath: data.storagePath,
-        roomId: data.roomId || null,
-        evolutionChain: data.evolutionChain || [],
-        parentImageId: data.parentImageId || null,
-        isDeleted: data.isDeleted || false,
-        deletedAt: data.deletedAt ? (data.deletedAt as Timestamp).toDate() : null,
-        createdAt: (data.createdAt as Timestamp).toDate(),
-        updatedAt: (data.updatedAt as Timestamp).toDate(),
-      };
-    });
-
-    console.log('Images fetched from Firestore:', images.length);
-    return images;
-  } catch (error) {
-    console.error('Failed to fetch images:', error);
-    if (error instanceof Error) {
-      throw new Error(`Failed to fetch images: ${error.message}`);
-    }
-    throw new Error('Failed to fetch images from Firebase.');
-  }
-}
-
-/**
- * Converts a base64 string to a File object.
- *
- * @param base64 The base64-encoded image data (without data URL prefix).
- * @param mimeType The MIME type of the image.
- * @param filename The name for the file.
- * @returns A File object.
- */
-export function base64ToFile(base64: string, mimeType: string, filename: string): File {
-  // Convert base64 to binary string
-  const binaryString = atob(base64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  // Create a Blob from the binary data
-  const blob = new Blob([bytes], { type: mimeType });
-  // Create and return a File object
-  return new File([blob], filename, { type: mimeType });
-}
-
-/**
  * Creates a processed image in Firestore with parent image tracking and evolution chain.
  * This function converts base64 to File and delegates to createImage.
  *
  * @param userId The ID of the user.
+ * @param homeId The ID of the home.
+ * @param roomId The ID of the room.
  * @param base64 The base64-encoded processed image.
  * @param mimeType The MIME type of the image.
  * @param imageMetadata Basic metadata: id, name, mimeType.
@@ -213,6 +179,8 @@ export function base64ToFile(base64: string, mimeType: string, filename: string)
  */
 export async function createProcessedImage(
   userId: string,
+  homeId: string,
+  roomId: string,
   base64: string,
   mimeType: string,
   imageMetadata: Pick<ImageData, 'id' | 'name' | 'mimeType'>,
@@ -228,8 +196,18 @@ export async function createProcessedImage(
     const filename = `${imageMetadata.id}.${mimeType.split('/')[1] || 'jpg'}`;
     const imageFile = base64ToFile(base64, mimeType, filename);
 
+    console.log({ filename });
+
     // Delegate to createImage for uploading and storing
-    return await createImage(userId, imageFile, imageMetadata, parentImageId, operation);
+    return await createImage(
+      userId,
+      homeId,
+      roomId,
+      imageFile,
+      imageMetadata,
+      parentImageId,
+      operation
+    );
   } catch (error) {
     console.error('Failed to create processed image:', error);
     if (error instanceof Error) {
@@ -334,10 +312,11 @@ export async function createHome(userId: string, homeName: string): Promise<Home
 }
 
 /**
- * Fetches all homes for a specific user from Firestore.
+ * Fetches all homes for a specific user from Firestore, including rooms and their images.
+ * Uses denormalized data from the home document's rooms array (only 1 Firestore read).
  *
  * @param userId The ID of the user.
- * @returns An array of Home objects (note: Home type doesn't include rooms array, but this fetches all room data for caching).
+ * @returns An array of Home objects with rooms and images populated.
  */
 export async function fetchHomes(userId: string): Promise<Home[]> {
   if (!userId) {
@@ -345,23 +324,23 @@ export async function fetchHomes(userId: string): Promise<Home[]> {
   }
 
   try {
-    console.log('Fetching homes with rooms from Firestore for user:', userId);
+    console.log('Fetching homes with rooms and images from Firestore for user:', userId);
 
     const homesRef = collection(db, 'users', userId, 'homes');
-    const q = query(homesRef, orderBy('createdAt', 'desc'));
+    const q = query(homesRef, orderBy('createdAt', 'asc'));
     const homesSnapshot = await getDocs(q);
 
     const homes: Home[] = homesSnapshot.docs.map((homeDoc) => {
       const homeData = homeDoc.data();
       const homeName = homeData.name;
-      // Sort rooms by createdAt in descending order and convert Timestamp to ISO string
+
+      // Use the denormalized rooms array from the home document
+      // Convert rooms and their images from Firestore format to application format
       const rooms = (homeData.rooms || [])
-        .map((room: any) => ({
-          ...room,
-          createdAt: (room.createdAt as Timestamp).toDate().toISOString(),
-        }))
+        .map((room: any) => new FirestoreDataConverter(room).serializeTimestamps().value)
+        // Sort rooms by createdAt in ascending order
         .sort(
-          (a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          (a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
         );
 
       return {
@@ -372,7 +351,7 @@ export async function fetchHomes(userId: string): Promise<Home[]> {
       } as any;
     });
 
-    console.log('Homes and rooms fetched from Firestore:', homes.length, 'homes');
+    console.log('Homes, rooms, and images fetched from Firestore:', homes.length, 'homes');
     return homes;
   } catch (error) {
     console.error('Failed to fetch homes:', error);
@@ -489,6 +468,8 @@ export async function createRoom(userId: string, homeId: string, roomName: strin
     };
 
     const batch = writeBatch(db);
+
+    console.log({ roomId });
 
     // Create the room document in the subcollection
     const roomDocRef = doc(db, 'users', userId, 'homes', homeId, 'rooms', roomId);

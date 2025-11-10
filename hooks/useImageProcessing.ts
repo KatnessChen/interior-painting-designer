@@ -43,7 +43,14 @@ export const useImageProcessing = ({
             return null;
           }
 
+          if (!userId) {
+            setErrorMessage('User ID is required to process images.');
+            setProcessingImage(false);
+            return null;
+          }
+
           result = await recolorWalls(
+            userId,
             parentImage,
             selectedColor.name,
             selectedColor.hex,

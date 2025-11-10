@@ -14,7 +14,7 @@ const MIME_TYPE_MAP: { [key: string]: string } = {
  * @param url The URL to download from
  * @param filename The name to save the file as
  */
-export async function downloadFile(url: string, filename: string): Promise<void> {
+async function downloadFile(url: string, filename: string): Promise<void> {
   try {
     const response = await fetch(url);
     if (!response.ok) {
@@ -45,7 +45,7 @@ export async function downloadFile(url: string, filename: string): Promise<void>
  * @param mimeType The MIME type of the file
  * @returns The file extension (e.g., '.jpg')
  */
-export function getFileExtension(mimeType: string): string {
+function getFileExtension(mimeType: string): string {
   return MIME_TYPE_MAP[mimeType] || '.jpg';
 }
 
@@ -56,7 +56,9 @@ export function getFileExtension(mimeType: string): string {
  * @param mimeType The MIME type of the file
  * @returns The complete filename with extension
  */
-export function buildDownloadFilename(name: string, mimeType: string): string {
+function buildDownloadFilename(name: string, mimeType: string): string {
   const extension = getFileExtension(mimeType);
   return `${name}${extension}`;
 }
+
+export { MIME_TYPE_MAP, downloadFile, getFileExtension, buildDownloadFilename };
