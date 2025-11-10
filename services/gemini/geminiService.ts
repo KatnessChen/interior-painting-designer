@@ -12,6 +12,19 @@ export type { GeminiTask };
 // TODO: explore more model solutions and make this selectable to users
 const defaultModel = 'gemini-2.5-flash-image';
 
+const getBase64FromImageData = async (userId: string | undefined, imageData: ImageData) => {
+  // Fetch the image from Firebase Storage using SDK
+  const extension = imageData.mimeType.split('/')[1] || 'jpg';
+  const storagePath = userId
+    ? `users/${userId}/images/${imageData.id}.${extension}`
+    : imageData.storagePath;
+  const storageRef = ref(storage, storagePath);
+  const bytes = await getBytes(storageRef);
+  const blob = new Blob([bytes], { type: imageData.mimeType });
+
+  return await blobToBase64(blob);
+};
+
 export const recolorWalls = async (
   userId: string,
   imageData: ImageData,
@@ -19,7 +32,12 @@ export const recolorWalls = async (
   colorHex: string,
   customPrompt?: string
 ): Promise<{ base64: string; mimeType: string }> => {
-  return processImageWithTask(GEMINI_TASKS.RECOLOR_WALL, imageData, {
+  const image = {
+    base64String: await getBase64FromImageData(userId, imageData),
+    mimeType: imageData.mimeType,
+  };
+
+  return processImageWithTask(GEMINI_TASKS.RECOLOR_WALL, image, {
     colorName,
     colorHex,
     customPrompt,
@@ -29,12 +47,17 @@ export const recolorWalls = async (
 
 export const addTexture = async (
   userId: string,
-  parentImage: ImageData,
+  imageData: ImageData,
   textureImage: ImageData,
   textureName: string,
   customPrompt?: string
 ): Promise<{ base64: string; mimeType: string }> => {
-  return processImageWithTask(GEMINI_TASKS.ADD_TEXTURE, parentImage, {
+  const image = {
+    base64String: await getBase64FromImageData(userId, imageData),
+    mimeType: imageData.mimeType,
+  };
+
+  return processImageWithTask(GEMINI_TASKS.ADD_TEXTURE, image, {
     textureName,
     customPrompt,
     userId,
@@ -50,7 +73,10 @@ export const addTexture = async (
  */
 export const processImageWithTask = async (
   task: GeminiTask,
-  imageData: ImageData,
+  image: {
+    base64String: string;
+    mimeType: string;
+  },
   options: {
     customPrompt?: string;
     model?: string;
@@ -70,23 +96,12 @@ export const processImageWithTask = async (
   const model = options.model ?? defaultModel;
 
   try {
-    // Fetch the image from Firebase Storage using SDK
-    // TODO: image dependency inversion
-    const extension = imageData.mimeType.split('/')[1] || 'jpg';
-    const storagePath = options.userId
-      ? `users/${options.userId}/images/${imageData.id}.${extension}`
-      : imageData.storagePath;
-    const storageRef = ref(storage, storagePath);
-    const bytes = await getBytes(storageRef);
-    const blob = new Blob([bytes], { type: imageData.mimeType });
-    const base64String = await blobToBase64(blob);
-
     // Build parts array with the image
     const parts: any[] = [
       {
         inlineData: {
-          data: base64String,
-          mimeType: imageData.mimeType,
+          data: image.base64String,
+          mimeType: image.mimeType,
         },
       },
       { text: prompt },

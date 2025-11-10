@@ -12,22 +12,23 @@ interface Texture {
 interface UseImageProcessingProps {
   userId: string | undefined;
   selectedTaskName: GeminiTaskName;
-  selectedColor: BenjaminMooreColor | null;
-  selectedTexture: Texture | null;
+  options: {
+    selectedColor?: BenjaminMooreColor | null;
+    selectedTexture?: Texture | null;
+  };
 }
 
 export const useImageProcessing = ({
   userId,
   selectedTaskName,
-  selectedColor,
-  selectedTexture,
+  options: { selectedColor, selectedTexture },
 }: UseImageProcessingProps) => {
   const [processingImage, setProcessingImage] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const processImage = useCallback(
     async (
-      parentImage: ImageData,
+      imageData: ImageData,
       customPrompt: string | undefined
     ): Promise<{ base64: string; mimeType: string } | null> => {
       setProcessingImage(true);
@@ -51,7 +52,7 @@ export const useImageProcessing = ({
 
           result = await recolorWalls(
             userId,
-            parentImage,
+            imageData,
             selectedColor.name,
             selectedColor.hex,
             customPrompt

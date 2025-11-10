@@ -10,7 +10,7 @@ const TaskSelector: React.FC<TaskSelectorProps> = ({ selectedTaskName, onSelectT
   const tasks = [
     { id: GEMINI_TASKS.RECOLOR_WALL.task_name, label: 'Recolor Walls', icon: '🎨' },
     // TODO: integrate add texture feature with Firestore/Storage
-    { id: GEMINI_TASKS.ADD_TEXTURE.task_name, label: 'Add Texture', icon: '🧱' },
+    // { id: GEMINI_TASKS.ADD_TEXTURE.task_name, label: 'Add Texture', icon: '🧱' },
   ];
 
   return (

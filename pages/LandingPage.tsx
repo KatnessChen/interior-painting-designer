@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import ColorSelector from '../components/ColorSelector';
 import ConfirmImageUpdateModal from '../components/ConfirmImageUpdateModal';
 import CustomPromptModal from '../components/CustomPromptModal';
@@ -13,12 +13,18 @@ import AlertModal from '../components/AlertModal';
 import GenericConfirmModal from '../components/GenericConfirmModal';
 import { GEMINI_TASKS, GeminiTaskName } from '../services/gemini/geminiTasks';
 import { BenjaminMooreColor, ImageData, ImageOperation } from '../types';
-import { createImage, createProcessedImage, deleteImages } from '../services/firestoreService';
+import {
+  createImage,
+  createProcessedImage,
+  deleteImages,
+  fetchHomes,
+} from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 import { useImageProcessing } from '../hooks/useImageProcessing';
 import { formatImageOperationData, downloadFile, buildDownloadFilename } from '../utils';
 import { RootState } from '../stores/store';
 import { selectOriginalImages, selectUpdatedImages } from '../stores/imageSlice';
+import { setHomes } from '../stores/homeSlice';
 
 interface Texture {
   name: string;
@@ -28,6 +34,7 @@ interface Texture {
 const LandingPage: React.FC = () => {
   // Get authenticated user
   const { user } = useAuth();
+  const dispatch = useDispatch();
 
   // Get active room from store
   const activeHomeId = useSelector((state: RootState) => state.home.activeHomeId);
@@ -57,8 +64,6 @@ const LandingPage: React.FC = () => {
   const [selectedUpdatedImageIds, setSelectedUpdatedImageIds] = useState<Set<string>>(new Set());
 
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
-
-  const [isLoadingData, setIsLoadingData] = useState(true);
 
   // State for custom prompt modal
   const [showCustomPromptModal, setShowCustomPromptModal] = useState<boolean>(false);
@@ -105,8 +110,10 @@ const LandingPage: React.FC = () => {
   const { processImage, processingImage, errorMessage, setErrorMessage } = useImageProcessing({
     userId: user?.uid,
     selectedTaskName,
+    options: {
     selectedColor,
     selectedTexture,
+    },
   });
 
   // Show alert when errorMessage changes
@@ -115,13 +122,6 @@ const LandingPage: React.FC = () => {
       showAlertModal('error', 'Error', errorMessage);
     }
   }, [errorMessage, showAlertModal]);
-
-  // Load images from storage on mount
-  useEffect(() => {
-    // Images are now loaded from Redux store (fetched in AsideSection)
-    // No need for local state management
-    setIsLoadingData(false);
-  }, []);
 
   const handleSelectTask = useCallback((taskName: GeminiTaskName) => {
     setSelectedTaskName(taskName);
@@ -360,7 +360,9 @@ const LandingPage: React.FC = () => {
           operation
         );
 
-        // Image will be updated automatically in Redux store
+        const updatedHomes = await fetchHomes(user.uid);
+        dispatch(setHomes(updatedHomes));
+
         setShowConfirmationModal(false);
         setGeneratedImage(null);
         setProcessingContext({ selectedImage: null, customPrompt: undefined });
@@ -371,7 +373,7 @@ const LandingPage: React.FC = () => {
         setGeneratedImage(null);
       }
     },
-    [user, selectedColor, selectedTexture, selectedTaskName, processingContext]
+    [user, selectedColor, selectedTexture, selectedTaskName, processingContext, dispatch]
   );
 
   const handleCancelRecolor = useCallback(() => {
@@ -548,14 +550,7 @@ const LandingPage: React.FC = () => {
   return (
     <div className="h-full bg-gray-100 p-6">
       <div className="h-full container mx-auto max-w-6xl">
-        {isLoadingData && (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <span className="ml-3 text-lg text-gray-600">Loading your saved data...</span>
-          </div>
-        )}
-
-        {!isLoadingData && !activeRoomId && (
+        {!activeRoomId && (
           <div className="h-full -mt-8 bg-gray-100 p-6 flex items-center justify-center">
             <div className="container mx-auto max-w-2xl text-center">
               <div className="bg-white rounded-lg shadow-sm p-8">
@@ -568,7 +563,7 @@ const LandingPage: React.FC = () => {
           </div>
         )}
 
-        {!isLoadingData && activeRoomId && (
+        {activeRoomId && (
           <>
             <div className="mb-8">
               <TaskSelector selectedTaskName={selectedTaskName} onSelectTask={handleSelectTask} />
