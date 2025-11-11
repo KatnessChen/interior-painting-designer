@@ -3,17 +3,15 @@ import { RootState } from './store';
 import { ImageData, Room } from '../types';
 
 interface ImageState {
-  // Empty state - we compute images from homes in homeSlice
+  // Empty state - we compute images from homes in homeStore
 }
 
 const initialState: ImageState = {};
 
-export const imageSlice = createSlice({
+export const imageStore = createSlice({
   name: 'image',
   initialState,
-  reducers: {
-    // No reducers needed - all state is computed from homes
-  },
+  reducers: {},
 });
 
 /**
@@ -46,4 +44,4 @@ export const selectUpdatedImages = createSelector(selectAllImages, (allImages): 
   allImages.filter((img) => img.parentImageId)
 );
 
-export default imageSlice.reducer;
+export default imageStore.reducer;

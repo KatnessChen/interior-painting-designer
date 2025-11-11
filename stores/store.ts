@@ -1,6 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
-import homeReducer from './homeSlice';
-import imageReducer from './imageSlice';
+import homeReducer from './homeStore';
+import imageReducer from './imageStore';
 
 export const store = configureStore({
   reducer: {

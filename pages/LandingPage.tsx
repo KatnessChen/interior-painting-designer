@@ -23,8 +23,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useImageProcessing } from '../hooks/useImageProcessing';
 import { formatImageOperationData, downloadFile, buildDownloadFilename } from '../utils';
 import { RootState } from '../stores/store';
-import { selectOriginalImages, selectUpdatedImages } from '../stores/imageSlice';
-import { setHomes } from '../stores/homeSlice';
+import { selectOriginalImages, selectUpdatedImages } from '../stores/imageStore';
+import { setHomes } from '../stores/homeStore';
 
 interface Texture {
   name: string;
@@ -111,8 +111,8 @@ const LandingPage: React.FC = () => {
     userId: user?.uid,
     selectedTaskName,
     options: {
-    selectedColor,
-    selectedTexture,
+      selectedColor,
+      selectedTexture,
     },
   });
 
@@ -156,7 +156,7 @@ const LandingPage: React.FC = () => {
             mimeType: file.type,
           });
 
-          // Image will be updated automatically in Redux store via imageSlice selectors
+          // Image will be updated automatically in Redux store via imageStore selectors
           setErrorMessage(null); // Clear error on successful upload
         } catch (error) {
           console.error('Failed to upload image:', error);
@@ -360,6 +360,16 @@ const LandingPage: React.FC = () => {
           operation
         );
 
+        // Fetch updated homes and update Redux store
+        // More efficient way:
+        // db.collection('users').doc(userId)
+        //                       .collection('homes')
+        //                       .doc(homeId)
+        //                       .collection('rooms')
+        //                       .doc(roomId)
+        //                       .collection('images')
+        //                       .doc(imageId).get()
+        //  to fetch the newly created image and append to Redux store
         const updatedHomes = await fetchHomes(user.uid);
         dispatch(setHomes(updatedHomes));
 

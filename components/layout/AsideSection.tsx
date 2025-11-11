@@ -20,7 +20,7 @@ import {
   removeRoom,
   setActiveHomeId,
   setActiveRoomId,
-} from '../../stores/homeSlice';
+} from '../../stores/homeStore';
 import {
   fetchHomes,
   createHome,

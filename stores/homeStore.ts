@@ -13,7 +13,7 @@ const initialState: HomeState = {
   activeRoomId: null,
 };
 
-export const homeSlice = createSlice({
+export const homeStore = createSlice({
   name: 'home',
   initialState,
   reducers: {
@@ -102,7 +102,7 @@ export const {
   removeRoom,
   setActiveHomeId,
   setActiveRoomId,
-} = homeSlice.actions;
+} = homeStore.actions;
 
 export const {
   selectHomes,
@@ -110,6 +110,6 @@ export const {
   selectActiveRoomId,
   selectActiveHome,
   selectActiveRoom,
-} = homeSlice.selectors;
+} = homeStore.selectors;
 
-export default homeSlice.reducer;
+export default homeStore.reducer;
