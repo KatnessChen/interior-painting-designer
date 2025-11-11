@@ -17,7 +17,7 @@ import {
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { app } from '../config/firebaseConfig';
 import { ImageData, ImageOperation, Home, Room } from '../types';
-import { base64ToFile, FirestoreDataConverter } from '../utils';
+import { base64ToFile, FirestoreDataHandler } from '../utils';
 
 // Initialize Firestore and Storage with the shared Firebase app instance
 export const db = getFirestore(app);
@@ -337,7 +337,7 @@ export async function fetchHomes(userId: string): Promise<Home[]> {
       // Use the denormalized rooms array from the home document
       // Convert rooms and their images from Firestore format to application format
       const rooms = (homeData.rooms || [])
-        .map((room: any) => new FirestoreDataConverter(room).serializeTimestamps().value)
+        .map((room: any) => new FirestoreDataHandler(room).serializeTimestamps().value)
         // Sort rooms by createdAt in ascending order
         .sort(
           (a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()

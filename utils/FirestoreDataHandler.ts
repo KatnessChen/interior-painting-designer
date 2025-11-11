@@ -1,12 +1,12 @@
 /**
- * FirestoreDataConverter: Chainable utility for Firestore data transformation.
+ * FirestoreDataHandler: Chainable utility for Firestore data transformation.
  * Usage:
- *   new FirestoreDataConverter(data)
+ *   new FirestoreDataHandler(data)
  *     .serializeTimestamps()
  *     .serializeLocationObject()
  *     .value;
  */
-class FirestoreDataConverter {
+class FirestoreDataHandler {
   data: any;
 
   constructor(data: any) {
@@ -47,4 +47,4 @@ class FirestoreDataConverter {
   }
 }
 
-export { FirestoreDataConverter };
+export { FirestoreDataHandler };

@@ -6,7 +6,7 @@ import {
 } from './downloadUtils';
 import { base64ToFile } from './fileUtils';
 import { formatImageOperationData } from './imageOperationUtils';
-import { FirestoreDataConverter } from './FirestoreDataConverter';
+import { FirestoreDataHandler } from './FirestoreDataHandler';
 
 export {
   MIME_TYPE_MAP,
@@ -15,5 +15,5 @@ export {
   buildDownloadFilename,
   base64ToFile,
   formatImageOperationData,
-  FirestoreDataConverter,
+  FirestoreDataHandler,
 };
