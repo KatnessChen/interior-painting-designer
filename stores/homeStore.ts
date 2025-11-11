@@ -1,5 +1,50 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { storagePathToBase64 } from '../utils';
 import { Home } from '../types';
+
+/**
+ * Traverse all homes > rooms > images and pre-cache their base64 data
+ * This runs in the background without blocking the Redux state update
+ */
+async function cacheAllImageBase64s(homes: Home[]): Promise<void> {
+  const totalImages = homes.reduce(
+    (sum, home) => sum + home.rooms.reduce((roomSum, room) => roomSum + room.images.length, 0),
+    0
+  );
+
+  if (totalImages === 0) {
+    console.log('[Cache] No images to cache');
+    return;
+  }
+
+  console.log(`[Cache] Starting to cache ${totalImages} images...`);
+  let cachedCount = 0;
+
+  for (const home of homes) {
+    for (const room of home.rooms) {
+      for (const image of room.images) {
+        try {
+          // Fire and forget - we don't need to wait for each one sequentially
+          // But we'll track progress
+          storagePathToBase64(image.storageUrl)
+            .then(() => {
+              cachedCount++;
+              if (cachedCount % 5 === 0) {
+                console.log(`[Cache] Progress: ${cachedCount}/${totalImages} images cached`);
+              }
+            })
+            .catch((error) => {
+              console.warn(`[Cache] Failed to cache image ${image.id}:`, error);
+            });
+        } catch (error) {
+          console.warn(`[Cache] Error caching image ${image.id}:`, error);
+        }
+      }
+    }
+  }
+
+  console.log(`[Cache] Queued ${totalImages} images for caching`);
+}
 
 interface HomeState {
   homes: Home[];
@@ -20,6 +65,9 @@ export const homeStore = createSlice({
     // Homes actions
     setHomes: (state, action: PayloadAction<Home[]>) => {
       state.homes = action.payload;
+
+      // Kick off async images caching in the background without blocking state update
+      void cacheAllImageBase64s(action.payload);
     },
     addHome: (state, action: PayloadAction<Home>) => {
       state.homes.push(action.payload);

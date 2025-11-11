@@ -1,5 +1,6 @@
-import React from 'react';
+import { useState, useEffect } from 'react';
 import { ImageData } from '../types';
+import { imageCache } from '../utils/imageCache';
 import {
   Visibility as EyeIcon,
   Download as DownloadIcon,
@@ -35,8 +36,32 @@ const ImageCard: React.FC<ImageCardProps> = ({
   };
 
   // Rename state
-  const [isEditing, setIsEditing] = React.useState(false);
-  const [editValue, setEditValue] = React.useState(image.name);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(image.name);
+
+  // Cached image state
+  const [cachedImageSrc, setCachedImageSrc] = useState<string | null>(null);
+  const [isLoadingCache, setIsLoadingCache] = useState(false);
+
+  // Load cached base64 on mount
+  useEffect(() => {
+    const loadCachedImage = async () => {
+      try {
+        setIsLoadingCache(true);
+        const base64 = await imageCache.get(image.storageUrl);
+        if (base64) {
+          // Convert base64 to data URL
+          setCachedImageSrc(`data:${image.mimeType};base64,${base64}`);
+        }
+      } catch (error) {
+        console.warn('[ImageCard] Failed to load cached image:', error);
+      } finally {
+        setIsLoadingCache(false);
+      }
+    };
+
+    loadCachedImage();
+  }, [image.storageUrl, image.mimeType]);
 
   const startEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -82,10 +107,16 @@ const ImageCard: React.FC<ImageCardProps> = ({
       {/* Image container with overlay buttons */}
       <div className="relative bg-gray-100">
         <img
-          src={image.storageUrl}
+          src={cachedImageSrc || image.storageUrl}
           alt={image.name}
           className="w-full h-48 object-contain object-center"
         />
+        {/* Loading indicator while fetching from cache */}
+        {isLoadingCache && (
+          <div className="absolute inset-0 bg-gray-200 bg-opacity-50 flex items-center justify-center">
+            <div className="text-gray-600 text-sm">Loading...</div>
+          </div>
+        )}
         {/* Overlay buttons - appear on hover */}
         {(onViewButtonClick || showDownloadButton) && (
           <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-200 flex flex-col items-center justify-center gap-3 opacity-0 group-hover:opacity-100">
