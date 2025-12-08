@@ -10,8 +10,8 @@ export interface ImageData {
   id: string;
   name: string;
 
-  // The room this image belongs to
-  roomId: string | null;
+  // The space this image belongs to
+  spaceId: string | null;
 
   // Evolution chain
   evolutionChain: ImageOperation[];
@@ -93,17 +93,17 @@ export interface User {
   lastLoginAt: Date;
 }
 
-export interface Room {
+export interface Space {
   id: string;
-  homeId: string;
+  projectId: string;
   name: string;
   images: ImageData[];
   createdAt: string; // ISO 8601 date string for Redux serialization
 }
 
-export interface Home {
+export interface Project {
   id: string;
   name: string;
-  rooms: Room[];
+  spaces: Space[];
   createdAt: string; // ISO 8601 date string for Redux serialization
 }

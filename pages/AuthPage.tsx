@@ -11,7 +11,7 @@ const AuthPage: React.FC = () => {
   const [error, setError] = React.useState<string | null>(null);
   const theme = useTheme();
 
-  // Redirect to home if already authenticated
+  // Redirect to project page if already authenticated
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
       navigate('/');

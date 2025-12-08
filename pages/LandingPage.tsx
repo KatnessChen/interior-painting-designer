@@ -17,14 +17,14 @@ import {
   createImage,
   createProcessedImage,
   deleteImages,
-  fetchHomes,
+  fetchProjects,
 } from '../services/firestoreService';
 import { useAuth } from '../contexts/AuthContext';
 import { useImageProcessing } from '../hooks/useImageProcessing';
 import { formatImageOperationData, downloadFile, buildDownloadFilename } from '../utils';
 import { RootState } from '../stores/store';
 import { selectOriginalImages, selectUpdatedImages } from '../stores/imageStore';
-import { setHomes } from '../stores/homeStore';
+import { setProjects } from '../stores/projectStore';
 
 interface Texture {
   name: string;
@@ -36,9 +36,9 @@ const LandingPage: React.FC = () => {
   const { user } = useAuth();
   const dispatch = useDispatch();
 
-  // Get active room from store
-  const activeHomeId = useSelector((state: RootState) => state.home.activeHomeId);
-  const activeRoomId = useSelector((state: RootState) => state.home.activeRoomId);
+  // Get active space from store
+  const activeProjectId = useSelector((state: RootState) => state.project.activeProjectId);
+  const activeSpaceId = useSelector((state: RootState) => state.project.activeSpaceId);
 
   // Get images from store (computed from rooms)
   const originalImages = useSelector(selectOriginalImages);
@@ -144,13 +144,13 @@ const LandingPage: React.FC = () => {
         return;
       }
 
-      if (!activeHomeId || !activeRoomId) {
-        setErrorMessage('Please select home/room to upload image.');
+      if (!activeProjectId || !activeSpaceId) {
+        setErrorMessage('Please select project/space to upload image.');
       } else {
         try {
           // Call firestoreService.createImage() to upload the file to Firebase Storage
           // and create the image document in Firestore
-          await createImage(user.uid, activeHomeId, activeRoomId, file, {
+          await createImage(user.uid, activeProjectId, activeSpaceId, file, {
             id: crypto.randomUUID(),
             name: file.name,
             mimeType: file.type,
@@ -166,7 +166,7 @@ const LandingPage: React.FC = () => {
         }
       }
     },
-    [user, activeHomeId, activeRoomId]
+    [user, activeProjectId, activeSpaceId]
   );
 
   const handleRemoveUpdatedImage = useCallback(
@@ -347,8 +347,8 @@ const LandingPage: React.FC = () => {
         // Save processed image to Firestore
         await createProcessedImage(
           user.uid,
-          activeHomeId!,
-          activeRoomId!,
+          activeProjectId!,
+          activeSpaceId!,
           processedImageResult.base64,
           processedImageResult.mimeType,
           {
@@ -360,18 +360,18 @@ const LandingPage: React.FC = () => {
           operation
         );
 
-        // Fetch updated homes and update Redux store
+        // Fetch updated projects and update Redux store
         // More efficient way:
         // db.collection('users').doc(userId)
-        //                       .collection('homes')
-        //                       .doc(homeId)
-        //                       .collection('rooms')
-        //                       .doc(roomId)
+        //                       .collection('projects')
+        //                       .doc(projectId)
+        //                       .collection('spaces')
+        //                       .doc(spaceId)
         //                       .collection('images')
         //                       .doc(imageId).get()
         //  to fetch the newly created image and append to Redux store
-        const updatedHomes = await fetchHomes(user.uid);
-        dispatch(setHomes(updatedHomes));
+        const updatedProjects = await fetchProjects(user.uid);
+        dispatch(setProjects(updatedProjects));
 
         setShowConfirmationModal(false);
         setGeneratedImage(null);
@@ -560,20 +560,20 @@ const LandingPage: React.FC = () => {
   return (
     <div className="h-full bg-gray-100 p-6">
       <div className="h-full container mx-auto max-w-6xl">
-        {!activeRoomId && (
+        {!activeSpaceId && (
           <div className="h-full -mt-8 bg-gray-100 p-6 flex items-center justify-center">
             <div className="container mx-auto max-w-2xl text-center">
               <div className="bg-white rounded-lg shadow-sm p-8">
-                <h2 className="text-2xl text-gray-800 mb-4">No Room Selected</h2>
+                <h2 className="text-2xl text-gray-800 mb-4">No Space Selected</h2>
                 <div className="inline-block bg-indigo-50 border-l-4 border-indigo-600 p-4">
-                  <p className="text-sm text-indigo-800">💡 Select a room to get started!</p>
+                  <p className="text-sm text-indigo-800">💡 Select a space to get started!</p>
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {activeRoomId && (
+        {activeSpaceId && (
           <>
             <div className="mb-8">
               <TaskSelector selectedTaskName={selectedTaskName} onSelectTask={handleSelectTask} />
