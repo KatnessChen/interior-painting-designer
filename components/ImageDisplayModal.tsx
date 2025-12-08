@@ -1,14 +1,11 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ImageData } from '../types';
-import {
-  Close as CloseIcon,
-  ChevronLeft as PrevIcon,
-  ChevronRight as NextIcon,
-} from '@mui/icons-material';
+import { ChevronLeft as PrevIcon, ChevronRight as NextIcon } from '@mui/icons-material';
+import { imageCache } from '../utils/imageCache';
 
 interface ImageDisplayModalProps {
   isOpen: boolean;
-  image: ImageData | null;
+  image: ImageData;
   onClose: () => void;
   currentImageIndex?: number;
   totalImages?: number;
@@ -25,6 +22,26 @@ const ImageDisplayModal: React.FC<ImageDisplayModalProps> = ({
   onPrevious,
   onNext,
 }) => {
+  // Cached image state: storageUrl -> base64 data URL
+  const [cachedImageSrc, setCachedImageSrc] = useState<string>('');
+
+  // Load cached base64 on mount
+  useEffect(() => {
+    const loadCachedImage = async () => {
+      try {
+        const base64 = await imageCache.get(image.storageUrl);
+        if (base64) {
+          // Convert base64 to data URL
+          setCachedImageSrc(`data:${image.mimeType};base64,${base64}`);
+        }
+      } catch (error) {
+        console.warn('[ImageCard] Failed to load cached image:', error);
+      }
+    };
+
+    loadCachedImage();
+  }, [image.storageUrl]);
+
   const hasPrevious = currentImageIndex > 0;
   const hasNext = currentImageIndex >= 0 && currentImageIndex < totalImages - 1;
 
@@ -109,7 +126,7 @@ const ImageDisplayModal: React.FC<ImageDisplayModalProps> = ({
             )}
 
             <img
-              src={image.storageUrl}
+              src={cachedImageSrc || image.storageUrl}
               alt={image.name}
               className="max-w-full max-h-full object-contain"
               style={{

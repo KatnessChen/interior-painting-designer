@@ -3,7 +3,6 @@ import { ImageData } from '../types';
 import { imageCache } from '../utils/imageCache';
 import {
   Visibility as EyeIcon,
-  Download as DownloadIcon,
   Edit as PencilIcon,
   CheckCircle as CheckmarkBadgeIcon,
   Cancel as XBadgeIcon,

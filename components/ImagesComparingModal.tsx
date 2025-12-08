@@ -1,5 +1,6 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ImageData } from '../types';
+import { imageCache } from '../utils/imageCache';
 
 interface ComparePhotosModalProps {
   isOpen: boolean;
@@ -8,6 +9,31 @@ interface ComparePhotosModalProps {
 }
 
 const ImagesComparingModal: React.FC<ComparePhotosModalProps> = ({ isOpen, images, onClose }) => {
+  // Cached image state: storageUrl -> base64 data URL
+  const [cachedImagesSrc, setCachedImagesSrc] = useState<Record<string, string>>({});
+
+  // Load cached base64 on mount
+  useEffect(() => {
+    const loadCachedImage = async () => {
+      try {
+        for (const image of images) {
+          const base64 = await imageCache.get(image.storageUrl);
+          if (base64) {
+            // Convert base64 to data URL
+            setCachedImagesSrc((prev) => ({
+              ...prev,
+              [image.storageUrl]: `data:${image.mimeType};base64,${base64}`,
+            }));
+          }
+        }
+      } catch (error) {
+        console.warn('[ImageCard] Failed to load cached image:', error);
+      }
+    };
+
+    loadCachedImage();
+  }, [images]);
+
   // Handle Esc key
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -43,7 +69,7 @@ const ImagesComparingModal: React.FC<ComparePhotosModalProps> = ({ isOpen, image
         {/* Content - Grid Layout */}
         <div className="flex-1 overflow-scroll p-2">
           <div className="grid grid-cols-2 gap-3 h-full">
-            {images.map((image) => (
+            {images.map((image, index) => (
               <div
                 key={image.id}
                 className="flex flex-col items-center rounded-lg overflow-hidden border border-gray-200 bg-gray-50"
@@ -51,7 +77,7 @@ const ImagesComparingModal: React.FC<ComparePhotosModalProps> = ({ isOpen, image
                 {/* Image Container */}
                 <div className="flex-1 w-full flex items-center justify-center min-h-0 overflow-visible">
                   <img
-                    src={image.storageUrl}
+                    src={cachedImagesSrc[image.storageUrl] || image.storageUrl}
                     alt={image.name}
                     className="max-w-full max-h-full object-contain"
                   />

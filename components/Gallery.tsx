@@ -6,7 +6,6 @@ import ImageDisplayModal from './ImageDisplayModal';
 import {
   Delete as DeleteIcon,
   Download as DownloadIcon,
-  SwapHoriz as MoveIcon,
   Clear as ClearIcon,
 } from '@mui/icons-material';
 
@@ -150,15 +149,17 @@ const Gallery: React.FC<GalleryProps> = ({
       )}
 
       {/* Image Display Modal */}
-      <ImageDisplayModal
-        isOpen={showImageDisplayModal}
-        image={imageToDisplayInModal}
-        onClose={handleCloseImageDisplayModal}
-        currentImageIndex={currentImageIndex}
-        totalImages={images.length}
-        onPrevious={handlePrevious}
-        onNext={handleNext}
-      />
+      {imageToDisplayInModal && (
+        <ImageDisplayModal
+          isOpen={showImageDisplayModal}
+          image={imageToDisplayInModal}
+          onClose={handleCloseImageDisplayModal}
+          currentImageIndex={currentImageIndex}
+          totalImages={images.length}
+          onPrevious={handlePrevious}
+          onNext={handleNext}
+        />
+      )}
     </div>
   );
 };

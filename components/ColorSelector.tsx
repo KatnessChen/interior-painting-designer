@@ -4,6 +4,7 @@ import { BENJAMIN_MOORE_COLORS } from '../constants';
 import { Check as CheckIcon } from '@mui/icons-material';
 
 interface ColorSelectorProps {
+  title: string;
   selectedColor: BenjaminMooreColor | null;
   onSelectColor: (color: BenjaminMooreColor) => void;
 }
@@ -48,7 +49,7 @@ const normalizeColorInput = (input: string): string | null => {
   return null;
 };
 
-const ColorSelector: React.FC<ColorSelectorProps> = ({ selectedColor, onSelectColor }) => {
+const ColorSelector: React.FC<ColorSelectorProps> = ({ title, selectedColor, onSelectColor }) => {
   const [availableColors, setAvailableColors] =
     useState<BenjaminMooreColor[]>(BENJAMIN_MOORE_COLORS);
   const [newColorName, setNewColorName] = useState('');
@@ -118,7 +119,7 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({ selectedColor, onSelectCo
 
   return (
     <div className="p-4 bg-white rounded-lg shadow-md mb-6">
-      <h2 className="text-lg mb-4 text-gray-800">1. Select a Color</h2>
+      <h2 className="text-lg mb-4 text-gray-800">{title}</h2>
 
       {isLoading ? (
         <div className="flex items-center justify-center py-8">

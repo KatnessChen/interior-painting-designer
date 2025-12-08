@@ -1,10 +1,11 @@
-import React from 'react';
+import { useState, useEffect } from 'react';
 import { ImageData } from '../types';
+import { imageCache } from '../utils/imageCache';
 
 interface ConfirmImageUpdateModalProps {
   isOpen: boolean;
-  originalImage: ImageData | null; // New prop for the original image
-  image: { base64: string; mimeType: string } | null; // This is the generated/recolored image (temporary format before saving)
+  originalImage: ImageData;
+  generatedImage: { base64: string; mimeType: string } | null;
   onConfirm: (imageData: { base64: string; mimeType: string }) => void;
   onCancel: () => void;
   colorName: string;
@@ -12,13 +13,33 @@ interface ConfirmImageUpdateModalProps {
 
 const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
   isOpen,
-  originalImage, // Destructure new prop
-  image,
+  originalImage,
+  generatedImage,
   onConfirm,
   onCancel,
   colorName, // Removed trailing comma here
 }) => {
-  if (!isOpen || !image || !originalImage) return null; // Ensure both images are available
+  // Cached image state
+  const [cachedImageSrc, setCachedImageSrc] = useState<string | null>(null);
+
+  // Load cached base64 on mount
+  useEffect(() => {
+    const loadCachedImage = async () => {
+      try {
+        const base64 = await imageCache.get(originalImage.storageUrl);
+        if (base64) {
+          // Convert base64 to data URL
+          setCachedImageSrc(`data:${originalImage.mimeType};base64,${base64}`);
+        }
+      } catch (error) {
+        console.warn('[ImageCard] Failed to load cached image:', error);
+      }
+    };
+
+    loadCachedImage();
+  }, [originalImage.storageUrl, originalImage.mimeType]);
+
+  if (!isOpen || !generatedImage || !originalImage) return null; // Ensure both images are available
 
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center p-4 z-50">
@@ -39,7 +60,7 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
             <h4 className="text-xl font-semibold text-gray-700 mb-3">Original Photo</h4>
             <div className="relative w-full flex-1 bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center">
               <img
-                src={originalImage.storageUrl}
+                src={cachedImageSrc || originalImage.storageUrl}
                 alt="Original"
                 className="max-w-full max-h-full object-contain"
               />
@@ -50,7 +71,7 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
             <h4 className="text-xl font-semibold text-gray-700 mb-3">Recolored Photo</h4>
             <div className="relative w-full flex-1 bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center">
               <img
-                src={`data:${image.mimeType};base64,${image.base64}`}
+                src={`data:${generatedImage.mimeType};base64,${generatedImage.base64}`}
                 alt="Generated Recolor"
                 className="max-w-full max-h-full object-contain"
               />
@@ -59,7 +80,7 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
         </div>
         <div className="flex flex-col sm:flex-row justify-center gap-4 mt-4">
           <button
-            onClick={() => onConfirm(image)}
+            onClick={() => onConfirm(generatedImage)}
             className="flex-1 max-w-xs px-8 py-4 border border-transparent text-lg font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
           >
             Yes, I'm Satisfied!

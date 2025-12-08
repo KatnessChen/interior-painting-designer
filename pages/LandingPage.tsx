@@ -580,16 +580,8 @@ const LandingPage: React.FC = () => {
             </div>
 
             <div className="mb-8">
-              {selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name ? (
-                <ColorSelector selectedColor={selectedColor} onSelectColor={setSelectedColor} />
-              ) : (
-                <TextureSelector onTextureSelect={setSelectedTexture} onError={setErrorMessage} />
-              )}
-            </div>
-
-            <div className="mb-8">
               <Gallery
-                title="2. Original Photos (Select one to process, or multiple to delete)"
+                title="1. Select Original Photos (Select one to process, or multiple to delete)"
                 images={originalImages}
                 selectedImageIds={selectedOriginalImageIds}
                 onSelectImage={handleSelectOriginalImage}
@@ -605,6 +597,18 @@ const LandingPage: React.FC = () => {
                 onBulkDelete={handleBulkDeleteOriginal}
                 onClearSelection={handleClearOriginalSelection}
               />
+            </div>
+
+            <div className="mb-8">
+              {selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name ? (
+                <ColorSelector
+                  title="2. Select a Color"
+                  selectedColor={selectedColor}
+                  onSelectColor={setSelectedColor}
+                />
+              ) : (
+                <TextureSelector onTextureSelect={setSelectedTexture} onError={setErrorMessage} />
+              )}
             </div>
 
             <div className="sticky bottom-4 w-full flex justify-center z-40 p-2">
@@ -627,7 +631,7 @@ const LandingPage: React.FC = () => {
 
             <div className="mt-8">
               <Gallery
-                title="3. Updated Photos"
+                title="3. Generated Photos"
                 images={updatedImages}
                 selectedImageIds={selectedUpdatedImageIds}
                 onSelectMultiple={handleSelectUpdatedImage}
@@ -644,14 +648,16 @@ const LandingPage: React.FC = () => {
           </>
         )}
 
-        <ConfirmImageUpdateModal
-          isOpen={showConfirmationModal}
-          originalImage={selectedOriginalImage}
-          image={generatedImage}
-          onConfirm={handleImageSatisfied}
-          onCancel={handleCancelRecolor}
-          colorName={selectedColor?.name || 'N/A'}
-        />
+        {selectedOriginalImage && (
+          <ConfirmImageUpdateModal
+            isOpen={showConfirmationModal}
+            originalImage={selectedOriginalImage}
+            generatedImage={generatedImage}
+            onConfirm={handleImageSatisfied}
+            onCancel={handleCancelRecolor}
+            colorName={selectedColor?.name || 'N/A'}
+          />
+        )}
 
         {/* Custom Prompt Modal */}
         <CustomPromptModal
