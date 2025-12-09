@@ -2,7 +2,7 @@ import React from 'react';
 import { Box, Typography, Avatar, Stack, Divider } from '@mui/material';
 import GoogleLoginButton from './GoogleLoginButton';
 import LogoutButton from './LogoutButton';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 const AuthPanel: React.FC = () => {
   const { user, isLoading, isAuthenticated } = useAuth();

@@ -1,30 +1,31 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import ColorSelector from '../components/ColorSelector';
-import ConfirmImageUpdateModal from '../components/ConfirmImageUpdateModal';
-import CustomPromptModal from '../components/CustomPromptModal';
-import Gallery from '../components/Gallery';
-import ProcessButton from '../components/ProcessButton';
-import TaskSelector from '../components/TaskSelector';
-import TextureSelector from '../components/TextureSelector';
-import ImagesComparingModal from '../components/ImagesComparingModal';
-import ImagesComparingButton from '../components/ImagesComparingButton';
-import AlertModal from '../components/AlertModal';
-import GenericConfirmModal from '../components/GenericConfirmModal';
-import { GEMINI_TASKS, GeminiTaskName } from '../services/gemini/geminiTasks';
-import { BenjaminMooreColor, ImageData, ImageOperation } from '../types';
+import ColorSelector from '@/components/ColorSelector';
+import ConfirmImageUpdateModal from '@/components/ConfirmImageUpdateModal';
+import CustomPromptModal from '@/components/CustomPromptModal';
+import Gallery from '@/components/Gallery';
+import ProcessButton from '@/components/ProcessButton';
+import TaskSelector from '@/components/TaskSelector';
+import TextureSelector from '@/components/TextureSelector';
+import ImagesComparingModal from '@/components/ImagesComparingModal';
+import ImagesComparingButton from '@/components/ImagesComparingButton';
+import AlertModal from '@/components/AlertModal';
+import EmptyState from '@/components/EmptyState';
+import GenericConfirmModal from '@/components/GenericConfirmModal';
+import { GEMINI_TASKS, GeminiTaskName } from '@/services/gemini/geminiTasks';
+import { BenjaminMooreColor, ImageData, ImageOperation } from '@types';
 import {
   createImage,
   createProcessedImage,
   deleteImages,
   fetchProjects,
-} from '../services/firestoreService';
-import { useAuth } from '../contexts/AuthContext';
-import { useImageProcessing } from '../hooks/useImageProcessing';
-import { formatImageOperationData, downloadFile, buildDownloadFilename } from '../utils';
-import { RootState } from '../stores/store';
-import { selectOriginalImages, selectUpdatedImages } from '../stores/imageStore';
-import { setProjects } from '../stores/projectStore';
+} from '@/services/firestoreService';
+import { useAuth } from '@/contexts/AuthContext';
+import { useImageProcessing } from '@/hooks/useImageProcessing';
+import { formatImageOperationData, downloadFile, buildDownloadFilename } from '@/utils';
+import { RootState } from '@/stores/store';
+import { selectOriginalImages, selectUpdatedImages } from '@/stores/imageStore';
+import { setProjects } from '@/stores/projectStore';
 
 interface Texture {
   name: string;
@@ -560,18 +561,7 @@ const LandingPage: React.FC = () => {
   return (
     <div className="h-full bg-gray-100 p-6">
       <div className="h-full container mx-auto max-w-6xl">
-        {!activeSpaceId && (
-          <div className="h-full -mt-8 bg-gray-100 p-6 flex items-center justify-center">
-            <div className="container mx-auto max-w-2xl text-center">
-              <div className="bg-white rounded-lg shadow-sm p-8">
-                <h2 className="text-2xl text-gray-800 mb-4">No Space Selected</h2>
-                <div className="inline-block bg-indigo-50 border-l-4 border-indigo-600 p-4">
-                  <p className="text-sm text-indigo-800">💡 Select a space to get started!</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {!activeSpaceId && <EmptyState />}
 
         {activeSpaceId && (
           <>

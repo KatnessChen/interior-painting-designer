@@ -1,4 +1,4 @@
-import { indexedDBService, type CacheEntry } from '../services/indexedDBService';
+import { indexedDBService, type CacheEntry } from '@/services/indexedDBService';
 
 /**
  * Hybrid cache system for storing converted base64 images:

@@ -15,9 +15,9 @@ import {
   orderBy,
 } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { app } from '../config/firebaseConfig';
-import { ImageData, ImageOperation, Project, Space } from '../types';
-import { base64ToFile, FirestoreDataHandler } from '../utils';
+import { app } from '@/config/firebaseConfig';
+import { ImageData, ImageOperation, Project, Space } from '@/types';
+import { base64ToFile, FirestoreDataHandler } from '@/utils';
 
 // Initialize Firestore and Storage with the shared Firebase app instance
 export const db = getFirestore(app);

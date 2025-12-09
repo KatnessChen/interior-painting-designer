@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { ImageData } from '../types';
-import { imageCache } from '../utils/imageCache';
+import { ImageData } from '@/types';
+import { imageCache } from '@/utils/imageCache';
 import {
   Visibility as EyeIcon,
   Edit as PencilIcon,

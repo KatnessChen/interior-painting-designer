@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ImageData } from '../types';
+import { ImageData } from '@/types';
 import { ChevronLeft as PrevIcon, ChevronRight as NextIcon } from '@mui/icons-material';
-import { imageCache } from '../utils/imageCache';
+import { imageCache } from '@/utils/imageCache';
 
 interface ImageDisplayModalProps {
   isOpen: boolean;

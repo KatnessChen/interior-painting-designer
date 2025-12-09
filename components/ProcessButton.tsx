@@ -1,7 +1,7 @@
 import React from 'react';
 import { Tooltip, CircularProgress } from '@mui/material';
 import { ColorLens as RecolorIcon } from '@mui/icons-material';
-import { GeminiTaskName, getTaskEntry } from '../services/gemini/geminiTasks';
+import { GeminiTaskName, getTaskEntry } from '@/services/gemini/geminiTasks';
 
 interface ProcessButtonProps {
   isEnabled: boolean;

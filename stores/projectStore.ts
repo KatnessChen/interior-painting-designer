@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { storagePathToBase64 } from '../utils';
-import { Project } from '../types';
+import { storagePathToBase64 } from '@/utils';
+import { Project } from '@/types';
 
 /**
  * Traverse all projects > spaces > images and pre-cache their base64 data

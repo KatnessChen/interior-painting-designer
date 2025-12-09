@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { ImageData } from '../types';
+import { ImageData } from '@/types';
 import ImageCard from './ImageCard';
 import UploadCard from './UploadCard';
 import ImageDisplayModal from './ImageDisplayModal';

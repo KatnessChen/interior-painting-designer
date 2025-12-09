@@ -1,5 +1,5 @@
 import { GoogleGenAI, Modality, GenerateContentResponse } from '@google/genai';
-import { ImageData } from '../../types';
+import { ImageData } from '@/types';
 import { getPromptByTask } from './prompts';
 import { GeminiTask, GEMINI_TASKS } from './geminiTasks';
 import { ref } from 'firebase/storage';

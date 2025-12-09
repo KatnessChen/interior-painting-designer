@@ -8,8 +8,8 @@ import Box from '@mui/material/Box';
 import { Tooltip, Button } from '@mui/material';
 import CircularProgress from '@mui/material/CircularProgress';
 import GenericConfirmModal from '../GenericConfirmModal';
-import { useAuth } from '../../contexts/AuthContext';
-import { RootState, AppDispatch } from '../../stores/store';
+import { useAuth } from '@/contexts/AuthContext';
+import { RootState, AppDispatch } from '@/stores/store';
 import {
   setProjects,
   addProject,
@@ -20,7 +20,7 @@ import {
   removeSpace,
   setActiveProjectId,
   setActiveSpaceId,
-} from '../../stores/projectStore';
+} from '@/stores/projectStore';
 import {
   fetchProjects,
   createProject,
@@ -29,7 +29,7 @@ import {
   createSpace,
   updateSpace,
   deleteSpace,
-} from '../../services/firestoreService';
+} from '@/services/firestoreService';
 
 export const ModalMode = {
   ADD_PROJECT: 'add-project',
@@ -86,7 +86,6 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onProjectSelected, onSpaceS
     const fetchUserProjects = async () => {
       try {
         const projects = await fetchProjects(user.uid);
-        console.log({ projects });
         dispatch(setProjects(projects));
       } catch (error) {
         console.error('Error fetching projects:', error);
@@ -266,7 +265,7 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onProjectSelected, onSpaceS
     >
       {/* Add Project Section */}
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-md text-gray-500 tracking-tight">New Project</h3>
+        <h3 className="text-md text-gray-500 tracking-tight cursor-default">New Project</h3>
         <button
           className="p-1 rounded hover:bg-gray-200 transition disabled:opacity-50"
           onClick={() => {
@@ -415,7 +414,9 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onProjectSelected, onSpaceS
       {/* Universal Modal for adding/editing project/space */}
       <Modal open={!!modalMode} onClose={handleCloseModal}>
         <Box className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl p-6 w-80 flex flex-col gap-4">
-          <h2 className="text-lg font-semibold text-gray-800 mb-2">{getModalTitle}</h2>
+          <h2 className="text-lg font-semibold text-gray-800 mb-2 cursor-default">
+            {getModalTitle}
+          </h2>
           <input
             value={modalInput}
             type="text"

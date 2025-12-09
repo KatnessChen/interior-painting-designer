@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ImageData } from '../types';
-import { imageCache } from '../utils/imageCache';
+import { ImageData } from '@/types';
+import { imageCache } from '@/utils/imageCache';
 
 interface ComparePhotosModalProps {
   isOpen: boolean;

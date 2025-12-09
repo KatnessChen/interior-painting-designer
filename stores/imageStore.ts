@@ -1,6 +1,6 @@
 import { createSlice, createSelector } from '@reduxjs/toolkit';
 import { RootState } from './store';
-import { ImageData, Space } from '../types';
+import { ImageData, Space } from '@/types';
 
 interface ImageState {
   // Empty state - we compute images from projects in projectStore

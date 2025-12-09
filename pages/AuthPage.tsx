@@ -2,8 +2,8 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Box, Typography, Stack, Paper, Divider, useTheme } from '@mui/material';
 import { ArrowForward as ArrowForwardIcon } from '@mui/icons-material';
-import GoogleLoginButton from '../components/GoogleLoginButton';
-import { useAuth } from '../contexts/AuthContext';
+import GoogleLoginButton from '@/components/GoogleLoginButton';
+import { useAuth } from '@/contexts/AuthContext';
 
 const AuthPage: React.FC = () => {
   const navigate = useNavigate();

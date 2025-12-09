@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button, CircularProgress, Box } from '@mui/material';
 import GoogleIcon from '@mui/icons-material/Google';
-import { signInWithGoogle } from '../services/authService';
+import { signInWithGoogle } from '@/services/authService';
 
 interface GoogleLoginButtonProps {
   onSuccess?: (user: any) => void;
