@@ -15,10 +15,10 @@ const defaultModel = 'gemini-2.5-flash-image';
 const getBase64FromImageData = async (userId: string | undefined, imageData: ImageData) => {
   // Fetch the image from Firebase Storage using SDK
   const extension = imageData.mimeType.split('/')[1] || 'jpg';
-  const storagePath = userId
+  const storageFilePath = userId
     ? `users/${userId}/images/${imageData.id}.${extension}`
-    : imageData.storagePath;
-  const storageRef = ref(storage, storagePath);
+    : imageData.storageFilePath;
+  const storageRef = ref(storage, storageFilePath);
   const bytes = await getBytes(storageRef);
   const blob = new Blob([bytes], { type: imageData.mimeType });
 

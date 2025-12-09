@@ -18,8 +18,8 @@ export interface ImageData {
   parentImageId: string | null;
 
   // Firebase Storage
-  storageUrl: string; // Firebase Storage download URL
-  storagePath: string; // Storage Path
+  imageDownloadUrl: string; // Firebase Storage download URL
+  storageFilePath: string; // Storage Path
 
   // Other metadata
   mimeType: string;

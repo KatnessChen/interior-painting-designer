@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import ColorSelector from '@/components/ColorSelector';
 import ConfirmImageUpdateModal from '@/components/ConfirmImageUpdateModal';
@@ -13,7 +13,7 @@ import AlertModal from '@/components/AlertModal';
 import EmptyState from '@/components/EmptyState';
 import GenericConfirmModal from '@/components/GenericConfirmModal';
 import { GEMINI_TASKS, GeminiTaskName } from '@/services/gemini/geminiTasks';
-import { BenjaminMooreColor, ImageData, ImageOperation } from '@types';
+import { BenjaminMooreColor, ImageData, ImageOperation } from '@/types';
 import {
   createImage,
   createProcessedImage,
@@ -23,9 +23,13 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useImageProcessing } from '@/hooks/useImageProcessing';
 import { formatImageOperationData, downloadFile, buildDownloadFilename } from '@/utils';
-import { RootState } from '@/stores/store';
 import { selectOriginalImages, selectUpdatedImages } from '@/stores/imageStore';
-import { setProjects } from '@/stores/projectStore';
+import {
+  setProjects,
+  selectProjects,
+  selectActiveProjectId,
+  selectActiveSpaceId,
+} from '@/stores/projectStore';
 
 interface Texture {
   name: string;
@@ -38,8 +42,9 @@ const LandingPage: React.FC = () => {
   const dispatch = useDispatch();
 
   // Get active space from store
-  const activeProjectId = useSelector((state: RootState) => state.project.activeProjectId);
-  const activeSpaceId = useSelector((state: RootState) => state.project.activeSpaceId);
+  const projects = useSelector(selectProjects);
+  const activeProjectId = useSelector(selectActiveProjectId);
+  const activeSpaceId = useSelector(selectActiveSpaceId);
 
   // Get images from store (computed from rooms)
   const originalImages = useSelector(selectOriginalImages);
@@ -514,7 +519,7 @@ const LandingPage: React.FC = () => {
     updatedImages.forEach((img) => {
       if (selectedUpdatedImageIds.has(img.id)) {
         const filename = buildDownloadFilename(img.name, img.mimeType);
-        downloadFile(img.storageUrl, filename).catch((error) => {
+        downloadFile(img.imageDownloadUrl, filename).catch((error) => {
           console.error('Download failed for image:', img.id, error);
           setErrorMessage('Failed to download one or more images. Please try again.');
         });
@@ -525,6 +530,24 @@ const LandingPage: React.FC = () => {
   const handleClearUpdatedSelection = useCallback(() => {
     setSelectedUpdatedImageIds(new Set());
   }, []);
+
+  const getEmptyStateComponent = useMemo(() => {
+    const hasNoProject = projects.length === 0 || !activeProjectId;
+    const hasNoSpace = !activeSpaceId;
+
+    if (hasNoProject) {
+      return (
+        <EmptyState
+          title="No Project Yet"
+          message="Create or select a project to start designing!"
+        />
+      );
+    } else if (hasNoSpace) {
+      return <EmptyState title="No Space Yet" message="Create or select a space to get started!" />;
+    }
+
+    return null;
+  }, [activeProjectId, activeSpaceId]);
 
   const selectedOriginalImageId = Array.from(selectedOriginalImageIds)[0] || null;
   const selectedOriginalImage =
@@ -561,7 +584,7 @@ const LandingPage: React.FC = () => {
   return (
     <div className="h-full bg-gray-100 p-6">
       <div className="h-full container mx-auto max-w-6xl">
-        {!activeSpaceId && <EmptyState />}
+        {getEmptyStateComponent}
 
         {activeSpaceId && (
           <>
@@ -571,7 +594,7 @@ const LandingPage: React.FC = () => {
 
             <div className="mb-8">
               <Gallery
-                title="1. Select Original Photos (Select one to process, or multiple to delete)"
+                title="1. Select Original Photos"
                 images={originalImages}
                 selectedImageIds={selectedOriginalImageIds}
                 onSelectImage={handleSelectOriginalImage}

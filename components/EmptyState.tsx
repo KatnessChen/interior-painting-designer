@@ -7,8 +7,8 @@ interface EmptyStateProps {
 }
 
 const EmptyState: React.FC<EmptyStateProps> = ({
-  title = 'No Space Selected',
-  message = 'Select a space to get started!',
+  title = 'No Space Yet',
+  message = 'Create or select a space to get started!',
   icon = '💡',
 }) => {
   return (

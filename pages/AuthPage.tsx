@@ -81,6 +81,7 @@ const AuthPage: React.FC = () => {
                 WebkitTextFillColor: 'transparent',
                 mb: 1,
               }}
+              className="cursor-default"
             >
               Vizion
             </Typography>
@@ -91,6 +92,7 @@ const AuthPage: React.FC = () => {
                 fontWeight: 300,
                 fontSize: '1.1rem',
               }}
+              className="cursor-default"
             >
               Your AI Interior Designer
             </Typography>

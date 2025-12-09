@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { storagePathToBase64 } from '@/utils';
+import { imageDownloadUrlToBase64 } from '@/utils';
 import { Project } from '@/types';
 
 /**
@@ -27,7 +27,7 @@ async function cacheAllImageBase64s(projects: Project[]): Promise<void> {
         try {
           // Fire and forget - we don't need to wait for each one sequentially
           // But we'll track progress
-          storagePathToBase64(image.storageUrl)
+          imageDownloadUrlToBase64(image.imageDownloadUrl)
             .then(() => {
               cachedCount++;
               if (cachedCount % 5 === 0) {

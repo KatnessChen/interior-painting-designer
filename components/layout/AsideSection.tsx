@@ -9,7 +9,7 @@ import { Tooltip, Button } from '@mui/material';
 import CircularProgress from '@mui/material/CircularProgress';
 import GenericConfirmModal from '../GenericConfirmModal';
 import { useAuth } from '@/contexts/AuthContext';
-import { RootState, AppDispatch } from '@/stores/store';
+import { AppDispatch } from '@/stores/store';
 import {
   setProjects,
   addProject,
@@ -20,6 +20,9 @@ import {
   removeSpace,
   setActiveProjectId,
   setActiveSpaceId,
+  selectProjects,
+  selectActiveProjectId,
+  selectActiveSpaceId,
 } from '@/stores/projectStore';
 import {
   fetchProjects,
@@ -49,11 +52,10 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onProjectSelected, onSpaceS
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
 
-  // Redux store
   const dispatch = useDispatch<AppDispatch>();
-  const projects = useSelector((state: RootState) => state.project.projects);
-  const activeProjectId = useSelector((state: RootState) => state.project.activeProjectId);
-  const activeSpaceId = useSelector((state: RootState) => state.project.activeSpaceId);
+  const projects = useSelector(selectProjects);
+  const activeProjectId = useSelector(selectActiveProjectId);
+  const activeSpaceId = useSelector(selectActiveSpaceId);
 
   // Add Project/Space Modal state
   const [modalMode, setModalMode] = useState<ModalMode | null>(null);
@@ -184,6 +186,7 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onProjectSelected, onSpaceS
         case ModalMode.ADD_PROJECT: {
           const newProject = await createProject(user.uid, userInputValue);
           dispatch(addProject(newProject));
+          dispatch(setActiveProjectId(newProject.id));
           break;
         }
         case ModalMode.ADD_SPACE: {
@@ -191,6 +194,7 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onProjectSelected, onSpaceS
 
           const newSpace = await createSpace(user.uid, editingEntityIds.projectId, userInputValue);
           dispatch(addSpace({ projectId: editingEntityIds.projectId, space: newSpace }));
+          dispatch(setActiveSpaceId(newSpace.id));
           break;
         }
         case ModalMode.EDIT_PROJECT: {
@@ -402,9 +406,6 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onProjectSelected, onSpaceS
                     </>
                   </div>
                 ))}
-                {project.spaces.length === 0 && (
-                  <div className="text-xs text-gray-400 px-3 py-1">No spaces yet.</div>
-                )}
               </div>
             </div>
           ))

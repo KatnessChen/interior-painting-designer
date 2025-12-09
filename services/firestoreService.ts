@@ -61,16 +61,19 @@ export async function createImage(
       extension = parts[parts.length - 1] || 'jpg';
     }
 
-    const storagePath = `users/${userId}/projects/${projectId}/spaces/${spaceId}/images/${imageMetadata.id}.${extension}`;
+    // For generating download URL
+    const storageFilePath = `users/${userId}/projects/${projectId}/spaces/${spaceId}/images/${imageMetadata.id}.${extension}`;
+
+    // The Firebase Storage File Path
     const storageRef = ref(storage, `users/${userId}/images/${imageMetadata.id}.${extension}`);
 
     // Upload the file to Firebase Storage
     await uploadBytes(storageRef, imageFile);
-    console.log('Image uploaded to Firebase Storage:', storagePath);
+    console.log('Image uploaded to Firebase Storage:', storageFilePath);
 
     // Get the download URL
-    const storageUrl = await getDownloadURL(storageRef);
-    console.log('Image download URL obtained:', storageUrl);
+    const imageDownloadUrl = await getDownloadURL(storageRef);
+    console.log('Image download URL obtained:', imageDownloadUrl);
 
     // Step 2: Create the image document in Firestore with storage information
     const now = new Date();
@@ -80,8 +83,8 @@ export async function createImage(
       spaceId: null,
       evolutionChain: operation ? [operation] : [],
       parentImageId: parentImageId || null,
-      storageUrl,
-      storagePath,
+      imageDownloadUrl,
+      storageFilePath,
       isDeleted: false,
       deletedAt: null,
       createdAt: nowISOString,
@@ -110,8 +113,8 @@ export async function createImage(
       id: newImageData.id,
       name: newImageData.name,
       mimeType: newImageData.mimeType,
-      storageUrl: newImageData.storageUrl,
-      storagePath: newImageData.storagePath,
+      imageDownloadUrl: newImageData.imageDownloadUrl,
+      storageFilePath: newImageData.storageFilePath,
       spaceId: newImageData.spaceId || null,
       parentImageId: newImageData.parentImageId || null,
       isDeleted: newImageData.isDeleted,

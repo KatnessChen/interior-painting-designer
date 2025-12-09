@@ -47,7 +47,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
     const loadCachedImage = async () => {
       try {
         setIsLoadingCache(true);
-        const base64 = await imageCache.get(image.storageUrl);
+        const base64 = await imageCache.get(image.imageDownloadUrl);
         if (base64) {
           // Convert base64 to data URL
           setCachedImageSrc(`data:${image.mimeType};base64,${base64}`);
@@ -60,7 +60,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
     };
 
     loadCachedImage();
-  }, [image.storageUrl, image.mimeType]);
+  }, [image.imageDownloadUrl, image.mimeType]);
 
   const startEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -106,7 +106,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
       {/* Image container with overlay buttons */}
       <div className="relative bg-gray-100">
         <img
-          src={cachedImageSrc || image.storageUrl}
+          src={cachedImageSrc || image.imageDownloadUrl}
           alt={image.name}
           className="w-full h-48 object-contain object-center"
         />

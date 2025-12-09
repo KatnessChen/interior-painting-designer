@@ -25,21 +25,24 @@ import { imageCache } from './imageCache';
  * Fetches an image from a Firebase Storage URL and converts it to base64.
  * Results are cached in-memory and IndexedDB to improve performance on subsequent calls.
  *
- * @param storagePath The Firebase Storage URL.
+ * @param imageDownloadUrl The Firebase Storage download URL.
  * @returns A promise that resolves to the base64-encoded image data (without data URL prefix).
  * @throws Error if the fetch fails or the response is not an image.
  */
-async function storagePathToBase64(storagePath: string): Promise<string> {
+async function imageDownloadUrlToBase64(imageDownloadUrl: string): Promise<string> {
   // Check cache first (memory + IndexedDB)
-  const cached = await imageCache.get(storagePath);
+  const cached = await imageCache.get(imageDownloadUrl);
   if (cached) {
-    console.log('[storagePathToBase64] Retrieved from cache:', storagePath.substring(0, 50));
+    console.log('[imageDownloadUrlToBase64] Retrieved from cache:', imageDownloadUrl);
     return cached;
   }
 
   try {
-    console.log('[storagePathToBase64] Fetching and converting:', storagePath.substring(0, 50));
-    const response = await fetch(storagePath);
+    console.log('[imageDownloadUrlToBase64] Fetching and converting:', imageDownloadUrl);
+    const response = await fetch(imageDownloadUrl, {
+      mode: 'cors',
+      credentials: 'omit',
+    });
     if (!response.ok) {
       throw new Error(`Failed to fetch image: ${response.statusText}`);
     }
@@ -55,8 +58,8 @@ async function storagePathToBase64(storagePath: string): Promise<string> {
         const base64 = result.includes(',') ? result.split(',')[1] : result;
 
         // Store in cache
-        await imageCache.set(storagePath, base64, mimeType);
-        console.log('[storagePathToBase64] Stored in cache');
+        await imageCache.set(imageDownloadUrl, base64, mimeType);
+        console.log('[imageDownloadUrlToBase64] Stored in cache');
 
         resolve(base64);
       };
@@ -74,4 +77,4 @@ async function storagePathToBase64(storagePath: string): Promise<string> {
   }
 }
 
-export { base64ToFile, storagePathToBase64 };
+export { base64ToFile, imageDownloadUrlToBase64 };
