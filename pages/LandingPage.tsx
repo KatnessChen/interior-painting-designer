@@ -29,6 +29,9 @@ import {
   selectProjects,
   selectActiveProjectId,
   selectActiveSpaceId,
+  addImageOptimistic,
+  removeImageOptimistic,
+  removeImagesOptimistic,
 } from '@/stores/projectStore';
 
 interface Texture {
@@ -153,26 +156,66 @@ const LandingPage: React.FC = () => {
       if (!activeProjectId || !activeSpaceId) {
         setErrorMessage('Please select project/space to upload image.');
       } else {
+        const tempImageId = crypto.randomUUID();
+        const now = new Date().toISOString();
+
+        // Optimistic update - add image immediately to UI
+        const optimisticImage = {
+          id: tempImageId,
+          name: file.name,
+          mimeType: file.type,
+          spaceId: activeSpaceId,
+          evolutionChain: [],
+          parentImageId: null,
+          imageDownloadUrl: URL.createObjectURL(file), // Temporary local URL
+          storageFilePath: '',
+          isDeleted: false,
+          deletedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        dispatch(
+          addImageOptimistic({
+            projectId: activeProjectId,
+            spaceId: activeSpaceId,
+            image: optimisticImage,
+          })
+        );
+
         try {
           // Call firestoreService.createImage() to upload the file to Firebase Storage
           // and create the image document in Firestore
           await createImage(user.uid, activeProjectId, activeSpaceId, file, {
-            id: crypto.randomUUID(),
+            id: tempImageId,
             name: file.name,
             mimeType: file.type,
           });
 
-          // Image will be updated automatically in Redux store via imageStore selectors
+          // Fetch updated projects to get the real download URL
+          const updatedProjects = await fetchProjects(user.uid);
+          dispatch(setProjects(updatedProjects));
+
           setErrorMessage(null); // Clear error on successful upload
         } catch (error) {
           console.error('Failed to upload image:', error);
+
+          // Rollback optimistic update on error
+          dispatch(
+            removeImageOptimistic({
+              projectId: activeProjectId,
+              spaceId: activeSpaceId,
+              imageId: tempImageId,
+            })
+          );
+
           setErrorMessage(
             error instanceof Error ? error.message : 'Failed to upload image to Firebase.'
           );
         }
       }
     },
-    [user, activeProjectId, activeSpaceId]
+    [user, activeProjectId, activeSpaceId, dispatch]
   );
 
   const handleRemoveUpdatedImage = useCallback(
@@ -190,15 +233,32 @@ const LandingPage: React.FC = () => {
         onConfirm: async () => {
           try {
             setIsDeletingImages(true);
+
+            // Optimistic update - remove immediately from UI
+            dispatch(
+              removeImageOptimistic({
+                projectId: activeProjectId!,
+                spaceId: activeSpaceId!,
+                imageId,
+              })
+            );
+
             // Delete image from Firestore and Firebase Storage
             await deleteImages(user.uid, [imageId]);
 
-            // Image will be removed automatically from Redux store
+            // Fetch updated projects to sync
+            const updatedProjects = await fetchProjects(user.uid);
+            dispatch(setProjects(updatedProjects));
 
             setShowDeleteConfirmModal(false);
             setDeleteConfirmConfig(null);
           } catch (error) {
             console.error('Failed to remove image:', error);
+
+            // Rollback - refresh from server
+            const updatedProjects = await fetchProjects(user.uid);
+            dispatch(setProjects(updatedProjects));
+
             setErrorMessage('Failed to remove image.');
           } finally {
             setIsDeletingImages(false);
@@ -207,7 +267,7 @@ const LandingPage: React.FC = () => {
       });
       setShowDeleteConfirmModal(true);
     },
-    [user, updatedImages]
+    [user, updatedImages, activeProjectId, activeSpaceId, dispatch]
   );
 
   const handleRemoveOriginalImage = useCallback(
@@ -225,20 +285,37 @@ const LandingPage: React.FC = () => {
         onConfirm: async () => {
           try {
             setIsDeletingImages(true);
-            // Delete image from Firestore and Firebase Storage
-            await deleteImages(user.uid, [imageId]);
 
-            // Image will be removed automatically from Redux store
+            // Optimistic update - remove immediately from UI
+            dispatch(
+              removeImageOptimistic({
+                projectId: activeProjectId!,
+                spaceId: activeSpaceId!,
+                imageId,
+              })
+            );
 
             // Clear selection if the removed image was selected
             if (selectedOriginalImageIds.has(imageId)) {
               setSelectedOriginalImageIds(new Set());
             }
 
+            // Delete image from Firestore and Firebase Storage
+            await deleteImages(user.uid, [imageId]);
+
+            // Fetch updated projects to sync
+            const updatedProjects = await fetchProjects(user.uid);
+            dispatch(setProjects(updatedProjects));
+
             setShowDeleteConfirmModal(false);
             setDeleteConfirmConfig(null);
           } catch (error) {
             console.error('Failed to remove image:', error);
+
+            // Rollback - refresh from server
+            const updatedProjects = await fetchProjects(user.uid);
+            dispatch(setProjects(updatedProjects));
+
             setErrorMessage('Failed to remove image.');
           } finally {
             setIsDeletingImages(false);
@@ -247,7 +324,7 @@ const LandingPage: React.FC = () => {
       });
       setShowDeleteConfirmModal(true);
     },
-    [user, originalImages, selectedOriginalImageIds]
+    [user, originalImages, selectedOriginalImageIds, activeProjectId, activeSpaceId, dispatch]
   );
 
   const handleRenameOriginalImage = useCallback(async (imageId: string, newName: string) => {
@@ -330,26 +407,57 @@ const LandingPage: React.FC = () => {
         return;
       }
 
+      const tempImageId = crypto.randomUUID();
+      const now = new Date().toISOString();
+
+      // Append descriptor to the image name based on task
+      let imageName = processingContext.selectedImage.name;
+      if (selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name && selectedColor) {
+        imageName = `${processingContext.selectedImage.name} (${selectedColor.name})`;
+      } else if (selectedTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name && selectedTexture) {
+        imageName = `${processingContext.selectedImage.name} (${selectedTexture.name})`;
+      }
+
+      // Create ImageOperation for evolution chain using utility function
+      const operation: ImageOperation = formatImageOperationData(
+        processingContext.selectedImage.id,
+        selectedTaskName,
+        processingContext.customPrompt,
+        selectedColor,
+        selectedTexture
+      );
+
+      console.log({ operation });
+
+      // Optimistic update - show processed image immediately
+      const optimisticImage = {
+        id: tempImageId,
+        name: imageName,
+        mimeType: processedImageResult.mimeType,
+        spaceId: activeSpaceId,
+        evolutionChain: [operation],
+        parentImageId: processingContext.selectedImage.id,
+        imageDownloadUrl: `data:${processedImageResult.mimeType};base64,${processedImageResult.base64}`,
+        storageFilePath: '',
+        isDeleted: false,
+        deletedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      dispatch(
+        addImageOptimistic({
+          projectId: activeProjectId!,
+          spaceId: activeSpaceId!,
+          image: optimisticImage,
+        })
+      );
+
+      setShowConfirmationModal(false);
+      setGeneratedImage(null);
+      setProcessingContext({ selectedImage: null, customPrompt: undefined });
+
       try {
-        // Append descriptor to the image name based on task
-        let imageName = processingContext.selectedImage.name;
-        if (selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name && selectedColor) {
-          imageName = `${processingContext.selectedImage.name} (${selectedColor.name})`;
-        } else if (selectedTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name && selectedTexture) {
-          imageName = `${processingContext.selectedImage.name} (${selectedTexture.name})`;
-        }
-
-        // Create ImageOperation for evolution chain using utility function
-        const operation: ImageOperation = formatImageOperationData(
-          processingContext.selectedImage.id,
-          selectedTaskName,
-          processingContext.customPrompt,
-          selectedColor,
-          selectedTexture
-        );
-
-        console.log({ operation });
-
         // Save processed image to Firestore
         await createProcessedImage(
           user.uid,
@@ -358,7 +466,7 @@ const LandingPage: React.FC = () => {
           processedImageResult.base64,
           processedImageResult.mimeType,
           {
-            id: crypto.randomUUID(),
+            id: tempImageId,
             name: imageName,
             mimeType: processedImageResult.mimeType,
           },
@@ -366,30 +474,34 @@ const LandingPage: React.FC = () => {
           operation
         );
 
-        // Fetch updated projects and update Redux store
-        // More efficient way:
-        // db.collection('users').doc(userId)
-        //                       .collection('projects')
-        //                       .doc(projectId)
-        //                       .collection('spaces')
-        //                       .doc(spaceId)
-        //                       .collection('images')
-        //                       .doc(imageId).get()
-        //  to fetch the newly created image and append to Redux store
+        // Fetch updated projects to get real Firebase Storage URL
         const updatedProjects = await fetchProjects(user.uid);
         dispatch(setProjects(updatedProjects));
-
-        setShowConfirmationModal(false);
-        setGeneratedImage(null);
-        setProcessingContext({ selectedImage: null, customPrompt: undefined });
       } catch (error) {
         console.error('Failed to save processed image:', error);
+
+        // Rollback on error
+        dispatch(
+          removeImageOptimistic({
+            projectId: activeProjectId!,
+            spaceId: activeSpaceId!,
+            imageId: tempImageId,
+          })
+        );
+
         setErrorMessage(error instanceof Error ? error.message : 'Failed to save processed image.');
-        setShowConfirmationModal(false);
-        setGeneratedImage(null);
       }
     },
-    [user, selectedColor, selectedTexture, selectedTaskName, processingContext, dispatch]
+    [
+      user,
+      selectedColor,
+      selectedTexture,
+      selectedTaskName,
+      processingContext,
+      activeProjectId,
+      activeSpaceId,
+      dispatch,
+    ]
   );
 
   const handleCancelRecolor = useCallback(() => {
@@ -440,17 +552,36 @@ const LandingPage: React.FC = () => {
       onConfirm: async () => {
         try {
           setIsDeletingImages(true);
+
+          // Optimistic update - remove immediately from UI
+          dispatch(
+            removeImagesOptimistic({
+              projectId: activeProjectId!,
+              spaceId: activeSpaceId!,
+              imageIds: Array.from(selectedOriginalImageIds),
+            })
+          );
+
+          setSelectedOriginalImageIds(new Set());
+
           // Delete images from Firestore and Firebase Storage
           await deleteImages(user.uid, Array.from(selectedOriginalImageIds));
 
-          // Images will be removed automatically from Redux store
-          setSelectedOriginalImageIds(new Set());
+          // Fetch updated projects to sync
+          const updatedProjects = await fetchProjects(user.uid);
+          dispatch(setProjects(updatedProjects));
+
           setErrorMessage(null);
 
           setShowDeleteConfirmModal(false);
           setDeleteConfirmConfig(null);
         } catch (error) {
           console.error('Failed to delete images:', error);
+
+          // Rollback - refresh from server
+          const updatedProjects = await fetchProjects(user.uid);
+          dispatch(setProjects(updatedProjects));
+
           setErrorMessage('Failed to delete images.');
         } finally {
           setIsDeletingImages(false);
@@ -458,7 +589,7 @@ const LandingPage: React.FC = () => {
       },
     });
     setShowDeleteConfirmModal(true);
-  }, [selectedOriginalImageIds, user]);
+  }, [selectedOriginalImageIds, user, activeProjectId, activeSpaceId, dispatch]);
 
   const handleClearOriginalSelection = useCallback(() => {
     setSelectedOriginalImageIds(new Set());
@@ -492,17 +623,36 @@ const LandingPage: React.FC = () => {
       onConfirm: async () => {
         try {
           setIsDeletingImages(true);
+
+          // Optimistic update - remove immediately from UI
+          dispatch(
+            removeImagesOptimistic({
+              projectId: activeProjectId!,
+              spaceId: activeSpaceId!,
+              imageIds: Array.from(selectedUpdatedImageIds),
+            })
+          );
+
+          setSelectedUpdatedImageIds(new Set());
+
           // Delete images from Firestore and Firebase Storage
           await deleteImages(user.uid, Array.from(selectedUpdatedImageIds));
 
-          // Images will be removed automatically from Redux store
-          setSelectedUpdatedImageIds(new Set());
+          // Fetch updated projects to sync
+          const updatedProjects = await fetchProjects(user.uid);
+          dispatch(setProjects(updatedProjects));
+
           setErrorMessage(null);
 
           setShowDeleteConfirmModal(false);
           setDeleteConfirmConfig(null);
         } catch (error) {
           console.error('Failed to delete images:', error);
+
+          // Rollback - refresh from server
+          const updatedProjects = await fetchProjects(user.uid);
+          dispatch(setProjects(updatedProjects));
+
           setErrorMessage('Failed to delete images.');
         } finally {
           setIsDeletingImages(false);
@@ -510,7 +660,7 @@ const LandingPage: React.FC = () => {
       },
     });
     setShowDeleteConfirmModal(true);
-  }, [selectedUpdatedImageIds, user]);
+  }, [selectedUpdatedImageIds, user, activeProjectId, activeSpaceId, dispatch]);
 
   const handleBulkDownloadUpdated = useCallback(() => {
     if (selectedUpdatedImageIds.size === 0) return;

@@ -123,6 +123,56 @@ export const projectStore = createSlice({
     setActiveSpaceId: (state, action: PayloadAction<string | null>) => {
       state.activeSpaceId = action.payload;
     },
+
+    // Optimistic updates for images
+    addImageOptimistic: (
+      state,
+      action: PayloadAction<{
+        projectId: string;
+        spaceId: string;
+        image: any;
+      }>
+    ) => {
+      const project = state.projects.find((p) => p.id === action.payload.projectId);
+      if (project) {
+        const space = project.spaces.find((s) => s.id === action.payload.spaceId);
+        if (space) {
+          space.images.push(action.payload.image);
+        }
+      }
+    },
+    removeImageOptimistic: (
+      state,
+      action: PayloadAction<{
+        projectId: string;
+        spaceId: string;
+        imageId: string;
+      }>
+    ) => {
+      const project = state.projects.find((p) => p.id === action.payload.projectId);
+      if (project) {
+        const space = project.spaces.find((s) => s.id === action.payload.spaceId);
+        if (space) {
+          space.images = space.images.filter((img) => img.id !== action.payload.imageId);
+        }
+      }
+    },
+    removeImagesOptimistic: (
+      state,
+      action: PayloadAction<{
+        projectId: string;
+        spaceId: string;
+        imageIds: string[];
+      }>
+    ) => {
+      const project = state.projects.find((p) => p.id === action.payload.projectId);
+      if (project) {
+        const space = project.spaces.find((s) => s.id === action.payload.spaceId);
+        if (space) {
+          space.images = space.images.filter((img) => !action.payload.imageIds.includes(img.id));
+        }
+      }
+    },
   },
   selectors: {
     selectProjects: (state) => state.projects,
@@ -153,6 +203,9 @@ export const {
   removeSpace,
   setActiveProjectId,
   setActiveSpaceId,
+  addImageOptimistic,
+  removeImageOptimistic,
+  removeImagesOptimistic,
 } = projectStore.actions;
 
 export const {
