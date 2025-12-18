@@ -1,51 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { imageDownloadUrlToBase64 } from '@/utils';
 import { Project } from '@/types';
-
-/**
- * Traverse all projects > spaces > images and pre-cache their base64 data
- * This runs in the background without blocking the Redux state update
- */
-async function cacheAllImageBase64s(projects: Project[]): Promise<void> {
-  const totalImages = projects.reduce(
-    (sum, project) =>
-      sum + project.spaces.reduce((spaceSum, space) => spaceSum + space.images.length, 0),
-    0
-  );
-
-  if (totalImages === 0) {
-    console.log('[Cache] No images to cache');
-    return;
-  }
-
-  console.log(`[Cache] Starting to cache ${totalImages} images...`);
-  let cachedCount = 0;
-
-  for (const project of projects) {
-    for (const space of project.spaces) {
-      for (const image of space.images) {
-        try {
-          // Fire and forget - we don't need to wait for each one sequentially
-          // But we'll track progress
-          imageDownloadUrlToBase64(image.imageDownloadUrl)
-            .then(() => {
-              cachedCount++;
-              if (cachedCount % 5 === 0) {
-                console.log(`[Cache] Progress: ${cachedCount}/${totalImages} images cached`);
-              }
-            })
-            .catch((error) => {
-              console.warn(`[Cache] Failed to cache image ${image.id}:`, error);
-            });
-        } catch (error) {
-          console.warn(`[Cache] Error caching image ${image.id}:`, error);
-        }
-      }
-    }
-  }
-
-  console.log(`[Cache] Queued ${totalImages} images for caching`);
-}
 
 interface ProjectState {
   projects: Project[];
@@ -66,9 +20,6 @@ export const projectStore = createSlice({
     // Projects actions
     setProjects: (state, action: PayloadAction<Project[]>) => {
       state.projects = action.payload;
-
-      // Kick off async images caching in the background without blocking state update
-      void cacheAllImageBase64s(action.payload);
     },
     addProject: (state, action: PayloadAction<Project>) => {
       state.projects.push(action.payload);

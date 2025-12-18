@@ -1,4 +1,6 @@
 import { indexedDBService, type CacheEntry } from '@/services/indexedDBService';
+import { imageDownloadUrlToBase64 } from '@/utils';
+import { ImageData } from '@/types';
 
 /**
  * Hybrid cache system for storing converted base64 images:
@@ -21,7 +23,7 @@ class ImageCache {
     // Check memory cache first (fastest)
     const memCached = this.memoryCache.get(cacheKey);
     if (memCached && !this.isExpired(memCached)) {
-      console.log('[Cache] Memory hit:', cacheKey.substring(0, 50));
+      console.log('[Cache] Memory hit:', cacheKey);
       return memCached.base64;
     }
 
@@ -106,6 +108,59 @@ class ImageCache {
     this.clearMemory();
     await this.clearDB();
   }
+}
+
+/**
+ * Cache base64 data for an array of images
+ * This runs in the background without blocking the Redux state update
+ */
+export async function cacheImageBase64s(images: ImageData[]): Promise<void> {
+  const totalImages = images.length;
+
+  if (totalImages === 0) {
+    console.log('[Cache] No images to cache');
+    return;
+  }
+
+  let cachedCount = 0;
+  let skippedCount = 0;
+
+  for (const image of images) {
+    try {
+      // Check if already cached before attempting to cache
+      const existingCache = await imageCache.get(image.imageDownloadUrl);
+      if (existingCache) {
+        skippedCount++;
+        console.log(`[Cache] Skipped (already cached): ${image.id}`);
+        continue;
+      }
+
+      // Fire and forget - we don't need to wait for each one sequentially
+      // But we'll track progress
+      imageDownloadUrlToBase64(image.imageDownloadUrl)
+        .then(() => {
+          cachedCount++;
+          if (cachedCount % 5 === 0 || cachedCount === totalImages - skippedCount) {
+            console.log(
+              `[Cache] Progress: ${cachedCount}/${
+                totalImages - skippedCount
+              } images cached (${skippedCount} skipped)`
+            );
+          }
+        })
+        .catch((error) => {
+          console.warn(`[Cache] Failed to cache image ${image.id}:`, error);
+        });
+    } catch (error) {
+      console.warn(`[Cache] Error caching image ${image.id}:`, error);
+    }
+  }
+
+  console.log(
+    `[Cache] Queued ${
+      totalImages - skippedCount
+    } images for caching (${skippedCount} already cached)`
+  );
 }
 
 // Export singleton instance
