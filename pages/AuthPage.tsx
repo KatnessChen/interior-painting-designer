@@ -104,7 +104,7 @@ const AuthPage: React.FC = () => {
           <Box sx={{ mb: 4 }}>
             <Typography variant="body1" paragraph>
               Welcome to Vizion Studio – your personal AI interior design assistant. Visualize your
-              walls in any color or texture before you paint.
+              spaces in any color or texture before you renovate.
             </Typography>
             <Stack spacing={1}>
               <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -121,7 +121,7 @@ const AuthPage: React.FC = () => {
               </Typography>
               <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <ArrowForwardIcon sx={{ fontSize: 18, color: 'primary.main' }} />
-                Save and organize your designs by room
+                Save and organize your designs by projects and spaces
               </Typography>
             </Stack>
           </Box>
