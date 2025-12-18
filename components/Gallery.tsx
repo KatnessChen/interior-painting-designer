@@ -140,7 +140,6 @@ const Gallery: React.FC<GalleryProps> = ({
               }
               onSelect={enableMultiSelect ? onSelectMultiple : onSelectImage}
               showDownloadButton={showDownloadButtons && !enableMultiSelect}
-              onRemove={showRemoveButtons && !enableMultiSelect ? onRemoveImage : undefined}
               onViewButtonClick={handleViewImage}
               onRename={onRenameImage}
             />

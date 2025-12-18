@@ -5,7 +5,6 @@ import {
   Visibility as EyeIcon,
   Edit as PencilIcon,
   CheckCircle as CheckmarkBadgeIcon,
-  Cancel as XBadgeIcon,
 } from '@mui/icons-material';
 
 interface ImageCardProps {
@@ -13,7 +12,6 @@ interface ImageCardProps {
   isSelected?: boolean;
   onSelect?: (imageId: string) => void;
   showDownloadButton?: boolean;
-  onRemove?: (imageId: string) => void;
   onViewButtonClick?: (imageData: ImageData) => void; // Renamed for clarity, now for a specific button
   onRename?: (imageId: string, newName: string) => void;
 }
@@ -23,17 +21,9 @@ const ImageCard: React.FC<ImageCardProps> = ({
   isSelected = false,
   onSelect,
   showDownloadButton = false,
-  onRemove,
   onViewButtonClick, // Destructure new prop
   onRename,
 }) => {
-  const handleRemove = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent other card actions when clicking remove
-    if (onRemove) {
-      onRemove(image.id);
-    }
-  };
-
   // Rename state
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(image.name);
@@ -187,15 +177,6 @@ const ImageCard: React.FC<ImageCardProps> = ({
         <div className="absolute top-2 right-2">
           <CheckmarkBadgeIcon sx={{ fontSize: 24, color: '#3b82f6' }} />
         </div>
-      )}
-      {onRemove && (
-        <button
-          onClick={handleRemove}
-          className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 focus:outline-none"
-          aria-label="Remove image"
-        >
-          <XBadgeIcon sx={{ fontSize: 24, color: '#ef4444' }} />
-        </button>
       )}
     </div>
   );
