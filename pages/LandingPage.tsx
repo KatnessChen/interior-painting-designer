@@ -16,22 +16,23 @@ import { GEMINI_TASKS, GeminiTaskName } from '@/services/gemini/geminiTasks';
 import { BenjaminMooreColor, ImageData, ImageOperation } from '@/types';
 import {
   createImage,
-  createProcessedImage,
   deleteImages,
-  fetchProjects,
+  fetchSpaceImages,
+  updateImageName,
 } from '@/services/firestoreService';
 import { useAuth } from '@/contexts/AuthContext';
 import { useImageProcessing } from '@/hooks/useImageProcessing';
 import { formatImageOperationData, downloadFile, buildDownloadFilename } from '@/utils';
 import { selectOriginalImages, selectUpdatedImages } from '@/stores/imageStore';
 import {
-  setProjects,
+  setSpaceImages,
   selectProjects,
   selectActiveProjectId,
   selectActiveSpaceId,
   addImageOptimistic,
   removeImageOptimistic,
   removeImagesOptimistic,
+  updateImageOptimistic,
 } from '@/stores/projectStore';
 
 interface Texture {
@@ -155,195 +156,118 @@ const LandingPage: React.FC = () => {
 
       if (!activeProjectId || !activeSpaceId) {
         setErrorMessage('Please select project/space to upload image.');
-      } else {
-        const tempImageId = crypto.randomUUID();
-        const now = new Date().toISOString();
+        return;
+      }
 
-        // Optimistic update - add image immediately to UI
-        const optimisticImage = {
+      const tempImageId = crypto.randomUUID();
+      const now = new Date().toISOString();
+
+      // Optimistic update - add image immediately to UI
+      const optimisticImage = {
+        id: tempImageId,
+        name: file.name,
+        mimeType: file.type,
+        spaceId: activeSpaceId,
+        evolutionChain: [],
+        parentImageId: null,
+        imageDownloadUrl: URL.createObjectURL(file), // Temporary local URL
+        storageFilePath: '',
+        isDeleted: false,
+        deletedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      dispatch(
+        addImageOptimistic({
+          projectId: activeProjectId,
+          spaceId: activeSpaceId,
+          image: optimisticImage,
+        })
+      );
+
+      try {
+        // Call firestoreService.createImage() to upload the file to Firebase Storage
+        // and create the image document in Firestore
+        await createImage(user.uid, activeProjectId, activeSpaceId, file, {
           id: tempImageId,
           name: file.name,
           mimeType: file.type,
-          spaceId: activeSpaceId,
-          evolutionChain: [],
-          parentImageId: null,
-          imageDownloadUrl: URL.createObjectURL(file), // Temporary local URL
-          storageFilePath: '',
-          isDeleted: false,
-          deletedAt: null,
-          createdAt: now,
-          updatedAt: now,
-        };
+        });
 
+        // Fetch updated space images
+        const images = await fetchSpaceImages(user.uid, activeProjectId, activeSpaceId);
+        dispatch(setSpaceImages({ projectId: activeProjectId, spaceId: activeSpaceId, images }));
+
+        setErrorMessage(null); // Clear error on successful upload
+      } catch (error) {
+        console.error('Failed to upload image:', error);
+
+        // Rollback optimistic update on error
         dispatch(
-          addImageOptimistic({
+          removeImageOptimistic({
             projectId: activeProjectId,
             spaceId: activeSpaceId,
-            image: optimisticImage,
+            imageId: tempImageId,
           })
         );
 
-        try {
-          // Call firestoreService.createImage() to upload the file to Firebase Storage
-          // and create the image document in Firestore
-          await createImage(user.uid, activeProjectId, activeSpaceId, file, {
-            id: tempImageId,
-            name: file.name,
-            mimeType: file.type,
-          });
-
-          // Fetch updated projects to get the real download URL
-          const updatedProjects = await fetchProjects(user.uid);
-          dispatch(setProjects(updatedProjects));
-
-          setErrorMessage(null); // Clear error on successful upload
-        } catch (error) {
-          console.error('Failed to upload image:', error);
-
-          // Rollback optimistic update on error
-          dispatch(
-            removeImageOptimistic({
-              projectId: activeProjectId,
-              spaceId: activeSpaceId,
-              imageId: tempImageId,
-            })
-          );
-
-          setErrorMessage(
-            error instanceof Error ? error.message : 'Failed to upload image to Firebase.'
-          );
-        }
+        setErrorMessage(
+          error instanceof Error ? error.message : 'Failed to upload image to Firebase.'
+        );
       }
     },
     [user, activeProjectId, activeSpaceId, dispatch]
   );
 
-  const handleRemoveUpdatedImage = useCallback(
-    async (imageId: string) => {
+  const handleRenameImage = useCallback(
+    async (imageId: string, newName: string) => {
       if (!user) {
-        setErrorMessage('Please log in to delete images.');
+        setErrorMessage('Please log in to rename images.');
         return;
       }
 
-      // Show confirmation modal
-      const imageName = updatedImages.find((img) => img.id === imageId)?.name || 'this image';
-      setDeleteConfirmConfig({
-        title: 'Delete Updated Photo',
-        message: `Are you sure you want to delete "${imageName}"?\n\nThis action cannot be undone.`,
-        onConfirm: async () => {
-          try {
-            setIsDeletingImages(true);
-
-            // Optimistic update - remove immediately from UI
-            dispatch(
-              removeImageOptimistic({
-                projectId: activeProjectId!,
-                spaceId: activeSpaceId!,
-                imageId,
-              })
-            );
-
-            // Delete image from Firestore and Firebase Storage
-            await deleteImages(user.uid, [imageId]);
-
-            // Fetch updated projects to sync
-            const updatedProjects = await fetchProjects(user.uid);
-            dispatch(setProjects(updatedProjects));
-
-            setShowDeleteConfirmModal(false);
-            setDeleteConfirmConfig(null);
-          } catch (error) {
-            console.error('Failed to remove image:', error);
-
-            // Rollback - refresh from server
-            const updatedProjects = await fetchProjects(user.uid);
-            dispatch(setProjects(updatedProjects));
-
-            setErrorMessage('Failed to remove image.');
-          } finally {
-            setIsDeletingImages(false);
-          }
-        },
-      });
-      setShowDeleteConfirmModal(true);
-    },
-    [user, updatedImages, activeProjectId, activeSpaceId, dispatch]
-  );
-
-  const handleRemoveOriginalImage = useCallback(
-    async (imageId: string) => {
-      if (!user) {
-        setErrorMessage('Please log in to delete images.');
+      if (!activeProjectId || !activeSpaceId) {
+        setErrorMessage('No project and space selected.');
         return;
       }
 
-      // Show confirmation modal
-      const imageName = originalImages.find((img) => img.id === imageId)?.name || 'this image';
-      setDeleteConfirmConfig({
-        title: 'Delete Original Photo',
-        message: `Are you sure you want to delete "${imageName}"?\n\nThis action cannot be undone.`,
-        onConfirm: async () => {
-          try {
-            setIsDeletingImages(true);
+      if (!newName.trim()) {
+        setErrorMessage('Image name cannot be empty.');
+        return;
+      }
 
-            // Optimistic update - remove immediately from UI
-            dispatch(
-              removeImageOptimistic({
-                projectId: activeProjectId!,
-                spaceId: activeSpaceId!,
-                imageId,
-              })
-            );
+      // Optimistic update - update immediately in UI
+      dispatch(
+        updateImageOptimistic({
+          projectId: activeProjectId,
+          spaceId: activeSpaceId,
+          imageId,
+          newName: newName.trim(),
+        })
+      );
 
-            // Clear selection if the removed image was selected
-            if (selectedOriginalImageIds.has(imageId)) {
-              setSelectedOriginalImageIds(new Set());
-            }
+      try {
+        // Update image name in Firestore
+        await updateImageName(user.uid, activeProjectId, activeSpaceId, imageId, newName.trim());
 
-            // Delete image from Firestore and Firebase Storage
-            await deleteImages(user.uid, [imageId]);
+        // Fetch updated space images to sync
+        const images = await fetchSpaceImages(user.uid, activeProjectId, activeSpaceId);
+        dispatch(setSpaceImages({ projectId: activeProjectId, spaceId: activeSpaceId, images }));
 
-            // Fetch updated projects to sync
-            const updatedProjects = await fetchProjects(user.uid);
-            dispatch(setProjects(updatedProjects));
+        setErrorMessage(null);
+      } catch (error) {
+        console.error('Failed to rename image:', error);
 
-            setShowDeleteConfirmModal(false);
-            setDeleteConfirmConfig(null);
-          } catch (error) {
-            console.error('Failed to remove image:', error);
+        // Rollback - refresh from server
+        const images = await fetchSpaceImages(user.uid, activeProjectId, activeSpaceId);
+        dispatch(setSpaceImages({ projectId: activeProjectId, spaceId: activeSpaceId, images }));
 
-            // Rollback - refresh from server
-            const updatedProjects = await fetchProjects(user.uid);
-            dispatch(setProjects(updatedProjects));
-
-            setErrorMessage('Failed to remove image.');
-          } finally {
-            setIsDeletingImages(false);
-          }
-        },
-      });
-      setShowDeleteConfirmModal(true);
+        setErrorMessage('Failed to save renamed image. Please try again.');
+      }
     },
-    [user, originalImages, selectedOriginalImageIds, activeProjectId, activeSpaceId, dispatch]
+    [user, activeProjectId, activeSpaceId, dispatch]
   );
-
-  const handleRenameOriginalImage = useCallback(async (imageId: string, newName: string) => {
-    try {
-      // TODO: Update image name in Firestore
-    } catch (error) {
-      console.error('Failed to rename image:', error);
-      setErrorMessage('Failed to save renamed image. Changes may not persist.');
-    }
-  }, []);
-
-  const handleRenameUpdatedImage = useCallback(async (imageId: string, newName: string) => {
-    try {
-      // TODO: Update image name in Firestore
-    } catch (error) {
-      console.error('Failed to rename image:', error);
-      setErrorMessage('Failed to save renamed image. Changes may not persist.');
-    }
-  }, []);
 
   const handleProcessImage = useCallback(
     async (customPrompt: string | undefined) => {
@@ -407,6 +331,11 @@ const LandingPage: React.FC = () => {
         return;
       }
 
+      if (!activeProjectId || !activeSpaceId) {
+        setErrorMessage('No project and space selected. Please try again.');
+        return;
+      }
+
       const tempImageId = crypto.randomUUID();
       const now = new Date().toISOString();
 
@@ -426,8 +355,6 @@ const LandingPage: React.FC = () => {
         selectedColor,
         selectedTexture
       );
-
-      console.log({ operation });
 
       // Optimistic update - show processed image immediately
       const optimisticImage = {
@@ -459,24 +386,27 @@ const LandingPage: React.FC = () => {
 
       try {
         // Save processed image to Firestore
-        await createProcessedImage(
+        await createImage(
           user.uid,
-          activeProjectId!,
-          activeSpaceId!,
-          processedImageResult.base64,
-          processedImageResult.mimeType,
+          activeProjectId,
+          activeSpaceId,
+          null,
           {
             id: tempImageId,
             name: imageName,
             mimeType: processedImageResult.mimeType,
           },
-          processingContext.selectedImage.id,
-          operation
+          {
+            base64: processedImageResult.base64,
+            base64MimeType: processedImageResult.mimeType,
+            parentImageId: processingContext.selectedImage.id,
+            operation,
+          }
         );
 
-        // Fetch updated projects to get real Firebase Storage URL
-        const updatedProjects = await fetchProjects(user.uid);
-        dispatch(setProjects(updatedProjects));
+        // Fetch updated space images to get real Firebase Storage URL
+        const images = await fetchSpaceImages(user.uid, activeProjectId, activeSpaceId);
+        dispatch(setSpaceImages({ projectId: activeProjectId, spaceId: activeSpaceId, images }));
       } catch (error) {
         console.error('Failed to save processed image:', error);
 
@@ -509,7 +439,6 @@ const LandingPage: React.FC = () => {
     setGeneratedImage(null);
   }, []);
 
-  // Multi-select handlers for original photos
   const handleSelectOriginalImage = useCallback((imageId: string) => {
     // Single-select mode: toggle selection, max 1 image
     setSelectedOriginalImageIds((prev) => {
@@ -537,59 +466,87 @@ const LandingPage: React.FC = () => {
     });
   }, []);
 
-  const handleBulkDeleteOriginal = useCallback(async () => {
-    if (selectedOriginalImageIds.size === 0) return;
+  const handleBulkDelete = useCallback(
+    async (imageType: 'original' | 'updated') => {
+      const selectedImageIds =
+        imageType === 'original' ? selectedOriginalImageIds : selectedUpdatedImageIds;
+      const setSelectedImageIds =
+        imageType === 'original' ? setSelectedOriginalImageIds : setSelectedUpdatedImageIds;
 
-    if (!user) {
-      setErrorMessage('Please log in to delete images.');
-      return;
-    }
+      if (selectedImageIds.size === 0) return;
 
-    // Show confirmation modal
-    setDeleteConfirmConfig({
-      title: 'Delete Photo',
-      message: `Are you sure you want to delete ${selectedOriginalImageIds.size} selected original photo(s)?\n\nThis action cannot be undone.`,
-      onConfirm: async () => {
-        try {
-          setIsDeletingImages(true);
+      if (!user) {
+        setErrorMessage('Please log in to delete images.');
+        return;
+      }
 
-          // Optimistic update - remove immediately from UI
-          dispatch(
-            removeImagesOptimistic({
-              projectId: activeProjectId!,
-              spaceId: activeSpaceId!,
-              imageIds: Array.from(selectedOriginalImageIds),
-            })
-          );
+      if (!activeProjectId || !activeSpaceId) {
+        setErrorMessage('No project and space selected. Please try again.');
+        return;
+      }
 
-          setSelectedOriginalImageIds(new Set());
+      setDeleteConfirmConfig({
+        title: 'Delete Photo',
+        message: `Are you sure you want to delete ${selectedImageIds.size} selected ${imageType} photo(s)?\n\nThis action cannot be undone.`,
+        onConfirm: async () => {
+          try {
+            setIsDeletingImages(true);
 
-          // Delete images from Firestore and Firebase Storage
-          await deleteImages(user.uid, Array.from(selectedOriginalImageIds));
+            // Optimistic update - remove immediately from UI
+            dispatch(
+              removeImagesOptimistic({
+                projectId: activeProjectId!,
+                spaceId: activeSpaceId!,
+                imageIds: Array.from(selectedImageIds),
+              })
+            );
 
-          // Fetch updated projects to sync
-          const updatedProjects = await fetchProjects(user.uid);
-          dispatch(setProjects(updatedProjects));
+            setSelectedImageIds(new Set());
 
-          setErrorMessage(null);
+            // Delete images from Firestore and Firebase Storage
+            await deleteImages(
+              user.uid,
+              activeProjectId,
+              activeSpaceId,
+              Array.from(selectedImageIds)
+            );
 
-          setShowDeleteConfirmModal(false);
-          setDeleteConfirmConfig(null);
-        } catch (error) {
-          console.error('Failed to delete images:', error);
+            // Fetch updated space images to sync
+            const images = await fetchSpaceImages(user.uid, activeProjectId, activeSpaceId);
+            dispatch(
+              setSpaceImages({ projectId: activeProjectId, spaceId: activeSpaceId, images })
+            );
 
-          // Rollback - refresh from server
-          const updatedProjects = await fetchProjects(user.uid);
-          dispatch(setProjects(updatedProjects));
+            setErrorMessage(null);
 
-          setErrorMessage('Failed to delete images.');
-        } finally {
-          setIsDeletingImages(false);
-        }
-      },
-    });
-    setShowDeleteConfirmModal(true);
-  }, [selectedOriginalImageIds, user, activeProjectId, activeSpaceId, dispatch]);
+            setShowDeleteConfirmModal(false);
+            setDeleteConfirmConfig(null);
+          } catch (error) {
+            console.error('Failed to delete images:', error);
+
+            // Rollback - refresh from server
+            const images = await fetchSpaceImages(user.uid, activeProjectId, activeSpaceId);
+            dispatch(
+              setSpaceImages({ projectId: activeProjectId, spaceId: activeSpaceId, images })
+            );
+
+            setErrorMessage('Failed to delete images.');
+          } finally {
+            setIsDeletingImages(false);
+          }
+        },
+      });
+      setShowDeleteConfirmModal(true);
+    },
+    [
+      selectedOriginalImageIds,
+      selectedUpdatedImageIds,
+      user,
+      activeProjectId,
+      activeSpaceId,
+      dispatch,
+    ]
+  );
 
   const handleClearOriginalSelection = useCallback(() => {
     setSelectedOriginalImageIds(new Set());
@@ -607,60 +564,6 @@ const LandingPage: React.FC = () => {
       return newSet;
     });
   }, []);
-
-  const handleBulkDeleteUpdated = useCallback(async () => {
-    if (selectedUpdatedImageIds.size === 0) return;
-
-    if (!user) {
-      setErrorMessage('Please log in to delete images.');
-      return;
-    }
-
-    // Show confirmation modal
-    setDeleteConfirmConfig({
-      title: 'Delete Photo',
-      message: `Are you sure you want to delete ${selectedUpdatedImageIds.size} selected updated photo(s)?\n\nThis action cannot be undone.`,
-      onConfirm: async () => {
-        try {
-          setIsDeletingImages(true);
-
-          // Optimistic update - remove immediately from UI
-          dispatch(
-            removeImagesOptimistic({
-              projectId: activeProjectId!,
-              spaceId: activeSpaceId!,
-              imageIds: Array.from(selectedUpdatedImageIds),
-            })
-          );
-
-          setSelectedUpdatedImageIds(new Set());
-
-          // Delete images from Firestore and Firebase Storage
-          await deleteImages(user.uid, Array.from(selectedUpdatedImageIds));
-
-          // Fetch updated projects to sync
-          const updatedProjects = await fetchProjects(user.uid);
-          dispatch(setProjects(updatedProjects));
-
-          setErrorMessage(null);
-
-          setShowDeleteConfirmModal(false);
-          setDeleteConfirmConfig(null);
-        } catch (error) {
-          console.error('Failed to delete images:', error);
-
-          // Rollback - refresh from server
-          const updatedProjects = await fetchProjects(user.uid);
-          dispatch(setProjects(updatedProjects));
-
-          setErrorMessage('Failed to delete images.');
-        } finally {
-          setIsDeletingImages(false);
-        }
-      },
-    });
-    setShowDeleteConfirmModal(true);
-  }, [selectedUpdatedImageIds, user, activeProjectId, activeSpaceId, dispatch]);
 
   const handleBulkDownloadUpdated = useCallback(() => {
     if (selectedUpdatedImageIds.size === 0) return;
@@ -749,15 +652,14 @@ const LandingPage: React.FC = () => {
                 selectedImageIds={selectedOriginalImageIds}
                 onSelectImage={handleSelectOriginalImage}
                 onSelectMultiple={handleSelectMultipleOriginal}
-                onRemoveImage={handleRemoveOriginalImage}
-                onRenameImage={handleRenameOriginalImage}
+                onRenameImage={handleRenameImage}
                 showRemoveButtons={selectedOriginalImageIds.size === 0}
                 emptyMessage="No photos uploaded yet."
                 onUploadImage={handleImageUpload}
                 showUploadCard={true}
                 onUploadError={setErrorMessage}
                 enableMultiSelect={true}
-                onBulkDelete={handleBulkDeleteOriginal}
+                onBulkDelete={() => handleBulkDelete('original')}
                 onClearSelection={handleClearOriginalSelection}
               />
             </div>
@@ -798,11 +700,10 @@ const LandingPage: React.FC = () => {
                 images={updatedImages}
                 selectedImageIds={selectedUpdatedImageIds}
                 onSelectMultiple={handleSelectUpdatedImage}
-                onRemoveImage={handleRemoveUpdatedImage}
-                onRenameImage={handleRenameUpdatedImage}
+                onRenameImage={handleRenameImage}
                 emptyMessage="Satisfied recolored photos will appear here."
                 enableMultiSelect={true}
-                onBulkDelete={handleBulkDeleteUpdated}
+                onBulkDelete={() => handleBulkDelete('updated')}
                 onBulkDownload={handleBulkDownloadUpdated}
                 onClearSelection={handleClearUpdatedSelection}
                 showDownloadIcon={true}

@@ -16,6 +16,7 @@ import {
   updateProject as updateProjectAction,
   removeProject,
   addSpace,
+  setSpaceImages,
   updateSpace as updateSpaceAction,
   removeSpace,
   setActiveProjectId,
@@ -32,6 +33,7 @@ import {
   createSpace,
   updateSpace,
   deleteSpace,
+  fetchSpaceImages,
 } from '@/services/firestoreService';
 
 export const ModalMode = {
@@ -69,7 +71,6 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onProjectSelected, onSpaceS
     spaceId: null,
   });
 
-  // Confirmation modal state
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
     title: '',
@@ -77,7 +78,6 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onProjectSelected, onSpaceS
     onConfirm: () => {},
   });
 
-  // Fetch projects when user changes
   useEffect(() => {
     if (!user) {
       dispatch(setProjects([]));
@@ -89,6 +89,18 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onProjectSelected, onSpaceS
       try {
         const projects = await fetchProjects(user.uid);
         dispatch(setProjects(projects));
+
+        // Auto-select the first project if available
+        if (projects.length > 0) {
+          const firstProject = projects[0];
+          dispatch(setActiveProjectId(firstProject.id));
+
+          // Auto-select the first space if available
+          const firstSpace = firstProject?.spaces?.[0];
+          if (firstSpace) {
+            dispatch(setActiveSpaceId(firstSpace.id));
+          }
+        }
       } catch (error) {
         console.error('Error fetching projects:', error);
       } finally {
@@ -99,7 +111,52 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onProjectSelected, onSpaceS
     fetchUserProjects();
   }, [user, dispatch]);
 
-  // Handle delete project
+  useEffect(() => {
+    const autoFetchSpaceImages = async () => {
+      if (user && activeProjectId && activeSpaceId) {
+        const images = await fetchSpaceImages(user.uid, activeProjectId, activeSpaceId);
+        dispatch(setSpaceImages({ projectId: activeProjectId, spaceId: activeSpaceId, images }));
+      }
+    };
+
+    autoFetchSpaceImages();
+  }, [activeSpaceId]);
+
+  const handleSelectProject = useCallback(
+    async (projectId: string) => {
+      if (!user) return;
+
+      if (activeProjectId === projectId) return;
+
+      const selectedProject = projects.find((project) => project.id === projectId);
+      dispatch(setActiveProjectId(projectId));
+
+      // Auto-select the first space if available
+      const firstSpace = selectedProject?.spaces?.[0];
+      if (firstSpace) {
+        dispatch(setActiveSpaceId(firstSpace.id));
+      } else {
+        dispatch(setActiveSpaceId(null));
+      }
+
+      onProjectSelected?.(projectId);
+    },
+    [user, onProjectSelected, dispatch, projects, activeProjectId]
+  );
+
+  const handleSelectSpace = useCallback(
+    async (projectId: string, spaceId: string) => {
+      if (!user) return;
+
+      if (activeSpaceId === spaceId) return;
+
+      dispatch(setActiveProjectId(projectId));
+      dispatch(setActiveSpaceId(spaceId));
+      onSpaceSelected?.(projectId, spaceId);
+    },
+    [user, onSpaceSelected, dispatch, activeSpaceId]
+  );
+
   const handleDeleteProject = useCallback(
     (projectId: string, projectName: string) => {
       setConfirmModal({
@@ -123,7 +180,6 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onProjectSelected, onSpaceS
     [user, activeProjectId, confirmModal, dispatch]
   );
 
-  // Handle delete space
   const handleDeleteSpace = useCallback(
     (projectId: string, spaceId: string, spaceName: string) => {
       setConfirmModal({
@@ -147,32 +203,6 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onProjectSelected, onSpaceS
     [user, activeSpaceId, activeProjectId, confirmModal, dispatch]
   );
 
-  // Handle project selection
-  const handleSelectProject = useCallback(
-    (projectId: string) => {
-      const selectedProject = projects.find((project) => project.id === projectId);
-      dispatch(setActiveProjectId(projectId));
-
-      // If the project has spaces, set the first space as active, otherwise set null
-      const firstSpaceId = selectedProject?.spaces?.[0]?.id;
-      dispatch(setActiveSpaceId(firstSpaceId || null));
-
-      onProjectSelected?.(projectId);
-    },
-    [onProjectSelected, dispatch, projects]
-  );
-
-  // Handle space selection
-  const handleSelectSpace = useCallback(
-    (projectId: string, spaceId: string) => {
-      dispatch(setActiveProjectId(projectId));
-      dispatch(setActiveSpaceId(spaceId));
-      onSpaceSelected?.(projectId, spaceId);
-    },
-    [onSpaceSelected, dispatch]
-  );
-
-  // Handle modal submission
   const handleModalSubmit = useCallback(async () => {
     setModalProcessing(true);
 

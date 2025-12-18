@@ -134,6 +134,7 @@ export interface ProjectDocument {
  */
 export interface SpaceDocument {
   id: string;
+  userId: string; // Required for collectionGroup queries
   projectId: string;
   name: string;
   createdAt: string;

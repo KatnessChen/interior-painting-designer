@@ -45,6 +45,18 @@ export const projectStore = createSlice({
         project.spaces.push(action.payload.space);
       }
     },
+    setSpaceImages: (
+      state,
+      action: PayloadAction<{ projectId: string; spaceId: string; images: any[] }>
+    ) => {
+      const project = state.projects.find((p) => p.id === action.payload.projectId);
+      if (project) {
+        const space = project.spaces.find((s) => s.id === action.payload.spaceId);
+        if (space) {
+          space.images = action.payload.images;
+        }
+      }
+    },
     updateSpace: (
       state,
       action: PayloadAction<{ projectId: string; spaceId: string; name: string }>
@@ -88,7 +100,11 @@ export const projectStore = createSlice({
       if (project) {
         const space = project.spaces.find((s) => s.id === action.payload.spaceId);
         if (space) {
-          space.images.push(action.payload.image);
+          if (space.images) {
+            space.images = [...space.images, action.payload.image];
+          } else {
+            space.images = [action.payload.image];
+          }
         }
       }
     },
@@ -103,7 +119,7 @@ export const projectStore = createSlice({
       const project = state.projects.find((p) => p.id === action.payload.projectId);
       if (project) {
         const space = project.spaces.find((s) => s.id === action.payload.spaceId);
-        if (space) {
+        if (space?.images) {
           space.images = space.images.filter((img) => img.id !== action.payload.imageId);
         }
       }
@@ -119,8 +135,29 @@ export const projectStore = createSlice({
       const project = state.projects.find((p) => p.id === action.payload.projectId);
       if (project) {
         const space = project.spaces.find((s) => s.id === action.payload.spaceId);
-        if (space) {
+        if (space?.images) {
           space.images = space.images.filter((img) => !action.payload.imageIds.includes(img.id));
+        }
+      }
+    },
+    updateImageOptimistic: (
+      state,
+      action: PayloadAction<{
+        projectId: string;
+        spaceId: string;
+        imageId: string;
+        newName: string;
+      }>
+    ) => {
+      const project = state.projects.find((p) => p.id === action.payload.projectId);
+      if (project) {
+        const space = project.spaces.find((s) => s.id === action.payload.spaceId);
+        if (space?.images) {
+          const image = space.images.find((img) => img.id === action.payload.imageId);
+          if (image) {
+            image.name = action.payload.newName;
+            image.updatedAt = new Date().toISOString();
+          }
         }
       }
     },
@@ -150,6 +187,7 @@ export const {
   updateProject,
   removeProject,
   addSpace,
+  setSpaceImages,
   updateSpace,
   removeSpace,
   setActiveProjectId,
@@ -157,6 +195,7 @@ export const {
   addImageOptimistic,
   removeImageOptimistic,
   removeImagesOptimistic,
+  updateImageOptimistic,
 } = projectStore.actions;
 
 export const {
