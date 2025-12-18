@@ -93,11 +93,15 @@ export interface User {
   lastLoginAt: Date;
 }
 
+// ============================================================================
+// Application Types (used in frontend with populated data)
+// ============================================================================
+
 export interface Space {
   id: string;
   projectId: string;
   name: string;
-  images: ImageData[];
+  images: null | ImageData[];
   createdAt: string; // ISO 8601 date string for Redux serialization
 }
 
@@ -106,4 +110,50 @@ export interface Project {
   name: string;
   spaces: Space[];
   createdAt: string; // ISO 8601 date string for Redux serialization
+}
+
+// ============================================================================
+// Firestore Document Types (actual structure stored in Firestore)
+// ============================================================================
+
+/**
+ * Project document structure in Firestore.
+ * Path: users/{userId}/projects/{projectId}
+ * Note: Spaces are stored in a subcollection, not in this document.
+ */
+export interface ProjectDocument {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
+/**
+ * Space document structure in Firestore subcollection.
+ * Path: users/{userId}/projects/{projectId}/spaces/{spaceId}
+ * Note: Images are stored in a separate subcollection, not in this document.
+ */
+export interface SpaceDocument {
+  id: string;
+  projectId: string;
+  name: string;
+  createdAt: string;
+}
+
+/**
+ * Image document structure in Firestore subcollection.
+ * Path: users/{userId}/projects/{projectId}/spaces/{spaceId}/images/{imageId}
+ */
+export interface ImageDocument {
+  id: string;
+  name: string;
+  spaceId: string | null;
+  evolutionChain: ImageOperation[];
+  parentImageId: string | null;
+  imageDownloadUrl: string;
+  storageFilePath: string;
+  mimeType: string;
+  isDeleted: boolean;
+  deletedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
