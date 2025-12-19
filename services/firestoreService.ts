@@ -4,24 +4,411 @@ import {
   setDoc,
   Timestamp,
   collection,
+  collectionGroup,
   query,
   getDocs,
   getDoc,
   updateDoc,
   deleteDoc,
   writeBatch,
-  arrayUnion,
-  arrayRemove,
   orderBy,
+  where,
 } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { app } from '../config/firebaseConfig';
-import { ImageData, ImageOperation, Home, Room } from '../types';
-import { base64ToFile, FirestoreDataHandler } from '../utils';
+import { app } from '@/config/firebaseConfig';
+import { ImageData, ImageOperation, Project, Space, ProjectDocument, SpaceDocument } from '@/types';
+import { base64ToFile, FirestoreDataHandler, cacheImageBase64s } from '@/utils';
 
 // Initialize Firestore and Storage with the shared Firebase app instance
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+
+/**
+ * Creates a new project in Firestore for a user.
+ *
+ * @param userId The ID of the user.
+ * @param projectName The name of the project.
+ * @returns The newly created Project object.
+ */
+export async function createProject(userId: string, projectName: string): Promise<Project> {
+  if (!userId) {
+    throw new Error('User ID is required to create a home.');
+  }
+
+  if (!projectName.trim()) {
+    throw new Error('Project name is required.');
+  }
+
+  try {
+    const projectId = crypto.randomUUID();
+    const now = new Date();
+    const newProject: Project = {
+      id: projectId,
+      name: projectName.trim(),
+      spaces: [],
+      createdAt: now.toISOString(),
+    };
+
+    const docRef = doc(db, 'users', userId, 'projects', projectId);
+    await setDoc(docRef, {
+      id: newProject.id,
+      name: newProject.name,
+      createdAt: Timestamp.fromDate(now),
+    });
+
+    console.log('Project created in Firestore:', projectId);
+    return newProject;
+  } catch (error) {
+    console.error('Failed to create project:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to create project: ${error.message}`);
+    }
+    throw new Error('Failed to create project in Firebase.');
+  }
+}
+
+/**
+ * Fetches all projects for a specific user from Firestore.
+ * Optimized to fetch all spaces in a single collectionGroup query (2 queries total instead of N+1).
+ *
+ * @param userId The ID of the user.
+ * @returns An array of Project objects with spaces populated (but spaces have empty images arrays).
+ */
+export async function fetchProjects(userId: string): Promise<Project[]> {
+  if (!userId) {
+    throw new Error('User ID is required to fetch projects.');
+  }
+
+  try {
+    console.log('Fetching projects from Firestore for user:', userId);
+
+    // Query 1: Fetch all projects for the user
+    const projectsRef = collection(db, 'users', userId, 'projects');
+    const projectsQuery = query(projectsRef, orderBy('createdAt', 'asc'));
+    const projectsSnapshot = await getDocs(projectsQuery);
+
+    // Query 2: Fetch all spaces for this user using collectionGroup (single query for all spaces)
+    const spacesQuery = query(
+      collectionGroup(db, 'spaces'),
+      where('userId', '==', userId),
+      orderBy('createdAt', 'asc')
+    );
+    const spacesSnapshot = await getDocs(spacesQuery);
+
+    // Group spaces by projectId on the client side
+    const spacesByProject = new Map<string, Space[]>();
+    spacesSnapshot.docs.forEach((spaceDoc) => {
+      const spaceData = spaceDoc.data() as SpaceDocument;
+      const space: Space = {
+        id: spaceData.id,
+        projectId: spaceData.projectId,
+        name: spaceData.name,
+        images: null, // Empty - load separately with fetchSpaceImages() if needed
+        createdAt:
+          typeof spaceData.createdAt === 'string'
+            ? spaceData.createdAt
+            : (spaceData.createdAt as any).toDate().toISOString(),
+      };
+
+      const projectSpaces = spacesByProject.get(spaceData.projectId) || [];
+      projectSpaces.push(space);
+      spacesByProject.set(spaceData.projectId, projectSpaces);
+    });
+
+    // Combine projects with their spaces
+    const projects: Project[] = projectsSnapshot.docs.map((projectDoc) => {
+      const projectData = projectDoc.data() as ProjectDocument;
+
+      return {
+        id: projectData.id,
+        name: projectData.name,
+        spaces: spacesByProject.get(projectData.id) || [],
+        createdAt:
+          typeof projectData.createdAt === 'string'
+            ? projectData.createdAt
+            : (projectData.createdAt as any).toDate().toISOString(),
+      };
+    });
+
+    console.log('Projects fetched from Firestore:', projects.length, 'projects');
+    return projects;
+  } catch (error) {
+    console.error('Failed to fetch projects:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to fetch projects: ${error.message}`);
+    }
+    throw new Error('Failed to fetch projects from Firebase.');
+  }
+}
+
+/**
+ * Updates a project's name in Firestore.re.
+ *
+ * @param userId The ID of the user.
+ * @param projectId The ID of the project to update.
+ * @param newName The new name for the project.
+ */
+export async function updateProject(
+  userId: string,
+  projectId: string,
+  newName: string
+): Promise<void> {
+  console.log({ userId, projectId, newName });
+  if (!userId) {
+    throw new Error('User ID is required to update a project.');
+  }
+
+  if (!newName.trim()) {
+    throw new Error('Project name cannot be empty.');
+  }
+
+  try {
+    const docRef = doc(db, 'users', userId, 'projects', projectId);
+    await updateDoc(docRef, { name: newName.trim() });
+
+    console.log('Project updated in Firestore:', projectId);
+  } catch (error) {
+    console.error('Failed to update project:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to update project: ${error.message}`);
+    }
+    throw new Error('Failed to update project in Firebase.');
+  }
+}
+
+/**
+ * Deletes a project from Firestore.
+ * Checks the spaces subcollection to ensure it's empty before deletion.
+ *
+ * @param userId The ID of the user.
+ * @param projectId The ID of the project to delete.
+ */
+export async function deleteProject(userId: string, projectId: string): Promise<void> {
+  if (!userId) {
+    throw new Error('User ID is required to delete a project.');
+  }
+
+  const projectRef = doc(db, 'users', userId, 'projects', projectId);
+
+  try {
+    // First, check if the project exists
+    const projectDoc = await getDoc(projectRef);
+
+    if (!projectDoc.exists()) {
+      throw new Error('Project not found.');
+    }
+
+    const projectData = projectDoc.data() as ProjectDocument;
+
+    // Check if the spaces subcollection is empty
+    const spacesRef = collection(db, 'users', userId, 'projects', projectId, 'spaces');
+    const spacesSnapshot = await getDocs(spacesRef);
+
+    if (!spacesSnapshot.empty) {
+      // If spaces exist, throw an error to prevent deletion
+      throw new Error(
+        `Cannot delete "${projectData.name}" because it still contains ${spacesSnapshot.size} space(s). Please delete all spaces first.`
+      );
+    }
+
+    // If there are no spaces, proceed with deleting the project document
+    await deleteDoc(projectRef);
+
+    console.log('Project deleted successfully:', projectId);
+  } catch (error) {
+    console.error('Failed to delete project:', error);
+    // Re-throw the error so the UI can catch it and display a message
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('An unknown error occurred while deleting the project.');
+  }
+}
+
+/**
+ * Creates a new space in a project.
+ *
+ * @param userId The ID of the user.
+ * @param projectId The ID of the project.
+ * @param spaceName The name of the space.
+ * @returns The newly created Space object.
+ */
+export async function createSpace(
+  userId: string,
+  projectId: string,
+  spaceName: string
+): Promise<Space> {
+  if (!userId) {
+    throw new Error('User ID is required to create a space.');
+  }
+
+  if (!spaceName.trim()) {
+    throw new Error('Space name is required.');
+  }
+
+  try {
+    const spaceId = crypto.randomUUID();
+    const now = new Date();
+    const newSpace: Space = {
+      id: spaceId,
+      projectId,
+      name: spaceName.trim(),
+      images: [],
+      createdAt: now.toISOString(),
+    };
+
+    // Create the space document in the subcollection
+    const spaceDocRef = doc(db, 'users', userId, 'projects', projectId, 'spaces', spaceId);
+    const spaceDoc: SpaceDocument = {
+      id: newSpace.id,
+      userId, // Required for collectionGroup queries
+      projectId: newSpace.projectId,
+      name: newSpace.name,
+      createdAt: now.toISOString(),
+    };
+
+    await setDoc(spaceDocRef, {
+      ...spaceDoc,
+      createdAt: Timestamp.fromDate(now),
+    });
+
+    console.log('Space created in Firestore:', spaceId);
+    return newSpace;
+  } catch (error) {
+    console.error('Failed to create space:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to create space: ${error.message}`);
+    }
+    throw new Error('Failed to create space in Firebase.');
+  }
+}
+
+/**
+ * Updates a space's name in Firestore.
+ *
+ * @param userId The ID of the user.
+ * @param projectId The ID of the project.
+ * @param spaceId The ID of the space to update.
+ * @param newName The new name for the space.
+ */
+export async function updateSpace(
+  userId: string,
+  projectId: string,
+  spaceId: string,
+  newName: string
+): Promise<void> {
+  if (!userId) {
+    throw new Error('User ID is required to update a space.');
+  }
+
+  if (!newName.trim()) {
+    throw new Error('Space name cannot be empty.');
+  }
+
+  try {
+    // Update the space document in the subcollection
+    const spaceDocRef = doc(db, 'users', userId, 'projects', projectId, 'spaces', spaceId);
+    await updateDoc(spaceDocRef, { name: newName.trim() });
+
+    console.log('Space updated in Firestore:', spaceId);
+  } catch (error) {
+    console.error('Failed to update space:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to update space: ${error.message}`);
+    }
+    throw new Error('Failed to update space in Firebase.');
+  }
+}
+
+/**
+ * Deletes a space from Firestore.
+ * Note: Images associated with the space will NOT be deleted.
+ *
+ * @param userId The ID of the user.
+ * @param projectId The ID of the project.
+ * @param spaceId The ID of the space to delete.
+ */
+export async function deleteSpace(
+  userId: string,
+  projectId: string,
+  spaceId: string
+): Promise<void> {
+  if (!userId) {
+    throw new Error('User ID is required to delete a space.');
+  }
+  if (!projectId) {
+    throw new Error('Project ID is required to delete a space.');
+  }
+
+  try {
+    // Delete the space document from the subcollection
+    const spaceDocRef = doc(db, 'users', userId, 'projects', projectId, 'spaces', spaceId);
+    await deleteDoc(spaceDocRef);
+
+    console.log('Space deleted from Firestore:', spaceId);
+  } catch (error) {
+    console.error('Failed to delete space:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to delete space: ${error.message}`);
+    }
+    throw new Error('Failed to delete space from Firebase.');
+  }
+}
+
+/**
+ * Fetches all images for a specific space.
+ *
+ * @param userId The ID of the user.
+ * @param projectId The ID of the project.
+ * @param spaceId The ID of the space.
+ * @returns An array of ImageData objects.
+ */
+export async function fetchSpaceImages(
+  userId: string,
+  projectId: string,
+  spaceId: string
+): Promise<ImageData[]> {
+  if (!userId || !projectId || !spaceId) {
+    throw new Error('User ID, Project ID, and Space ID are required to fetch images.');
+  }
+
+  try {
+    console.log('Fetching images for space:', spaceId);
+
+    const imagesRef = collection(
+      db,
+      'users',
+      userId,
+      'projects',
+      projectId,
+      'spaces',
+      spaceId,
+      'images'
+    );
+    const imagesQuery = query(imagesRef, orderBy('createdAt', 'asc'));
+    const imagesSnapshot = await getDocs(imagesQuery);
+
+    const images: ImageData[] = imagesSnapshot.docs
+      .map((imageDoc) => {
+        const imageData = imageDoc.data();
+        return new FirestoreDataHandler(imageData).serializeTimestamps().value as ImageData;
+      })
+      .filter((image) => !image.isDeleted);
+
+    console.log('Images fetched for space:', spaceId, '-', images.length, 'images');
+
+    // Cache images in background
+    void cacheImageBase64s(images);
+
+    return images;
+  } catch (error) {
+    console.error('Failed to fetch images:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to fetch images: ${error.message}`);
+    }
+    throw new Error('Failed to fetch images from Firebase.');
+  }
+}
 
 /**
  * Creates a new image document in Firestore with uploaded storage information.
@@ -31,57 +418,89 @@ export const storage = getStorage(app);
  * 3. Create the image document in Firestore
  *
  * @param userId The ID of the user uploading the image.
- * @param imageFile The image file to upload (Blob or File).
+ * @param projectId The ID of the project.
+ * @param spaceId The ID of the space.
+ * @param imageFile The image file to upload (Blob or File). Can be null if base64 is provided.
  * @param imageMetadata Basic metadata: id, name, mimeType.
- * @param parentImageId Optional parent image ID for processed images.
- * @param operation Optional operation to add to evolution chain.
+ * @param processingInfo Optional processing information including base64, parentImageId, and operation.
  * @returns The newly created ImageData object for local state use.
  */
 export async function createImage(
   userId: string,
-  homeId: string,
-  roomId: string,
-  imageFile: Blob | File,
+  projectId: string,
+  spaceId: string,
+  imageFile: Blob | File | null,
   imageMetadata: Pick<ImageData, 'id' | 'name' | 'mimeType'>,
-  parentImageId?: string | null,
-  operation?: ImageOperation | null
+  processingInfo?: {
+    parentImageId?: string | null;
+    operation?: ImageOperation | null;
+    base64?: string;
+    base64MimeType?: string;
+  }
 ): Promise<ImageData> {
   if (!userId) {
     throw new Error('User ID is required to add an image.');
   }
 
+  const { operation, parentImageId, base64, base64MimeType } = processingInfo || {};
+
   try {
-    // Step 1: Upload the image file to Firebase Storage
     console.log('Uploading image to Firebase Storage...');
+
+    // Determine the file to upload and extension
+    let fileToUpload: Blob | File;
     let extension = 'jpg';
-    if (imageFile.type) {
-      extension = imageFile.type.split('/')[1] || 'jpg';
-    } else if (imageFile instanceof File) {
-      const parts = imageFile.name.split('.');
-      extension = parts[parts.length - 1] || 'jpg';
+
+    if (base64 && base64MimeType) {
+      // Convert base64 to File
+      extension = base64MimeType.split('/')[1] || 'jpg';
+      const filename = `${imageMetadata.id}.${extension}`;
+      fileToUpload = base64ToFile(base64, base64MimeType, filename);
+      console.log('Converted base64 to file:', filename);
+    } else if (imageFile) {
+      // Use provided file
+      fileToUpload = imageFile;
+      if (imageFile.type) {
+        extension = imageFile.type.split('/')[1] || 'jpg';
+      } else if (imageFile instanceof File) {
+        const parts = imageFile.name.split('.');
+        extension = parts[parts.length - 1] || 'jpg';
+      }
+    } else {
+      throw new Error('Either imageFile or base64 data must be provided.');
     }
 
-    const storagePath = `users/${userId}/homes/${homeId}/rooms/${roomId}/images/${imageMetadata.id}.${extension}`;
+    // For generating download URL
+    const storageFilePath = `users/${userId}/images/${imageMetadata.id}.${extension}`;
+
+    // The Firebase Storage File Path
     const storageRef = ref(storage, `users/${userId}/images/${imageMetadata.id}.${extension}`);
 
     // Upload the file to Firebase Storage
-    await uploadBytes(storageRef, imageFile);
-    console.log('Image uploaded to Firebase Storage:', storagePath);
+    await uploadBytes(storageRef, fileToUpload);
+    console.log('Image uploaded to Firebase Storage:', storageFilePath);
 
     // Get the download URL
-    const storageUrl = await getDownloadURL(storageRef);
-    console.log('Image download URL obtained:', storageUrl);
+    const imageDownloadUrl = await getDownloadURL(storageRef);
+    console.log('Image download URL obtained:', imageDownloadUrl);
 
     // Step 2: Create the image document in Firestore with storage information
     const now = new Date();
     const nowISOString = now.toISOString();
     const newImageData: ImageData = {
       ...imageMetadata,
-      roomId: null,
-      evolutionChain: operation ? [operation] : [],
+      spaceId,
+      evolutionChain: operation
+        ? [
+            {
+              ...operation,
+              timestamp: new Date(operation.timestamp),
+            },
+          ]
+        : [],
       parentImageId: parentImageId || null,
-      storageUrl,
-      storagePath,
+      imageDownloadUrl,
+      storageFilePath,
       isDeleted: false,
       deletedAt: null,
       createdAt: nowISOString,
@@ -92,27 +511,27 @@ export async function createImage(
 
     const batch = writeBatch(db);
 
-    // Create the image document in the room's images subcollection
+    // Create the image document in the space's images subcollection
     const docRef = doc(
       db,
       'users',
       userId,
-      'homes',
-      homeId,
-      'rooms',
-      roomId,
+      'projects',
+      projectId,
+      'spaces',
+      spaceId,
       'images',
       newImageData.id
     );
 
     // Convert Date objects to Firestore Timestamps for storage
-    const firestoreData = {
+    const imageData = {
       id: newImageData.id,
       name: newImageData.name,
       mimeType: newImageData.mimeType,
-      storageUrl: newImageData.storageUrl,
-      storagePath: newImageData.storagePath,
-      roomId: newImageData.roomId || null,
+      imageDownloadUrl: newImageData.imageDownloadUrl,
+      storageFilePath: newImageData.storageFilePath,
+      spaceId: newImageData.spaceId || null,
       parentImageId: newImageData.parentImageId || null,
       isDeleted: newImageData.isDeleted,
       deletedAt: newImageData.deletedAt || null,
@@ -128,26 +547,7 @@ export async function createImage(
       updatedAt: Timestamp.fromDate(new Date(newImageData.updatedAt)),
     };
 
-    batch.set(docRef, firestoreData);
-
-    // Also update the home document's rooms array to include the new image in the denormalized images array
-    const homeDocRef = doc(db, 'users', userId, 'homes', homeId);
-    const homeDoc = await getDoc(homeDocRef);
-
-    if (homeDoc.exists()) {
-      const homeData = homeDoc.data() as Home;
-      const updatedRooms = (homeData.rooms || []).map((room: any) => {
-        if (room.id === roomId) {
-          return {
-            ...room,
-            images: [...(room.images || []), firestoreData],
-          };
-        }
-        return room;
-      });
-
-      batch.update(homeDocRef, { rooms: updatedRooms });
-    }
+    batch.set(docRef, imageData);
 
     await batch.commit();
     console.log('Image metadata document created in Firestore:', newImageData.id);
@@ -164,67 +564,73 @@ export async function createImage(
 }
 
 /**
- * Creates a processed image in Firestore with parent image tracking and evolution chain.
- * This function converts base64 to File and delegates to createImage.
+ * Updates an image's name in Firestore.
  *
  * @param userId The ID of the user.
- * @param homeId The ID of the home.
- * @param roomId The ID of the room.
- * @param base64 The base64-encoded processed image.
- * @param mimeType The MIME type of the image.
- * @param imageMetadata Basic metadata: id, name, mimeType.
- * @param parentImageId The ID of the original image that was processed.
- * @param operation The operation details to add to the evolution chain.
- * @returns The newly created ImageData object.
+ * @param projectId The ID of the project.
+ * @param spaceId The ID of the space.
+ * @param imageId The ID of the image to update.
+ * @param newName The new name for the image.
  */
-export async function createProcessedImage(
+export async function updateImageName(
   userId: string,
-  homeId: string,
-  roomId: string,
-  base64: string,
-  mimeType: string,
-  imageMetadata: Pick<ImageData, 'id' | 'name' | 'mimeType'>,
-  parentImageId: string,
-  operation: ImageOperation
-): Promise<ImageData> {
-  if (!userId) {
-    throw new Error('User ID is required to create a processed image.');
+  projectId: string,
+  spaceId: string,
+  imageId: string,
+  newName: string
+): Promise<void> {
+  if (!userId || !projectId || !spaceId || !imageId) {
+    throw new Error('User ID, Project ID, Space ID, and Image ID are required to update image.');
+  }
+
+  if (!newName.trim()) {
+    throw new Error('Image name cannot be empty.');
   }
 
   try {
-    // Convert base64 to File
-    const filename = `${imageMetadata.id}.${mimeType.split('/')[1] || 'jpg'}`;
-    const imageFile = base64ToFile(base64, mimeType, filename);
-
-    console.log({ filename });
-
-    // Delegate to createImage for uploading and storing
-    return await createImage(
+    const docRef = doc(
+      db,
+      'users',
       userId,
-      homeId,
-      roomId,
-      imageFile,
-      imageMetadata,
-      parentImageId,
-      operation
+      'projects',
+      projectId,
+      'spaces',
+      spaceId,
+      'images',
+      imageId
     );
+
+    const now = new Date();
+    await updateDoc(docRef, {
+      name: newName.trim(),
+      updatedAt: Timestamp.fromDate(now),
+    });
+
+    console.log('Image name updated in Firestore:', imageId);
   } catch (error) {
-    console.error('Failed to create processed image:', error);
+    console.error('Failed to update image name:', error);
     if (error instanceof Error) {
-      throw new Error(`Failed to create processed image: ${error.message}`);
+      throw new Error(`Failed to update image name: ${error.message}`);
     }
-    throw new Error('Failed to create processed image in Firebase.');
+    throw new Error('Failed to update image name in Firebase.');
   }
 }
 
 /**
  * Soft deletes images by marking them as deleted in Firestore.
- * Keeps the image file in Firebase Storage for potential recovery or archival.
+ * Hard deletes the actual image files from Firebase Storage.
  *
  * @param userId The ID of the user.
+ * @param projectId The ID of the project.
+ * @param spaceId The ID of the space.
  * @param imageIds The IDs of the images to delete.
  */
-export async function deleteImages(userId: string, imageIds: string[]): Promise<void> {
+export async function deleteImages(
+  userId: string,
+  projectId: string,
+  spaceId: string,
+  imageIds: string[]
+): Promise<void> {
   if (!userId) {
     throw new Error('User ID is required to delete images.');
   }
@@ -234,387 +640,68 @@ export async function deleteImages(userId: string, imageIds: string[]): Promise<
   }
 
   try {
-    console.log(`Soft deleting ${imageIds.length} images for user ${userId}`);
+    console.log(`Deleting ${imageIds.length} images for user ${userId}`);
 
-    // Mark each image as deleted in Firestore
+    // Process each image
     for (const imageId of imageIds) {
       try {
-        const docRef = doc(db, 'users', userId, 'images', imageId);
-        const now = new Date();
+        const docRef = doc(
+          db,
+          'users',
+          userId,
+          'projects',
+          projectId,
+          'spaces',
+          spaceId,
+          'images',
+          imageId
+        );
 
-        // Update the document to mark it as deleted
-        await updateDoc(docRef, {
-          isDeleted: true,
-          deletedAt: Timestamp.fromDate(now),
-          updatedAt: Timestamp.fromDate(now),
-        });
+        // Get the image document to retrieve storage path
+        const imageDoc = await getDoc(docRef);
 
-        console.log(`Soft deleted image: ${imageId}`);
+        if (imageDoc.exists()) {
+          const imageData = imageDoc.data();
+          const now = new Date();
+
+          // Soft delete in Firestore - mark as deleted
+          await updateDoc(docRef, {
+            isDeleted: true,
+            deletedAt: Timestamp.fromDate(now),
+            updatedAt: Timestamp.fromDate(now),
+          });
+
+          console.log(`Soft deleted image in Firestore: ${imageId}`);
+
+          // TODO: determine the hard delete logic
+          // Hard delete from Firebase Storage
+          // if (imageData.storageFilePath) {
+          //   try {
+          //     const storageRef = ref(storage, imageData.storageFilePath);
+          //     await deleteObject(storageRef);
+          //     console.log(`Hard deleted image from Storage: ${imageData.storageFilePath}`);
+          //   } catch (storageError) {
+          //     console.warn(`Failed to delete storage file for image ${imageId}:`, storageError);
+          //     // Continue even if storage deletion fails
+          //   }
+          // } else {
+          //   console.warn(`No storage path found for image ${imageId}`);
+          // }
+        } else {
+          console.warn(`Image document not found: ${imageId}`);
+        }
       } catch (error) {
         console.error(`Failed to delete image ${imageId}:`, error);
         // Continue with next image even if one fails
       }
     }
 
-    console.log(`Completed soft deletion of ${imageIds.length} images`);
+    console.log(`Completed deletion of ${imageIds.length} images`);
   } catch (error) {
     console.error('Failed to delete images:', error);
     if (error instanceof Error) {
       throw new Error(`Failed to delete images: ${error.message}`);
     }
     throw new Error('Failed to delete images from Firebase.');
-  }
-}
-
-/**
- * Creates a new home in Firestore for a user.
- *
- * @param userId The ID of the user.
- * @param homeName The name of the home.
- * @returns The newly created Home object.
- */
-export async function createHome(userId: string, homeName: string): Promise<Home> {
-  if (!userId) {
-    throw new Error('User ID is required to create a home.');
-  }
-
-  if (!homeName.trim()) {
-    throw new Error('Home name is required.');
-  }
-
-  try {
-    const homeId = crypto.randomUUID();
-    const now = new Date();
-    const newHome: Home = {
-      id: homeId,
-      name: homeName.trim(),
-      rooms: [],
-      createdAt: now.toISOString(),
-    };
-
-    const docRef = doc(db, 'users', userId, 'homes', homeId);
-    await setDoc(docRef, {
-      id: newHome.id,
-      name: newHome.name,
-      rooms: newHome.rooms,
-      createdAt: Timestamp.fromDate(now),
-    });
-
-    console.log('Home created in Firestore:', homeId);
-    return newHome;
-  } catch (error) {
-    console.error('Failed to create home:', error);
-    if (error instanceof Error) {
-      throw new Error(`Failed to create home: ${error.message}`);
-    }
-    throw new Error('Failed to create home in Firebase.');
-  }
-}
-
-/**
- * Fetches all homes for a specific user from Firestore, including rooms and their images.
- * Uses denormalized data from the home document's rooms array (only 1 Firestore read).
- *
- * @param userId The ID of the user.
- * @returns An array of Home objects with rooms and images populated.
- */
-export async function fetchHomes(userId: string): Promise<Home[]> {
-  if (!userId) {
-    throw new Error('User ID is required to fetch homes.');
-  }
-
-  try {
-    console.log('Fetching homes with rooms and images from Firestore for user:', userId);
-
-    const homesRef = collection(db, 'users', userId, 'homes');
-    const q = query(homesRef, orderBy('createdAt', 'asc'));
-    const homesSnapshot = await getDocs(q);
-
-    const homes: Home[] = homesSnapshot.docs.map((homeDoc) => {
-      const homeData = homeDoc.data();
-      const homeName = homeData.name;
-
-      // Use the denormalized rooms array from the home document
-      // Convert rooms and their images from Firestore format to application format
-      const rooms = (homeData.rooms || [])
-        .map((room: any) => new FirestoreDataHandler(room).serializeTimestamps().value)
-        // Sort rooms by createdAt in ascending order
-        .sort(
-          (a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-        );
-
-      return {
-        id: homeDoc.id,
-        name: homeName,
-        rooms,
-        createdAt: (homeData.createdAt as Timestamp).toDate().toISOString(),
-      } as any;
-    });
-
-    console.log('Homes, rooms, and images fetched from Firestore:', homes.length, 'homes');
-    return homes;
-  } catch (error) {
-    console.error('Failed to fetch homes:', error);
-    if (error instanceof Error) {
-      throw new Error(`Failed to fetch homes: ${error.message}`);
-    }
-    throw new Error('Failed to fetch homes from Firebase.');
-  }
-}
-
-/**
- * Updates a home's name in Firestore.
- *
- * @param userId The ID of the user.
- * @param homeId The ID of the home to update.
- * @param newName The new name for the home.
- */
-export async function updateHome(userId: string, homeId: string, newName: string): Promise<void> {
-  console.log({ userId, homeId, newName });
-  if (!userId) {
-    throw new Error('User ID is required to update a home.');
-  }
-
-  if (!newName.trim()) {
-    throw new Error('Home name cannot be empty.');
-  }
-
-  try {
-    const docRef = doc(db, 'users', userId, 'homes', homeId);
-    await updateDoc(docRef, { name: newName.trim() });
-
-    console.log('Home updated in Firestore:', homeId);
-  } catch (error) {
-    console.error('Failed to update home:', error);
-    if (error instanceof Error) {
-      throw new Error(`Failed to update home: ${error.message}`);
-    }
-    throw new Error('Failed to update home in Firebase.');
-  }
-}
-
-/**
- * Deletes a home and all its associated rooms from Firestore.
- * Note: Images associated with the rooms will NOT be deleted.
- *
- * @param userId The ID of the user.
- * @param homeId The ID of the home to delete.
- */
-export async function deleteHome(userId: string, homeId: string): Promise<void> {
-  if (!userId) {
-    throw new Error('User ID is required to delete a home.');
-  }
-
-  const homeRef = doc(db, 'users', userId, 'homes', homeId);
-
-  try {
-    // First, get the home document to check its rooms array.
-    const homeDoc = await getDoc(homeRef);
-
-    if (!homeDoc.exists()) {
-      throw new Error('Home not found.');
-    }
-
-    const homeData = homeDoc.data() as Home;
-
-    // Check if the rooms array is empty.
-    if (homeData.rooms && homeData.rooms.length > 0) {
-      // If rooms exist, throw an error to prevent deletion.
-      throw new Error(
-        `Cannot delete "${homeData.name}" because it still contains rooms. Please delete all rooms first.`
-      );
-    }
-
-    // If there are no rooms, proceed with deleting the home document.
-    await deleteDoc(homeRef);
-
-    console.log('Home deleted successfully:', homeId);
-  } catch (error) {
-    console.error('Failed to delete home:', error);
-    // Re-throw the error so the UI can catch it and display a message.
-    if (error instanceof Error) {
-      throw error;
-    }
-    throw new Error('An unknown error occurred while deleting the home.');
-  }
-}
-
-/**
- * Creates a new room in a home.
- *
- * @param userId The ID of the user.
- * @param homeId The ID of the home.
- * @param roomName The name of the room.
- * @returns The newly created Room object.
- */
-export async function createRoom(userId: string, homeId: string, roomName: string): Promise<Room> {
-  if (!userId) {
-    throw new Error('User ID is required to create a room.');
-  }
-
-  if (!roomName.trim()) {
-    throw new Error('Room name is required.');
-  }
-
-  try {
-    const roomId = crypto.randomUUID();
-    const now = new Date();
-    const newRoom: Room = {
-      id: roomId,
-      homeId,
-      name: roomName.trim(),
-      images: [],
-      createdAt: now.toISOString(),
-    };
-
-    const batch = writeBatch(db);
-
-    console.log({ roomId });
-
-    // Create the room document in the subcollection
-    const roomDocRef = doc(db, 'users', userId, 'homes', homeId, 'rooms', roomId);
-    batch.set(roomDocRef, {
-      id: newRoom.id,
-      homeId: newRoom.homeId,
-      name: newRoom.name,
-      images: newRoom.images,
-      createdAt: Timestamp.fromDate(now),
-    });
-
-    // Update the home document to add the new room to its rooms array
-    const homeDocRef = doc(db, 'users', userId, 'homes', homeId);
-    batch.update(homeDocRef, {
-      rooms: arrayUnion({
-        id: newRoom.id,
-        homeId: newRoom.homeId,
-        name: newRoom.name,
-        images: newRoom.images,
-        createdAt: Timestamp.fromDate(now),
-      }),
-    });
-
-    await batch.commit();
-
-    console.log('Room created in Firestore:', roomId);
-    return newRoom;
-  } catch (error) {
-    console.error('Failed to create room:', error);
-    if (error instanceof Error) {
-      throw new Error(`Failed to create room: ${error.message}`);
-    }
-    throw new Error('Failed to create room in Firebase.');
-  }
-}
-
-/**
- * Fetches all rooms for a specific home.
- *
- * @param userId The ID of the user.
- * @param homeId The ID of the home.
- * @returns An array of Room objects.
- */
-/**
- * Updates a room's name in Firestore.
- *
- * @param userId The ID of the user.
- * @param homeId The ID of the home.
- * @param roomId The ID of the room to update.
- * @param newName The new name for the room.
- */
-export async function updateRoom(
-  userId: string,
-  homeId: string,
-  roomId: string,
-  newName: string
-): Promise<void> {
-  if (!userId) {
-    throw new Error('User ID is required to update a room.');
-  }
-
-  if (!newName.trim()) {
-    throw new Error('Room name cannot be empty.');
-  }
-
-  try {
-    const batch = writeBatch(db);
-
-    // Update the room document in the subcollection
-    const roomDocRef = doc(db, 'users', userId, 'homes', homeId, 'rooms', roomId);
-    batch.update(roomDocRef, { name: newName.trim() });
-
-    // Update the home document's rooms array
-    // First, get the home to find the old room object
-    const homeDocRef = doc(db, 'users', userId, 'homes', homeId);
-    const homeDoc = await getDocs(collection(db, 'users', userId, 'homes')).then((snapshot) =>
-      snapshot.docs.find((doc) => doc.id === homeId)
-    );
-
-    if (homeDoc) {
-      const homeData = homeDoc.data();
-      const updatedRooms = (homeData.rooms || []).map((room: Room) =>
-        room.id === roomId ? { ...room, name: newName.trim() } : room
-      );
-      batch.update(homeDocRef, { rooms: updatedRooms });
-    }
-
-    await batch.commit();
-
-    console.log('Room updated in Firestore:', roomId);
-  } catch (error) {
-    console.error('Failed to update room:', error);
-    if (error instanceof Error) {
-      throw new Error(`Failed to update room: ${error.message}`);
-    }
-    throw new Error('Failed to update room in Firebase.');
-  }
-}
-
-/**
- * Deletes a room from Firestore.
- * Note: Images associated with the room will NOT be deleted.
- *
- * @param userId The ID of the user.
- * @param homeId The ID of the home.
- * @param roomId The ID of the room to delete.
- */
-export async function deleteRoom(userId: string, homeId: string, roomId: string): Promise<void> {
-  console.log({ userId, homeId, roomId });
-  if (!userId) {
-    throw new Error('User ID is required to delete a room.');
-  }
-  if (!homeId) {
-    throw new Error('Home ID is required to delete a room.');
-  }
-
-  try {
-    const batch = writeBatch(db);
-
-    // Delete the room document from the subcollection
-    const roomDocRef = doc(db, 'users', userId, 'homes', homeId, 'rooms', roomId);
-    batch.delete(roomDocRef);
-
-    const homeDocRef = doc(db, 'users', userId, 'homes', homeId);
-    const homeDoc = await getDoc(homeDocRef);
-
-    if (homeDoc.exists()) {
-      const homeData = homeDoc.data() as Home;
-      const roomToRemove = homeData.rooms.find((room) => room.id === roomId);
-
-      if (roomToRemove) {
-        batch.update(homeDocRef, {
-          rooms: arrayRemove(roomToRemove),
-        });
-      }
-    }
-
-    await batch.commit();
-
-    console.log('Room deleted from Firestore:', roomId);
-  } catch (error) {
-    console.error('Failed to delete room:', error);
-    if (error instanceof Error) {
-      throw new Error(`Failed to delete room: ${error.message}`);
-    }
-    throw new Error('Failed to delete room from Firebase.');
   }
 }

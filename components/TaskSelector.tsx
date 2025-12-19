@@ -1,5 +1,5 @@
 import React from 'react';
-import { GEMINI_TASKS, GeminiTaskName } from '../services/gemini/geminiTasks';
+import { GEMINI_TASKS, GeminiTaskName } from '@/services/gemini/geminiTasks';
 
 interface TaskSelectorProps {
   selectedTaskName: GeminiTaskName;

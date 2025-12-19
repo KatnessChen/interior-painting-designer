@@ -8,66 +8,69 @@ import Box from '@mui/material/Box';
 import { Tooltip, Button } from '@mui/material';
 import CircularProgress from '@mui/material/CircularProgress';
 import GenericConfirmModal from '../GenericConfirmModal';
-import { useAuth } from '../../contexts/AuthContext';
-import { RootState, AppDispatch } from '../../stores/store';
+import { useAuth } from '@/contexts/AuthContext';
+import { AppDispatch } from '@/stores/store';
 import {
-  setHomes,
-  addHome,
-  updateHome as updateHomeAction,
-  removeHome,
-  addRoom,
-  updateRoom as updateRoomAction,
-  removeRoom,
-  setActiveHomeId,
-  setActiveRoomId,
-} from '../../stores/homeStore';
+  setProjects,
+  addProject,
+  updateProject as updateProjectAction,
+  removeProject,
+  addSpace,
+  setSpaceImages,
+  updateSpace as updateSpaceAction,
+  removeSpace,
+  setActiveProjectId,
+  setActiveSpaceId,
+  selectProjects,
+  selectActiveProjectId,
+  selectActiveSpaceId,
+} from '@/stores/projectStore';
 import {
-  fetchHomes,
-  createHome,
-  updateHome,
-  deleteHome,
-  createRoom,
-  updateRoom,
-  deleteRoom,
-} from '../../services/firestoreService';
+  fetchProjects,
+  createProject,
+  updateProject,
+  deleteProject,
+  createSpace,
+  updateSpace,
+  deleteSpace,
+  fetchSpaceImages,
+} from '@/services/firestoreService';
 
 export const ModalMode = {
-  ADD_HOME: 'add-home',
-  ADD_ROOM: 'add-room',
-  EDIT_HOME: 'edit-home',
-  EDIT_ROOM: 'edit-room',
+  ADD_PROJECT: 'add-project',
+  ADD_SPACE: 'add-space',
+  EDIT_PROJECT: 'edit-project',
+  EDIT_SPACE: 'edit-space',
 } as const;
 
 export type ModalMode = (typeof ModalMode)[keyof typeof ModalMode];
 
 interface AsideSectionProps {
-  onHomeSelected?: (homeId: string) => void;
-  onRoomSelected?: (homeId: string, roomId: string) => void;
+  onProjectSelected?: (projectId: string) => void;
+  onSpaceSelected?: (projectId: string, spaceId: string) => void;
 }
 
-const AsideSection: React.FC<AsideSectionProps> = ({ onHomeSelected, onRoomSelected }) => {
+const AsideSection: React.FC<AsideSectionProps> = ({ onProjectSelected, onSpaceSelected }) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
 
-  // Redux store
   const dispatch = useDispatch<AppDispatch>();
-  const homes = useSelector((state: RootState) => state.home.homes);
-  const activeHomeId = useSelector((state: RootState) => state.home.activeHomeId);
-  const activeRoomId = useSelector((state: RootState) => state.home.activeRoomId);
+  const projects = useSelector(selectProjects);
+  const activeProjectId = useSelector(selectActiveProjectId);
+  const activeSpaceId = useSelector(selectActiveSpaceId);
 
-  // Add Home/Room Modal state
+  // Add Project/Space Modal state
   const [modalMode, setModalMode] = useState<ModalMode | null>(null);
   const [modalInput, setModalInput] = useState<string>('');
   const [modalProcessing, setModalProcessing] = useState<boolean>(false);
 
-  // Editing Name Home/Room Input state
-  type EditingEntityIds = { homeId: string | null; roomId: string | null };
+  // Editing Name Project/Space Input state
+  type EditingEntityIds = { projectId: string | null; spaceId: string | null };
   const [editingEntityIds, setEditingEntityIds] = useState<EditingEntityIds>({
-    homeId: null,
-    roomId: null,
+    projectId: null,
+    spaceId: null,
   });
 
-  // Confirmation modal state
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
     title: '',
@@ -75,103 +78,131 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onHomeSelected, onRoomSelec
     onConfirm: () => {},
   });
 
-  // Fetch homes when user changes
   useEffect(() => {
     if (!user) {
-      dispatch(setHomes([]));
+      dispatch(setProjects([]));
       setLoading(false);
       return;
     }
 
-    const fetchUserHomes = async () => {
+    const fetchUserProjects = async () => {
       try {
-        const homes = await fetchHomes(user.uid);
-        console.log({ homes });
-        dispatch(setHomes(homes));
+        const projects = await fetchProjects(user.uid);
+        dispatch(setProjects(projects));
+
+        // Auto-select the first project if available
+        if (projects.length > 0) {
+          const firstProject = projects[0];
+          dispatch(setActiveProjectId(firstProject.id));
+
+          // Auto-select the first space if available
+          const firstSpace = firstProject?.spaces?.[0];
+          if (firstSpace) {
+            dispatch(setActiveSpaceId(firstSpace.id));
+          }
+        }
       } catch (error) {
-        console.error('Error fetching homes:', error);
+        console.error('Error fetching projects:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchUserHomes();
+    fetchUserProjects();
   }, [user, dispatch]);
 
-  // Handle delete home
-  const handleDeleteHome = useCallback(
-    (homeId: string, homeName: string) => {
+  useEffect(() => {
+    const autoFetchSpaceImages = async () => {
+      if (user && activeProjectId && activeSpaceId) {
+        const images = await fetchSpaceImages(user.uid, activeProjectId, activeSpaceId);
+        dispatch(setSpaceImages({ projectId: activeProjectId, spaceId: activeSpaceId, images }));
+      }
+    };
+
+    autoFetchSpaceImages();
+  }, [activeSpaceId]);
+
+  const handleSelectProject = useCallback(
+    async (projectId: string) => {
+      if (!user) return;
+
+      if (activeProjectId === projectId) return;
+
+      const selectedProject = projects.find((project) => project.id === projectId);
+      dispatch(setActiveProjectId(projectId));
+
+      // Auto-select the first space if available
+      const firstSpace = selectedProject?.spaces?.[0];
+      if (firstSpace) {
+        dispatch(setActiveSpaceId(firstSpace.id));
+      } else {
+        dispatch(setActiveSpaceId(null));
+      }
+
+      onProjectSelected?.(projectId);
+    },
+    [user, onProjectSelected, dispatch, projects, activeProjectId]
+  );
+
+  const handleSelectSpace = useCallback(
+    async (projectId: string, spaceId: string) => {
+      if (!user) return;
+
+      if (activeSpaceId === spaceId) return;
+
+      dispatch(setActiveProjectId(projectId));
+      dispatch(setActiveSpaceId(spaceId));
+      onSpaceSelected?.(projectId, spaceId);
+    },
+    [user, onSpaceSelected, dispatch, activeSpaceId]
+  );
+
+  const handleDeleteProject = useCallback(
+    (projectId: string, projectName: string) => {
       setConfirmModal({
         isOpen: true,
-        title: 'Delete Home',
-        message: `Are you sure you want to delete "${homeName}"? This action cannot be undone.`,
+        title: 'Delete Project',
+        message: `Are you sure you want to delete "${projectName}"? This action cannot be undone.`,
         onConfirm: async () => {
           if (!user) return;
 
           try {
-            await deleteHome(user.uid, homeId);
-            dispatch(removeHome(homeId));
+            await deleteProject(user.uid, projectId);
+            dispatch(removeProject(projectId));
             setConfirmModal({ ...confirmModal, isOpen: false });
           } catch (error) {
-            console.error('Error deleting home:', error);
-            alert(error instanceof Error ? error.message : 'Failed to delete home');
+            console.error('Error deleting project:', error);
+            alert(error instanceof Error ? error.message : 'Failed to delete project');
           }
         },
       });
     },
-    [user, activeHomeId, confirmModal, dispatch]
+    [user, activeProjectId, confirmModal, dispatch]
   );
 
-  // Handle delete room
-  const handleDeleteRoom = useCallback(
-    (homeId: string, roomId: string, roomName: string) => {
+  const handleDeleteSpace = useCallback(
+    (projectId: string, spaceId: string, spaceName: string) => {
       setConfirmModal({
         isOpen: true,
-        title: 'Delete Room',
-        message: `Are you sure you want to delete "${roomName}"? This action cannot be undone.`,
+        title: 'Delete Space',
+        message: `Are you sure you want to delete "${spaceName}"? This action cannot be undone.`,
         onConfirm: async () => {
           if (!user) return;
 
           try {
-            await deleteRoom(user.uid, homeId, roomId);
-            dispatch(removeRoom({ homeId, roomId }));
+            await deleteSpace(user.uid, projectId, spaceId);
+            dispatch(removeSpace({ projectId, spaceId }));
             setConfirmModal({ ...confirmModal, isOpen: false });
           } catch (error) {
-            console.error('Error deleting room:', error);
-            alert(error instanceof Error ? error.message : 'Failed to delete room');
+            console.error('Error deleting space:', error);
+            alert(error instanceof Error ? error.message : 'Failed to delete space');
           }
         },
       });
     },
-    [user, activeRoomId, activeHomeId, confirmModal, dispatch]
+    [user, activeSpaceId, activeProjectId, confirmModal, dispatch]
   );
 
-  // Handle home selection
-  const handleSelectHome = useCallback(
-    (homeId: string) => {
-      const selectedHome = homes.find((home) => home.id === homeId);
-      dispatch(setActiveHomeId(homeId));
-
-      // If the home has rooms, set the first room as active, otherwise set null
-      const firstRoomId = selectedHome?.rooms?.[0]?.id;
-      dispatch(setActiveRoomId(firstRoomId || null));
-
-      onHomeSelected?.(homeId);
-    },
-    [onHomeSelected, dispatch, homes]
-  );
-
-  // Handle room selection
-  const handleSelectRoom = useCallback(
-    (homeId: string, roomId: string) => {
-      dispatch(setActiveHomeId(homeId));
-      dispatch(setActiveRoomId(roomId));
-      onRoomSelected?.(homeId, roomId);
-    },
-    [onRoomSelected, dispatch]
-  );
-
-  // Handle modal submission
   const handleModalSubmit = useCallback(async () => {
     setModalProcessing(true);
 
@@ -182,38 +213,42 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onHomeSelected, onRoomSelec
       if (!userInputValue) throw new Error('Please input name.');
 
       switch (modalMode) {
-        case ModalMode.ADD_HOME: {
-          const newHome = await createHome(user.uid, userInputValue);
-          dispatch(addHome(newHome));
+        case ModalMode.ADD_PROJECT: {
+          const newProject = await createProject(user.uid, userInputValue);
+          dispatch(addProject(newProject));
+          dispatch(setActiveProjectId(newProject.id));
           break;
         }
-        case ModalMode.ADD_ROOM: {
-          if (!editingEntityIds.homeId) throw Error('Home Id not exist');
+        case ModalMode.ADD_SPACE: {
+          if (!editingEntityIds.projectId) throw Error('Project Id not exist');
 
-          const newRoom = await createRoom(user.uid, editingEntityIds.homeId, userInputValue);
-          dispatch(addRoom({ homeId: editingEntityIds.homeId, room: newRoom }));
+          const newSpace = await createSpace(user.uid, editingEntityIds.projectId, userInputValue);
+          dispatch(addSpace({ projectId: editingEntityIds.projectId, space: newSpace }));
+          dispatch(setActiveSpaceId(newSpace.id));
           break;
         }
-        case ModalMode.EDIT_HOME: {
-          if (!editingEntityIds.homeId) throw Error('Home Id not exist');
-          await updateHome(user.uid, editingEntityIds.homeId, userInputValue);
-          dispatch(updateHomeAction({ homeId: editingEntityIds.homeId, name: userInputValue }));
+        case ModalMode.EDIT_PROJECT: {
+          if (!editingEntityIds.projectId) throw Error('Project Id not exist');
+          await updateProject(user.uid, editingEntityIds.projectId, userInputValue);
+          dispatch(
+            updateProjectAction({ projectId: editingEntityIds.projectId, name: userInputValue })
+          );
           break;
         }
-        case ModalMode.EDIT_ROOM: {
-          if (!editingEntityIds.homeId || !editingEntityIds.roomId)
-            throw Error('Home Id or Room Id not exist');
+        case ModalMode.EDIT_SPACE: {
+          if (!editingEntityIds.projectId || !editingEntityIds.spaceId)
+            throw Error('Project Id or Space Id not exist');
 
-          await updateRoom(
+          await updateSpace(
             user.uid,
-            editingEntityIds.homeId,
-            editingEntityIds.roomId,
+            editingEntityIds.projectId,
+            editingEntityIds.spaceId,
             userInputValue
           );
           dispatch(
-            updateRoomAction({
-              homeId: editingEntityIds.homeId,
-              roomId: editingEntityIds.roomId,
+            updateSpaceAction({
+              projectId: editingEntityIds.projectId,
+              spaceId: editingEntityIds.spaceId,
               name: userInputValue,
             })
           );
@@ -224,7 +259,7 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onHomeSelected, onRoomSelec
         }
       }
     } catch (error) {
-      console.error('Error adding home/room:', error);
+      console.error('Error adding project/space:', error);
     } finally {
       handleCloseModal();
     }
@@ -234,25 +269,25 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onHomeSelected, onRoomSelec
     setModalInput('');
     setModalMode(null);
     setModalProcessing(false);
-    setEditingEntityIds({ homeId: null, roomId: null });
+    setEditingEntityIds({ projectId: null, spaceId: null });
   }, []);
 
   const getModalTitle = useMemo(() => {
     switch (modalMode) {
-      case ModalMode.ADD_HOME: {
-        return 'Add New Home';
+      case ModalMode.ADD_PROJECT: {
+        return 'Add New Project';
       }
-      case ModalMode.ADD_ROOM: {
-        return 'Add New Room';
+      case ModalMode.ADD_SPACE: {
+        return 'Add New Space';
       }
-      case ModalMode.EDIT_HOME: {
-        return 'Edit Home Name';
+      case ModalMode.EDIT_PROJECT: {
+        return 'Edit Project Name';
       }
-      case ModalMode.EDIT_ROOM: {
-        return 'Edit Room Name';
+      case ModalMode.EDIT_SPACE: {
+        return 'Edit Space Name';
       }
       default: {
-        return 'Add New Home';
+        return 'Add New Project';
       }
     }
   }, [modalMode]);
@@ -262,92 +297,90 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onHomeSelected, onRoomSelec
       className="w-[240px] p-6 bg-white flex flex-col shadow-lg border-r border-gray-200"
       style={{ height: 'calc(100vh - var(--header-height))' }}
     >
-      {/* Add Home Section */}
+      {/* Add Project Section */}
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-md text-gray-500 tracking-tight">New Home</h3>
+        <h3 className="text-md text-gray-500 tracking-tight cursor-default">New Project</h3>
         <button
           className="p-1 rounded hover:bg-gray-200 transition disabled:opacity-50"
           onClick={() => {
-            setModalMode(ModalMode.ADD_HOME);
+            setModalMode(ModalMode.ADD_PROJECT);
           }}
           disabled={!user || loading}
-          aria-label="Add Home"
+          aria-label="Add Project"
         >
           <AddIcon sx={{ fontSize: '18px' }} className="text-gray-400" />
         </button>
       </div>
 
-      {/* Homes & Rooms List */}
+      {/* Projects & Spaces List */}
       <nav className="space-y-3 flex-1 overflow-y-auto">
         {loading ? (
           <div className="flex justify-center py-8">
             <CircularProgress size={24} />
           </div>
-        ) : homes.length === 0 ? (
-          <div className="text-sm text-gray-400 py-4">No homes yet. Create one to get started.</div>
         ) : (
-          homes.map((home) => (
-            <div key={home.id}>
+          projects.map((project) => (
+            <div key={project.id}>
               <div
                 className={`flex items-center justify-between group py-2 cursor-pointer transition-all ${
-                  activeHomeId === home.id ? '' : 'hover:bg-gray-50'
+                  activeProjectId === project.id ? '' : 'hover:bg-gray-50'
                 }`}
-                onClick={() => handleSelectHome(home.id)}
+                onClick={() => handleSelectProject(project.id)}
               >
                 <>
                   <div
                     className={`cursor-pointer ${
-                      activeHomeId === home.id
+                      activeProjectId === project.id
                         ? 'font-bold text-indigo-600'
                         : 'font-normal text-gray-600 hover:text-gray-900'
                     }`}
                   >
-                    {home.name}
+                    {project.name}
                   </div>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Tooltip title="Edit Home Name" arrow>
+                    <Tooltip title="Edit Project Name" arrow>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          setEditingEntityIds({ homeId: home.id, roomId: null });
-                          setModalMode(ModalMode.EDIT_HOME);
-                          setModalInput(home.name);
+                          setEditingEntityIds({ projectId: project.id, spaceId: null });
+                          setModalMode(ModalMode.EDIT_PROJECT);
+                          setModalInput(project.name);
                         }}
                         className="p-1 hover:bg-gray-200 rounded transition"
-                        aria-label="Edit home"
+                        aria-label="Edit project"
                       >
                         <EditIcon sx={{ fontSize: '16px' }} className="text-gray-500" />
                       </button>
                     </Tooltip>
-                    <Tooltip title="Add new room to this home" arrow>
+                    <Tooltip title="Add new space to this project" arrow>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          setEditingEntityIds({ homeId: home.id, roomId: null });
-                          setModalMode(ModalMode.ADD_ROOM);
+                          setEditingEntityIds({ projectId: project.id, spaceId: null });
+                          setModalMode(ModalMode.ADD_SPACE);
                         }}
                         className="p-1 hover:bg-gray-200 rounded transition"
-                        aria-label="Add room"
+                        aria-label="Add space"
                       >
                         <AddIcon sx={{ fontSize: '16px' }} className="text-gray-500" />
                       </button>
                     </Tooltip>
                     <Tooltip
                       title={
-                        home.rooms.length > 0
-                          ? 'Cannot delete home with rooms associated with it.'
+                        project.spaces.length > 0
+                          ? 'Cannot delete project with spaces associated with it.'
                           : ''
                       }
                       arrow
                     >
                       <button
-                        disabled={home.rooms.length > 0}
+                        disabled={project.spaces.length > 0}
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDeleteHome(home.id, home.name);
+                          handleDeleteProject(project.id, project.name);
                         }}
                         className="p-1 hover:bg-gray-200 rounded transition"
-                        aria-label="Delete home"
+                        aria-label="Delete project"
                       >
                         <DeleteIcon sx={{ fontSize: '16px' }} className="text-gray-500" />
                       </button>
@@ -356,43 +389,45 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onHomeSelected, onRoomSelec
                 </>
               </div>
 
-              {/* Rooms List */}
+              {/* Spaces List */}
               <div className="space-y-0.5">
-                {home.rooms.map((room) => (
+                {project.spaces.map((space) => (
                   <div
-                    key={room.id}
+                    key={space.id}
                     className={`flex items-center justify-between group pl-4 py-1.5 px-1 text-sm cursor-pointer transition-all ${
-                      activeRoomId === room.id && activeHomeId === home.id
+                      activeSpaceId === space.id && activeProjectId === project.id
                         ? 'font-bold text-indigo-600'
                         : 'font-normal text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                     }`}
-                    onClick={() => activeRoomId !== room.id && handleSelectRoom(home.id, room.id)}
+                    onClick={() =>
+                      activeSpaceId !== space.id && handleSelectSpace(project.id, space.id)
+                    }
                   >
                     <>
-                      <span className="cursor-pointer">{room.name}</span>
+                      <span className="cursor-pointer">{space.name}</span>
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Tooltip title="Edit Room Name" arrow>
+                        <Tooltip title="Edit Space Name" arrow>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setEditingEntityIds({ homeId: home.id, roomId: room.id });
-                              setModalMode(ModalMode.EDIT_ROOM);
-                              setModalInput(room.name);
+                              setEditingEntityIds({ projectId: project.id, spaceId: space.id });
+                              setModalMode(ModalMode.EDIT_SPACE);
+                              setModalInput(space.name);
                             }}
                             className="p-1 hover:bg-gray-200 rounded transition"
-                            aria-label="Edit room"
+                            aria-label="Edit space"
                           >
                             <EditIcon sx={{ fontSize: '16px' }} className="text-gray-500" />
                           </button>
                         </Tooltip>
-                        <Tooltip title="Delete Room" arrow>
+                        <Tooltip title="Delete Space" arrow>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleDeleteRoom(home.id, room.id, room.name);
+                              handleDeleteSpace(project.id, space.id, space.name);
                             }}
                             className="p-1 hover:bg-gray-200 rounded transition"
-                            aria-label="Delete room"
+                            aria-label="Delete space"
                           >
                             <DeleteIcon sx={{ fontSize: '16px' }} className="text-gray-500" />
                           </button>
@@ -401,24 +436,23 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onHomeSelected, onRoomSelec
                     </>
                   </div>
                 ))}
-                {home.rooms.length === 0 && (
-                  <div className="text-xs text-gray-400 px-3 py-1">No rooms yet.</div>
-                )}
               </div>
             </div>
           ))
         )}
       </nav>
 
-      {/* Universal Modal for adding/editing home/room */}
+      {/* Universal Modal for adding/editing project/space */}
       <Modal open={!!modalMode} onClose={handleCloseModal}>
         <Box className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl p-6 w-80 flex flex-col gap-4">
-          <h2 className="text-lg font-semibold text-gray-800 mb-2">{getModalTitle}</h2>
+          <h2 className="text-lg font-semibold text-gray-800 mb-2 cursor-default">
+            {getModalTitle}
+          </h2>
           <input
             value={modalInput}
             type="text"
             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm shadow-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition"
-            placeholder={modalMode === ModalMode.ADD_HOME ? 'Home Name' : 'Room Name'}
+            placeholder={modalMode === ModalMode.ADD_PROJECT ? 'Project Name' : 'Space Name'}
             onChange={(e) => setModalInput(e.target.value)}
           />
           <div className="flex gap-2">

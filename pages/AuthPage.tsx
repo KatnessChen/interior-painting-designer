@@ -2,8 +2,8 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Box, Typography, Stack, Paper, Divider, useTheme } from '@mui/material';
 import { ArrowForward as ArrowForwardIcon } from '@mui/icons-material';
-import GoogleLoginButton from '../components/GoogleLoginButton';
-import { useAuth } from '../contexts/AuthContext';
+import GoogleLoginButton from '@/components/GoogleLoginButton';
+import { useAuth } from '@/contexts/AuthContext';
 
 const AuthPage: React.FC = () => {
   const navigate = useNavigate();
@@ -11,7 +11,7 @@ const AuthPage: React.FC = () => {
   const [error, setError] = React.useState<string | null>(null);
   const theme = useTheme();
 
-  // Redirect to home if already authenticated
+  // Redirect to project page if already authenticated
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
       navigate('/');
@@ -81,6 +81,7 @@ const AuthPage: React.FC = () => {
                 WebkitTextFillColor: 'transparent',
                 mb: 1,
               }}
+              className="cursor-default"
             >
               Vizion
             </Typography>
@@ -91,6 +92,7 @@ const AuthPage: React.FC = () => {
                 fontWeight: 300,
                 fontSize: '1.1rem',
               }}
+              className="cursor-default"
             >
               Your AI Interior Designer
             </Typography>
@@ -102,7 +104,7 @@ const AuthPage: React.FC = () => {
           <Box sx={{ mb: 4 }}>
             <Typography variant="body1" paragraph>
               Welcome to Vizion Studio – your personal AI interior design assistant. Visualize your
-              walls in any color or texture before you paint.
+              spaces in any color or texture before you renovate.
             </Typography>
             <Stack spacing={1}>
               <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -119,7 +121,7 @@ const AuthPage: React.FC = () => {
               </Typography>
               <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <ArrowForwardIcon sx={{ fontSize: 18, color: 'primary.main' }} />
-                Save and organize your designs by room
+                Save and organize your designs by projects and spaces
               </Typography>
             </Stack>
           </Box>

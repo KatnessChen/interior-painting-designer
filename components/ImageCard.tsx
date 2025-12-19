@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
-import { ImageData } from '../types';
-import { imageCache } from '../utils/imageCache';
+import { ImageData } from '@/types';
+import { imageCache } from '@/utils/imageCache';
 import {
   Visibility as EyeIcon,
   Edit as PencilIcon,
   CheckCircle as CheckmarkBadgeIcon,
-  Cancel as XBadgeIcon,
 } from '@mui/icons-material';
 
 interface ImageCardProps {
@@ -13,7 +12,6 @@ interface ImageCardProps {
   isSelected?: boolean;
   onSelect?: (imageId: string) => void;
   showDownloadButton?: boolean;
-  onRemove?: (imageId: string) => void;
   onViewButtonClick?: (imageData: ImageData) => void; // Renamed for clarity, now for a specific button
   onRename?: (imageId: string, newName: string) => void;
 }
@@ -23,17 +21,9 @@ const ImageCard: React.FC<ImageCardProps> = ({
   isSelected = false,
   onSelect,
   showDownloadButton = false,
-  onRemove,
   onViewButtonClick, // Destructure new prop
   onRename,
 }) => {
-  const handleRemove = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent other card actions when clicking remove
-    if (onRemove) {
-      onRemove(image.id);
-    }
-  };
-
   // Rename state
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(image.name);
@@ -47,7 +37,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
     const loadCachedImage = async () => {
       try {
         setIsLoadingCache(true);
-        const base64 = await imageCache.get(image.storageUrl);
+        const base64 = await imageCache.get(image.imageDownloadUrl);
         if (base64) {
           // Convert base64 to data URL
           setCachedImageSrc(`data:${image.mimeType};base64,${base64}`);
@@ -60,7 +50,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
     };
 
     loadCachedImage();
-  }, [image.storageUrl, image.mimeType]);
+  }, [image.imageDownloadUrl, image.mimeType]);
 
   const startEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -106,7 +96,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
       {/* Image container with overlay buttons */}
       <div className="relative bg-gray-100">
         <img
-          src={cachedImageSrc || image.storageUrl}
+          src={cachedImageSrc || image.imageDownloadUrl}
           alt={image.name}
           className="w-full h-48 object-contain object-center"
         />
@@ -187,15 +177,6 @@ const ImageCard: React.FC<ImageCardProps> = ({
         <div className="absolute top-2 right-2">
           <CheckmarkBadgeIcon sx={{ fontSize: 24, color: '#3b82f6' }} />
         </div>
-      )}
-      {onRemove && (
-        <button
-          onClick={handleRemove}
-          className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 focus:outline-none"
-          aria-label="Remove image"
-        >
-          <XBadgeIcon sx={{ fontSize: 24, color: '#ef4444' }} />
-        </button>
       )}
     </div>
   );

@@ -1,5 +1,5 @@
-import { ImageOperation, BenjaminMooreColor } from '../types';
-import { GeminiTaskName } from '../services/gemini/geminiTasks';
+import { ImageOperation, BenjaminMooreColor } from '@/types';
+import { GeminiTaskName } from '@/services/gemini/geminiTasks';
 
 interface Texture {
   name: string;

@@ -1,0 +1,209 @@
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { Project } from '@/types';
+
+interface ProjectState {
+  projects: Project[];
+  activeProjectId: string | null;
+  activeSpaceId: string | null;
+}
+
+const initialState: ProjectState = {
+  projects: [],
+  activeProjectId: null,
+  activeSpaceId: null,
+};
+
+export const projectStore = createSlice({
+  name: 'project',
+  initialState,
+  reducers: {
+    // Projects actions
+    setProjects: (state, action: PayloadAction<Project[]>) => {
+      state.projects = action.payload;
+    },
+    addProject: (state, action: PayloadAction<Project>) => {
+      state.projects.push(action.payload);
+    },
+    updateProject: (state, action: PayloadAction<{ projectId: string; name: string }>) => {
+      const project = state.projects.find((p) => p.id === action.payload.projectId);
+      if (project) {
+        project.name = action.payload.name;
+      }
+    },
+    removeProject: (state, action: PayloadAction<string>) => {
+      state.projects = state.projects.filter((p) => p.id !== action.payload);
+      if (state.activeProjectId === action.payload) {
+        state.activeProjectId = null;
+        state.activeSpaceId = null;
+      }
+    },
+
+    // Spaces actions
+    addSpace: (state, action: PayloadAction<{ projectId: string; space: any }>) => {
+      const project = state.projects.find((p) => p.id === action.payload.projectId);
+      if (project) {
+        project.spaces.push(action.payload.space);
+      }
+    },
+    setSpaceImages: (
+      state,
+      action: PayloadAction<{ projectId: string; spaceId: string; images: any[] }>
+    ) => {
+      const project = state.projects.find((p) => p.id === action.payload.projectId);
+      if (project) {
+        const space = project.spaces.find((s) => s.id === action.payload.spaceId);
+        if (space) {
+          space.images = action.payload.images;
+        }
+      }
+    },
+    updateSpace: (
+      state,
+      action: PayloadAction<{ projectId: string; spaceId: string; name: string }>
+    ) => {
+      const project = state.projects.find((p) => p.id === action.payload.projectId);
+      if (project) {
+        const space = project.spaces.find((s) => s.id === action.payload.spaceId);
+        if (space) {
+          space.name = action.payload.name;
+        }
+      }
+    },
+    removeSpace: (state, action: PayloadAction<{ projectId: string; spaceId: string }>) => {
+      const project = state.projects.find((p) => p.id === action.payload.projectId);
+      if (project) {
+        project.spaces = project.spaces.filter((s) => s.id !== action.payload.spaceId);
+      }
+      if (state.activeSpaceId === action.payload.spaceId) {
+        state.activeSpaceId = null;
+      }
+    },
+
+    // Selection actions
+    setActiveProjectId: (state, action: PayloadAction<string | null>) => {
+      state.activeProjectId = action.payload;
+    },
+    setActiveSpaceId: (state, action: PayloadAction<string | null>) => {
+      state.activeSpaceId = action.payload;
+    },
+
+    // Optimistic updates for images
+    addImageOptimistic: (
+      state,
+      action: PayloadAction<{
+        projectId: string;
+        spaceId: string;
+        image: any;
+      }>
+    ) => {
+      const project = state.projects.find((p) => p.id === action.payload.projectId);
+      if (project) {
+        const space = project.spaces.find((s) => s.id === action.payload.spaceId);
+        if (space) {
+          if (space.images) {
+            space.images = [...space.images, action.payload.image];
+          } else {
+            space.images = [action.payload.image];
+          }
+        }
+      }
+    },
+    removeImageOptimistic: (
+      state,
+      action: PayloadAction<{
+        projectId: string;
+        spaceId: string;
+        imageId: string;
+      }>
+    ) => {
+      const project = state.projects.find((p) => p.id === action.payload.projectId);
+      if (project) {
+        const space = project.spaces.find((s) => s.id === action.payload.spaceId);
+        if (space?.images) {
+          space.images = space.images.filter((img) => img.id !== action.payload.imageId);
+        }
+      }
+    },
+    removeImagesOptimistic: (
+      state,
+      action: PayloadAction<{
+        projectId: string;
+        spaceId: string;
+        imageIds: string[];
+      }>
+    ) => {
+      const project = state.projects.find((p) => p.id === action.payload.projectId);
+      if (project) {
+        const space = project.spaces.find((s) => s.id === action.payload.spaceId);
+        if (space?.images) {
+          space.images = space.images.filter((img) => !action.payload.imageIds.includes(img.id));
+        }
+      }
+    },
+    updateImageOptimistic: (
+      state,
+      action: PayloadAction<{
+        projectId: string;
+        spaceId: string;
+        imageId: string;
+        newName: string;
+      }>
+    ) => {
+      const project = state.projects.find((p) => p.id === action.payload.projectId);
+      if (project) {
+        const space = project.spaces.find((s) => s.id === action.payload.spaceId);
+        if (space?.images) {
+          const image = space.images.find((img) => img.id === action.payload.imageId);
+          if (image) {
+            image.name = action.payload.newName;
+            image.updatedAt = new Date().toISOString();
+          }
+        }
+      }
+    },
+  },
+  selectors: {
+    selectProjects: (state) => state.projects,
+    selectActiveProjectId: (state) => state.activeProjectId,
+    selectActiveSpaceId: (state) => state.activeSpaceId,
+    selectActiveProject: (state) =>
+      state.activeProjectId
+        ? state.projects.find((p) => p.id === state.activeProjectId)
+        : undefined,
+    selectActiveSpace: (state) => {
+      const activeProject = state.activeProjectId
+        ? state.projects.find((p) => p.id === state.activeProjectId)
+        : undefined;
+      return activeProject && state.activeSpaceId
+        ? activeProject.spaces.find((s) => s.id === state.activeSpaceId)
+        : undefined;
+    },
+  },
+});
+
+export const {
+  setProjects,
+  addProject,
+  updateProject,
+  removeProject,
+  addSpace,
+  setSpaceImages,
+  updateSpace,
+  removeSpace,
+  setActiveProjectId,
+  setActiveSpaceId,
+  addImageOptimistic,
+  removeImageOptimistic,
+  removeImagesOptimistic,
+  updateImageOptimistic,
+} = projectStore.actions;
+
+export const {
+  selectProjects,
+  selectActiveProjectId,
+  selectActiveSpaceId,
+  selectActiveProject,
+  selectActiveSpace,
+} = projectStore.selectors;
+
+export default projectStore.reducer;

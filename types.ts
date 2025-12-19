@@ -10,16 +10,16 @@ export interface ImageData {
   id: string;
   name: string;
 
-  // The room this image belongs to
-  roomId: string | null;
+  // The space this image belongs to
+  spaceId: string | null;
 
   // Evolution chain
   evolutionChain: ImageOperation[];
   parentImageId: string | null;
 
   // Firebase Storage
-  storageUrl: string; // Firebase Storage download URL
-  storagePath: string; // Storage Path
+  imageDownloadUrl: string; // Firebase Storage download URL
+  storageFilePath: string; // Storage Path
 
   // Other metadata
   mimeType: string;
@@ -93,17 +93,68 @@ export interface User {
   lastLoginAt: Date;
 }
 
-export interface Room {
+// ============================================================================
+// Application Types (used in frontend with populated data)
+// ============================================================================
+
+export interface Space {
   id: string;
-  homeId: string;
+  projectId: string;
   name: string;
-  images: ImageData[];
+  images: null | ImageData[];
   createdAt: string; // ISO 8601 date string for Redux serialization
 }
 
-export interface Home {
+export interface Project {
   id: string;
   name: string;
-  rooms: Room[];
+  spaces: Space[];
   createdAt: string; // ISO 8601 date string for Redux serialization
+}
+
+// ============================================================================
+// Firestore Document Types (actual structure stored in Firestore)
+// ============================================================================
+
+/**
+ * Project document structure in Firestore.
+ * Path: users/{userId}/projects/{projectId}
+ * Note: Spaces are stored in a subcollection, not in this document.
+ */
+export interface ProjectDocument {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
+/**
+ * Space document structure in Firestore subcollection.
+ * Path: users/{userId}/projects/{projectId}/spaces/{spaceId}
+ * Note: Images are stored in a separate subcollection, not in this document.
+ */
+export interface SpaceDocument {
+  id: string;
+  userId: string; // Required for collectionGroup queries
+  projectId: string;
+  name: string;
+  createdAt: string;
+}
+
+/**
+ * Image document structure in Firestore subcollection.
+ * Path: users/{userId}/projects/{projectId}/spaces/{spaceId}/images/{imageId}
+ */
+export interface ImageDocument {
+  id: string;
+  name: string;
+  spaceId: string | null;
+  evolutionChain: ImageOperation[];
+  parentImageId: string | null;
+  imageDownloadUrl: string;
+  storageFilePath: string;
+  mimeType: string;
+  isDeleted: boolean;
+  deletedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 }

@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react';
-import { ImageData, BenjaminMooreColor } from '../types';
-import { recolorWalls, addTexture } from '../services/gemini/geminiService';
-import { GEMINI_TASKS, GeminiTaskName } from '../services/gemini/geminiTasks';
-import { incrementTaskUsage } from '../services/userService';
+import { ImageData, BenjaminMooreColor } from '@/types';
+import { recolorWalls, addTexture } from '@/services/gemini/geminiService';
+import { GEMINI_TASKS, GeminiTaskName } from '@/services/gemini/geminiTasks';
+import { incrementTaskUsage } from '@/services/userService';
 
 interface Texture {
   name: string;

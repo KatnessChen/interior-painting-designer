@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ImageData } from '../types';
-import { imageCache } from '../utils/imageCache';
+import { ImageData } from '@/types';
+import { imageCache } from '@/utils/imageCache';
 
 interface ComparePhotosModalProps {
   isOpen: boolean;
@@ -9,7 +9,7 @@ interface ComparePhotosModalProps {
 }
 
 const ImagesComparingModal: React.FC<ComparePhotosModalProps> = ({ isOpen, images, onClose }) => {
-  // Cached image state: storageUrl -> base64 data URL
+  // Cached image state: imageDownloadUrl -> base64 data URL
   const [cachedImagesSrc, setCachedImagesSrc] = useState<Record<string, string>>({});
 
   // Load cached base64 on mount
@@ -17,12 +17,12 @@ const ImagesComparingModal: React.FC<ComparePhotosModalProps> = ({ isOpen, image
     const loadCachedImage = async () => {
       try {
         for (const image of images) {
-          const base64 = await imageCache.get(image.storageUrl);
+          const base64 = await imageCache.get(image.imageDownloadUrl);
           if (base64) {
             // Convert base64 to data URL
             setCachedImagesSrc((prev) => ({
               ...prev,
-              [image.storageUrl]: `data:${image.mimeType};base64,${base64}`,
+              [image.imageDownloadUrl]: `data:${image.mimeType};base64,${base64}`,
             }));
           }
         }
@@ -77,7 +77,7 @@ const ImagesComparingModal: React.FC<ComparePhotosModalProps> = ({ isOpen, image
                 {/* Image Container */}
                 <div className="flex-1 w-full flex items-center justify-center min-h-0 overflow-visible">
                   <img
-                    src={cachedImagesSrc[image.storageUrl] || image.storageUrl}
+                    src={cachedImagesSrc[image.imageDownloadUrl] || image.imageDownloadUrl}
                     alt={image.name}
                     className="max-w-full max-h-full object-contain"
                   />

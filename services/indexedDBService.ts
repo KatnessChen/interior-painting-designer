@@ -62,7 +62,7 @@ class IndexedDBService {
   /**
    * Get cache entry from IndexedDB
    */
-  async get(storagePath: string): Promise<CacheEntry | null> {
+  async get(imageDownloadUrl: string): Promise<CacheEntry | null> {
     try {
       await this.init();
       if (!this.db) {
@@ -72,7 +72,7 @@ class IndexedDBService {
       return new Promise((resolve, reject) => {
         const transaction = this.db!.transaction(STORE_NAME, 'readonly');
         const store = transaction.objectStore(STORE_NAME);
-        const request = store.get(storagePath);
+        const request = store.get(imageDownloadUrl);
 
         request.onerror = () => reject(request.error);
         request.onsuccess = () => {
@@ -95,7 +95,7 @@ class IndexedDBService {
   /**
    * Save cache entry to IndexedDB
    */
-  async set(storagePath: string, entry: CacheEntry): Promise<void> {
+  async set(imageDownloadUrl: string, entry: CacheEntry): Promise<void> {
     try {
       await this.init();
       if (!this.db) {
@@ -105,7 +105,7 @@ class IndexedDBService {
       return new Promise((resolve, reject) => {
         const transaction = this.db!.transaction(STORE_NAME, 'readwrite');
         const store = transaction.objectStore(STORE_NAME);
-        const request = store.put({ url: storagePath, ...entry });
+        const request = store.put({ url: imageDownloadUrl, ...entry });
 
         request.onerror = () => reject(request.error);
         request.onsuccess = () => resolve();

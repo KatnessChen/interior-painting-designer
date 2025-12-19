@@ -1,10 +1,10 @@
 import { configureStore } from '@reduxjs/toolkit';
-import homeReducer from './homeStore';
+import projectReducer from './projectStore';
 import imageReducer from './imageStore';
 
 export const store = configureStore({
   reducer: {
-    home: homeReducer,
+    project: projectReducer,
     image: imageReducer,
   },
 });

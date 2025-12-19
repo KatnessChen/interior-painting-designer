@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { BenjaminMooreColor } from '../types';
-import { BENJAMIN_MOORE_COLORS } from '../constants';
+import { BenjaminMooreColor } from '@/types';
+import { BENJAMIN_MOORE_COLORS } from '@/constants';
 import { Check as CheckIcon } from '@mui/icons-material';
 
 interface ColorSelectorProps {

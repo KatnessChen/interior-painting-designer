@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { ImageData } from '../types';
-import { imageCache } from '../utils/imageCache';
+import { ImageData } from '@/types';
+import { imageCache } from '@/utils/imageCache';
 
 interface ConfirmImageUpdateModalProps {
   isOpen: boolean;
@@ -19,14 +19,14 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
   onCancel,
   colorName, // Removed trailing comma here
 }) => {
-  // Cached image state
+  // Cached image state for original image
   const [cachedImageSrc, setCachedImageSrc] = useState<string | null>(null);
 
   // Load cached base64 on mount
   useEffect(() => {
     const loadCachedImage = async () => {
       try {
-        const base64 = await imageCache.get(originalImage.storageUrl);
+        const base64 = await imageCache.get(originalImage.imageDownloadUrl);
         if (base64) {
           // Convert base64 to data URL
           setCachedImageSrc(`data:${originalImage.mimeType};base64,${base64}`);
@@ -37,7 +37,7 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
     };
 
     loadCachedImage();
-  }, [originalImage.storageUrl, originalImage.mimeType]);
+  }, [originalImage.imageDownloadUrl, originalImage.mimeType]);
 
   if (!isOpen || !generatedImage || !originalImage) return null; // Ensure both images are available
 
@@ -60,7 +60,7 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
             <h4 className="text-xl font-semibold text-gray-700 mb-3">Original Photo</h4>
             <div className="relative w-full flex-1 bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center">
               <img
-                src={cachedImageSrc || originalImage.storageUrl}
+                src={cachedImageSrc || originalImage.imageDownloadUrl}
                 alt="Original"
                 className="max-w-full max-h-full object-contain"
               />

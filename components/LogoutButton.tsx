@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button, CircularProgress, Box } from '@mui/material';
 import LogoutIcon from '@mui/icons-material/Logout';
-import { signOutUser } from '../services/authService';
+import { signOutUser } from '@/services/authService';
 
 interface LogoutButtonProps {
   onSuccess?: () => void;

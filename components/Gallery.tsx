@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { ImageData } from '../types';
+import { ImageData } from '@/types';
 import ImageCard from './ImageCard';
 import UploadCard from './UploadCard';
 import ImageDisplayModal from './ImageDisplayModal';
@@ -140,7 +140,6 @@ const Gallery: React.FC<GalleryProps> = ({
               }
               onSelect={enableMultiSelect ? onSelectMultiple : onSelectImage}
               showDownloadButton={showDownloadButtons && !enableMultiSelect}
-              onRemove={showRemoveButtons && !enableMultiSelect ? onRemoveImage : undefined}
               onViewButtonClick={handleViewImage}
               onRename={onRenameImage}
             />

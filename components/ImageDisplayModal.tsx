@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ImageData } from '../types';
+import { ImageData } from '@/types';
 import { ChevronLeft as PrevIcon, ChevronRight as NextIcon } from '@mui/icons-material';
-import { imageCache } from '../utils/imageCache';
+import { imageCache } from '@/utils/imageCache';
 
 interface ImageDisplayModalProps {
   isOpen: boolean;
@@ -22,14 +22,14 @@ const ImageDisplayModal: React.FC<ImageDisplayModalProps> = ({
   onPrevious,
   onNext,
 }) => {
-  // Cached image state: storageUrl -> base64 data URL
+  // Cached image state: imageDownloadUrl -> base64 data URL
   const [cachedImageSrc, setCachedImageSrc] = useState<string>('');
 
   // Load cached base64 on mount
   useEffect(() => {
     const loadCachedImage = async () => {
       try {
-        const base64 = await imageCache.get(image.storageUrl);
+        const base64 = await imageCache.get(image.imageDownloadUrl);
         if (base64) {
           // Convert base64 to data URL
           setCachedImageSrc(`data:${image.mimeType};base64,${base64}`);
@@ -40,7 +40,7 @@ const ImageDisplayModal: React.FC<ImageDisplayModalProps> = ({
     };
 
     loadCachedImage();
-  }, [image.storageUrl]);
+  }, [image.imageDownloadUrl]);
 
   const hasPrevious = currentImageIndex > 0;
   const hasNext = currentImageIndex >= 0 && currentImageIndex < totalImages - 1;
@@ -126,7 +126,7 @@ const ImageDisplayModal: React.FC<ImageDisplayModalProps> = ({
             )}
 
             <img
-              src={cachedImageSrc || image.storageUrl}
+              src={cachedImageSrc || image.imageDownloadUrl}
               alt={image.name}
               className="max-w-full max-h-full object-contain"
               style={{
