@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Provider } from 'react-redux';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -44,19 +44,6 @@ const ProtectedLayout: React.FC = () => {
 // App Content (inside AuthProvider)
 const AppContent: React.FC = () => {
   const googleClientId = process.env.VITE_GOOGLE_CLIENT_ID || '';
-
-  // Initialize storage service on mount
-  useEffect(() => {
-    const initializeStorage = async () => {
-      try {
-        // Initialize storage service if needed
-      } catch (error) {
-        console.error('Failed to initialize storage service:', error);
-      }
-    };
-
-    initializeStorage();
-  }, []);
 
   return (
     <GoogleOAuthProvider clientId={googleClientId}>

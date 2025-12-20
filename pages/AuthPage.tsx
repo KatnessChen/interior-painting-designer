@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const AuthPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, isLoading, isAuthenticated } = useAuth();
+  const { isLoading, isAuthenticated } = useAuth();
   const [error, setError] = React.useState<string | null>(null);
   const theme = useTheme();
 

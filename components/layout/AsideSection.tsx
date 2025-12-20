@@ -5,8 +5,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import Modal from '@mui/material/Modal';
 import Box from '@mui/material/Box';
-import { Tooltip, Button } from '@mui/material';
-import CircularProgress from '@mui/material/CircularProgress';
+import { Tooltip, Button, Skeleton } from '@mui/material';
 import GenericConfirmModal from '../GenericConfirmModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { AppDispatch } from '@/stores/store';
@@ -24,9 +23,9 @@ import {
   selectProjects,
   selectActiveProjectId,
   selectActiveSpaceId,
+  selectIsAppInitiated,
 } from '@/stores/projectStore';
 import {
-  fetchProjects,
   createProject,
   updateProject,
   deleteProject,
@@ -52,12 +51,12 @@ interface AsideSectionProps {
 
 const AsideSection: React.FC<AsideSectionProps> = ({ onProjectSelected, onSpaceSelected }) => {
   const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
 
   const dispatch = useDispatch<AppDispatch>();
   const projects = useSelector(selectProjects);
   const activeProjectId = useSelector(selectActiveProjectId);
   const activeSpaceId = useSelector(selectActiveSpaceId);
+  const isAppInitiated = useSelector(selectIsAppInitiated);
 
   // Add Project/Space Modal state
   const [modalMode, setModalMode] = useState<ModalMode | null>(null);
@@ -77,39 +76,6 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onProjectSelected, onSpaceS
     message: '',
     onConfirm: () => {},
   });
-
-  useEffect(() => {
-    if (!user) {
-      dispatch(setProjects([]));
-      setLoading(false);
-      return;
-    }
-
-    const fetchUserProjects = async () => {
-      try {
-        const projects = await fetchProjects(user.uid);
-        dispatch(setProjects(projects));
-
-        // Auto-select the first project if available
-        if (projects.length > 0) {
-          const firstProject = projects[0];
-          dispatch(setActiveProjectId(firstProject.id));
-
-          // Auto-select the first space if available
-          const firstSpace = firstProject?.spaces?.[0];
-          if (firstSpace) {
-            dispatch(setActiveSpaceId(firstSpace.id));
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching projects:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUserProjects();
-  }, [user, dispatch]);
 
   useEffect(() => {
     const autoFetchSpaceImages = async () => {
@@ -305,7 +271,7 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onProjectSelected, onSpaceS
           onClick={() => {
             setModalMode(ModalMode.ADD_PROJECT);
           }}
-          disabled={!user || loading}
+          disabled={!user}
           aria-label="Add Project"
         >
           <AddIcon sx={{ fontSize: '18px' }} className="text-gray-400" />
@@ -314,9 +280,17 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onProjectSelected, onSpaceS
 
       {/* Projects & Spaces List */}
       <nav className="space-y-3 flex-1 overflow-y-auto">
-        {loading ? (
-          <div className="flex justify-center py-8">
-            <CircularProgress size={24} />
+        {!isAppInitiated ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i}>
+                <Skeleton variant="text" width="80%" height={32} />
+                <div className="pl-4 space-y-2 mt-1">
+                  <Skeleton variant="text" width="70%" height={24} />
+                  <Skeleton variant="text" width="65%" height={24} />
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           projects.map((project) => (
@@ -461,16 +435,11 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onProjectSelected, onSpaceS
               loading={modalProcessing}
               variant="contained"
               onClick={handleModalSubmit}
-              disabled={!modalInput.trim() || loading}
+              disabled={!modalInput.trim()}
             >
               Confirm
             </Button>
-            <Button
-              variant="outlined"
-              className="flex-1"
-              onClick={handleCloseModal}
-              disabled={loading}
-            >
+            <Button variant="outlined" className="flex-1" onClick={handleCloseModal}>
               Cancel
             </Button>
           </div>

@@ -21,6 +21,7 @@ import {
   updateImageName,
 } from '@/services/firestoreService';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAppInit } from '@/hooks/useAppInit';
 import { useImageProcessing } from '@/hooks/useImageProcessing';
 import { formatImageOperationData, downloadFile, buildDownloadFilename } from '@/utils';
 import { selectOriginalImages, selectUpdatedImages } from '@/stores/imageStore';
@@ -29,6 +30,8 @@ import {
   selectProjects,
   selectActiveProjectId,
   selectActiveSpaceId,
+  selectIsAppInitiated,
+  selectInitError,
   addImageOptimistic,
   removeImageOptimistic,
   removeImagesOptimistic,
@@ -44,6 +47,9 @@ const LandingPage: React.FC = () => {
   // Get authenticated user
   const { user } = useAuth();
   const dispatch = useDispatch();
+
+  const isAppInitiated = useSelector(selectIsAppInitiated);
+  const initError = useSelector(selectInitError);
 
   // Get active space from store
   const projects = useSelector(selectProjects);
@@ -104,6 +110,9 @@ const LandingPage: React.FC = () => {
     onConfirm: () => Promise<void>;
   } | null>(null);
   const [isDeletingImages, setIsDeletingImages] = useState<boolean>(false);
+
+  // Initialize app on mount
+  useAppInit();
 
   // Helper function to show alert
   const showAlertModal = useCallback(
@@ -637,78 +646,106 @@ const LandingPage: React.FC = () => {
   return (
     <div className="h-full bg-gray-100 p-6">
       <div className="h-full container mx-auto max-w-6xl">
-        {getEmptyStateComponent}
-
-        {activeSpaceId && (
+        {!isAppInitiated ? (
+          <div className="h-full flex items-center justify-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          </div>
+        ) : initError ? (
+          <div className="h-full flex items-center justify-center">
+            <div className="text-center max-w-md p-6">
+              <div className="text-red-600 text-5xl mb-4">🤯</div>
+              <h2 className="text-xl text-gray-600 mb-2">Sorry, something went wrong.</h2>
+              <p className="text-gray-600 mb-4">{initError}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="px-4 py-2 bg-indigo-500 text-white rounded-md hover:bg-blue-700 transition"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        ) : (
           <>
-            <div className="mb-8">
-              <TaskSelector selectedTaskName={selectedTaskName} onSelectTask={handleSelectTask} />
-            </div>
+            {getEmptyStateComponent}
 
-            <div className="mb-8">
-              <Gallery
-                title="1. Select Original Photos"
-                images={originalImages}
-                selectedImageIds={selectedOriginalImageIds}
-                onSelectImage={handleSelectOriginalImage}
-                onSelectMultiple={handleSelectMultipleOriginal}
-                onRenameImage={handleRenameImage}
-                showRemoveButtons={selectedOriginalImageIds.size === 0}
-                emptyMessage="No photos uploaded yet."
-                onUploadImage={handleImageUpload}
-                showUploadCard={true}
-                onUploadError={setErrorMessage}
-                enableMultiSelect={true}
-                onBulkDelete={() => handleBulkDelete('original')}
-                onClearSelection={handleClearOriginalSelection}
-              />
-            </div>
+            {activeSpaceId && (
+              <>
+                <div className="mb-8">
+                  <TaskSelector
+                    selectedTaskName={selectedTaskName}
+                    onSelectTask={handleSelectTask}
+                  />
+                </div>
 
-            <div className="mb-8">
-              {selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name ? (
-                <ColorSelector
-                  title="2. Select a Color"
-                  selectedColor={selectedColor}
-                  onSelectColor={setSelectedColor}
-                />
-              ) : (
-                <TextureSelector onTextureSelect={setSelectedTexture} onError={setErrorMessage} />
-              )}
-            </div>
+                <div className="mb-8">
+                  <Gallery
+                    title="1. Select Original Photos"
+                    images={originalImages}
+                    selectedImageIds={selectedOriginalImageIds}
+                    onSelectImage={handleSelectOriginalImage}
+                    onSelectMultiple={handleSelectMultipleOriginal}
+                    onRenameImage={handleRenameImage}
+                    showRemoveButtons={selectedOriginalImageIds.size === 0}
+                    emptyMessage="No photos uploaded yet."
+                    onUploadImage={handleImageUpload}
+                    showUploadCard={true}
+                    onUploadError={setErrorMessage}
+                    enableMultiSelect={true}
+                    onBulkDelete={() => handleBulkDelete('original')}
+                    onClearSelection={handleClearOriginalSelection}
+                  />
+                </div>
 
-            <div className="sticky bottom-4 w-full flex justify-center z-40 p-2">
-              <div className="flex flex-row gap-3 items-center justify-center">
-                <ProcessButton
-                  isEnabled={isProcessingButtonEnabled}
-                  isProcessing={processingImage}
-                  selectedTaskName={selectedTaskName}
-                  onOpenCustomPrompt={handleOpenCustomPromptModal}
-                />
+                <div className="mb-8">
+                  {selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name ? (
+                    <ColorSelector
+                      title="2. Select a Color"
+                      selectedColor={selectedColor}
+                      onSelectColor={setSelectedColor}
+                    />
+                  ) : (
+                    <TextureSelector
+                      onTextureSelect={setSelectedTexture}
+                      onError={setErrorMessage}
+                    />
+                  )}
+                </div>
 
-                {/* Compare Photos Button */}
-                <ImagesComparingButton
-                  totalSelectedPhotos={totalSelectedPhotos}
-                  isEnabled={isCompareButtonEnabled}
-                  onClick={() => setShowCompareModal(true)}
-                />
-              </div>
-            </div>
+                <div className="sticky bottom-4 w-full flex justify-center z-40 p-2">
+                  <div className="flex flex-row gap-3 items-center justify-center">
+                    <ProcessButton
+                      isEnabled={isProcessingButtonEnabled}
+                      isProcessing={processingImage}
+                      selectedTaskName={selectedTaskName}
+                      onOpenCustomPrompt={handleOpenCustomPromptModal}
+                    />
 
-            <div className="mt-8">
-              <Gallery
-                title="3. Generated Photos"
-                images={updatedImages}
-                selectedImageIds={selectedUpdatedImageIds}
-                onSelectMultiple={handleSelectUpdatedImage}
-                onRenameImage={handleRenameImage}
-                emptyMessage="Satisfied recolored photos will appear here."
-                enableMultiSelect={true}
-                onBulkDelete={() => handleBulkDelete('updated')}
-                onBulkDownload={handleBulkDownloadUpdated}
-                onClearSelection={handleClearUpdatedSelection}
-                showDownloadIcon={true}
-              />
-            </div>
+                    {/* Compare Photos Button */}
+                    <ImagesComparingButton
+                      totalSelectedPhotos={totalSelectedPhotos}
+                      isEnabled={isCompareButtonEnabled}
+                      onClick={() => setShowCompareModal(true)}
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-8">
+                  <Gallery
+                    title="3. Generated Photos"
+                    images={updatedImages}
+                    selectedImageIds={selectedUpdatedImageIds}
+                    onSelectMultiple={handleSelectUpdatedImage}
+                    onRenameImage={handleRenameImage}
+                    emptyMessage="Satisfied recolored photos will appear here."
+                    enableMultiSelect={true}
+                    onBulkDelete={() => handleBulkDelete('updated')}
+                    onBulkDownload={handleBulkDownloadUpdated}
+                    onClearSelection={handleClearUpdatedSelection}
+                    showDownloadIcon={true}
+                  />
+                </div>
+              </>
+            )}
           </>
         )}
 

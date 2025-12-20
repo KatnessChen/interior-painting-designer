@@ -66,7 +66,6 @@ export const createOrUpdateUser = async (userData: {
       });
       console.log('New user created:', userData.uid);
     }
-    console.log({ userDoc });
   } catch (error) {
     console.error('Failed to create or update user:', error);
     throw error;

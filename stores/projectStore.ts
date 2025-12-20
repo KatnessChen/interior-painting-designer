@@ -5,12 +5,16 @@ interface ProjectState {
   projects: Project[];
   activeProjectId: string | null;
   activeSpaceId: string | null;
+  isAppInitiated: boolean;
+  initError: string | null;
 }
 
 const initialState: ProjectState = {
   projects: [],
   activeProjectId: null,
   activeSpaceId: null,
+  isAppInitiated: false,
+  initError: null,
 };
 
 export const projectStore = createSlice({
@@ -85,6 +89,12 @@ export const projectStore = createSlice({
     },
     setActiveSpaceId: (state, action: PayloadAction<string | null>) => {
       state.activeSpaceId = action.payload;
+    },
+    setIsAppInitiated: (state, action: PayloadAction<boolean>) => {
+      state.isAppInitiated = action.payload;
+    },
+    setInitError: (state, action: PayloadAction<string | null>) => {
+      state.initError = action.payload;
     },
 
     // Optimistic updates for images
@@ -166,6 +176,8 @@ export const projectStore = createSlice({
     selectProjects: (state) => state.projects,
     selectActiveProjectId: (state) => state.activeProjectId,
     selectActiveSpaceId: (state) => state.activeSpaceId,
+    selectIsAppInitiated: (state) => state.isAppInitiated,
+    selectInitError: (state) => state.initError,
     selectActiveProject: (state) =>
       state.activeProjectId
         ? state.projects.find((p) => p.id === state.activeProjectId)
@@ -192,6 +204,8 @@ export const {
   removeSpace,
   setActiveProjectId,
   setActiveSpaceId,
+  setIsAppInitiated,
+  setInitError,
   addImageOptimistic,
   removeImageOptimistic,
   removeImagesOptimistic,
@@ -202,6 +216,8 @@ export const {
   selectProjects,
   selectActiveProjectId,
   selectActiveSpaceId,
+  selectIsAppInitiated,
+  selectInitError,
   selectActiveProject,
   selectActiveSpace,
 } = projectStore.selectors;
