@@ -5,6 +5,7 @@ import {
   Visibility as EyeIcon,
   Edit as PencilIcon,
   CheckCircle as CheckmarkBadgeIcon,
+  Info as InfoIcon,
 } from '@mui/icons-material';
 
 interface ImageCardProps {
@@ -12,7 +13,8 @@ interface ImageCardProps {
   isSelected?: boolean;
   onSelect?: (imageId: string) => void;
   showDownloadButton?: boolean;
-  onViewButtonClick?: (imageData: ImageData) => void; // Renamed for clarity, now for a specific button
+  onViewPhotoButtonClick?: (imageData: ImageData) => void;
+  onViewMoreButtonClick?: (imageData: ImageData) => void;
   onRename?: (imageId: string, newName: string) => void;
 }
 
@@ -21,7 +23,8 @@ const ImageCard: React.FC<ImageCardProps> = ({
   isSelected = false,
   onSelect,
   showDownloadButton = false,
-  onViewButtonClick, // Destructure new prop
+  onViewPhotoButtonClick,
+  onViewMoreButtonClick,
   onRename,
 }) => {
   // Rename state
@@ -73,12 +76,12 @@ const ImageCard: React.FC<ImageCardProps> = ({
     setIsEditing(false);
   };
 
-  const handleView = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent other card actions when clicking view
-    if (onViewButtonClick) {
-      onViewButtonClick(image);
-    }
-  };
+  // const onViewPhotoButtonClick = (e: React.MouseEvent) => {
+  //   e.stopPropagation(); // Prevent other card actions when clicking view
+  //   if (onViewButtonClick) {
+  //     onViewButtonClick(image);
+  //   }
+  // };
 
   const handleCardClick = () => {
     if (onSelect) {
@@ -107,16 +110,32 @@ const ImageCard: React.FC<ImageCardProps> = ({
           </div>
         )}
         {/* Overlay buttons - appear on hover */}
-        {(onViewButtonClick || showDownloadButton) && (
+        {(onViewPhotoButtonClick || showDownloadButton) && (
           <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-200 flex flex-col items-center justify-center gap-3 opacity-0 group-hover:opacity-100">
-            {onViewButtonClick && (
+            {onViewPhotoButtonClick && (
               <button
-                onClick={handleView}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewPhotoButtonClick(image);
+                }}
                 className="flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors w-40"
                 aria-label={`View full image of ${image.name}`}
               >
                 <EyeIcon sx={{ fontSize: 20, marginRight: 1, color: 'inherit' }} />
-                View Photo
+                Expand Photo
+              </button>
+            )}
+            {onViewMoreButtonClick && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewMoreButtonClick(image);
+                }}
+                className="flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors w-40"
+                aria-label={`View more information about ${image.name}`}
+              >
+                <InfoIcon sx={{ fontSize: 20, marginRight: 1, color: '#374151' }} />
+                More Info
               </button>
             )}
           </div>

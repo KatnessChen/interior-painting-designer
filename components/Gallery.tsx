@@ -3,6 +3,7 @@ import { ImageData } from '@/types';
 import ImageCard from './ImageCard';
 import UploadCard from './UploadCard';
 import ImageDisplayModal from './ImageDisplayModal';
+import ViewMoreDisplayModal from './ViewMoreDisplayModal';
 import {
   Delete as DeleteIcon,
   Download as DownloadIcon,
@@ -56,7 +57,11 @@ const Gallery: React.FC<GalleryProps> = ({
   const [showImageDisplayModal, setShowImageDisplayModal] = useState<boolean>(false);
   const [imageToDisplayInModal, setImageToDisplayInModal] = useState<ImageData | null>(null);
 
-  const handleViewImage = useCallback((imageData: ImageData) => {
+  // State for ViewMoreDisplayModal
+  const [showViewMoreModal, setShowViewMoreModal] = useState<boolean>(false);
+  const [imageForViewMore, setImageForViewMore] = useState<ImageData | null>(null);
+
+  const handleViewPhotoImage = useCallback((imageData: ImageData) => {
     setImageToDisplayInModal(imageData);
     setShowImageDisplayModal(true);
   }, []);
@@ -64,6 +69,16 @@ const Gallery: React.FC<GalleryProps> = ({
   const handleCloseImageDisplayModal = useCallback(() => {
     setShowImageDisplayModal(false);
     setImageToDisplayInModal(null);
+  }, []);
+
+  const onViewMoreButtonClick = useCallback((imageData: ImageData) => {
+    setImageForViewMore(imageData);
+    setShowViewMoreModal(true);
+  }, []);
+
+  const handleCloseViewMoreModal = useCallback(() => {
+    setShowViewMoreModal(false);
+    setImageForViewMore(null);
   }, []);
 
   // Calculate current image index
@@ -140,7 +155,8 @@ const Gallery: React.FC<GalleryProps> = ({
               }
               onSelect={enableMultiSelect ? onSelectMultiple : onSelectImage}
               showDownloadButton={showDownloadButtons && !enableMultiSelect}
-              onViewButtonClick={handleViewImage}
+              onViewPhotoButtonClick={handleViewPhotoImage}
+              onViewMoreButtonClick={onViewMoreButtonClick}
               onRename={onRenameImage}
             />
           ))}
@@ -157,6 +173,15 @@ const Gallery: React.FC<GalleryProps> = ({
           totalImages={images.length}
           onPrevious={handlePrevious}
           onNext={handleNext}
+        />
+      )}
+
+      {/* View More Display Modal */}
+      {imageForViewMore && (
+        <ViewMoreDisplayModal
+          isOpen={showViewMoreModal}
+          image={imageForViewMore}
+          onClose={handleCloseViewMoreModal}
         />
       )}
     </div>

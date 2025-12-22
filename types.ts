@@ -15,7 +15,7 @@ export interface ImageData {
 
   // Evolution chain
   evolutionChain: ImageOperation[];
-  parentImageId: string | null;
+  parentImage: ImageData | null;
 
   // Firebase Storage
   imageDownloadUrl: string; // Firebase Storage download URL
@@ -42,6 +42,11 @@ export interface ImageOperation {
    * This is the source image for the operation.
    */
   imageId: string;
+
+  /**
+   * The download URL for accessing the source image at the time of this operation.
+   */
+  imageDownloadUrl: string;
 
   taskName: string; // e.g., "recolor_wall" or "add_texture".
 

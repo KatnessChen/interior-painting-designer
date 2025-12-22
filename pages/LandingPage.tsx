@@ -84,7 +84,7 @@ const LandingPage: React.FC = () => {
   // State for custom prompt modal
   const [showCustomPromptModal, setShowCustomPromptModal] = useState<boolean>(false);
 
-  // State for processing context (to track parent image and custom prompt)
+  // State for processing context (to track source image and custom prompt)
   const [processingContext, setProcessingContext] = useState<{
     selectedImage: ImageData | null;
     customPrompt: string | undefined;
@@ -408,7 +408,7 @@ const LandingPage: React.FC = () => {
           {
             base64: processedImageResult.base64,
             base64MimeType: processedImageResult.mimeType,
-            parentImageId: processingContext.selectedImage.id,
+            parentImage: processingContext.selectedImage,
             operation,
           }
         );
@@ -644,7 +644,7 @@ const LandingPage: React.FC = () => {
   }, [selectedOriginalImageIds, selectedUpdatedImageIds, originalImages, updatedImages]);
 
   return (
-    <div className="h-full bg-gray-100 p-6">
+    <div className="bg-gray-100">
       <div className="h-full container mx-auto max-w-6xl">
         {!isAppInitiated ? (
           <div className="h-full flex items-center justify-center">

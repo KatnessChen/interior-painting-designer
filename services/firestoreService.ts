@@ -432,7 +432,7 @@ export async function createImage(
   imageFile: Blob | File | null,
   imageMetadata: Pick<ImageData, 'id' | 'name' | 'mimeType'>,
   processingInfo?: {
-    parentImageId?: string | null;
+    parentImage?: ImageData | null;
     operation?: ImageOperation | null;
     base64?: string;
     base64MimeType?: string;
@@ -442,7 +442,7 @@ export async function createImage(
     throw new Error('User ID is required to add an image.');
   }
 
-  const { operation, parentImageId, base64, base64MimeType } = processingInfo || {};
+  const { operation, parentImage, base64, base64MimeType } = processingInfo || {};
 
   try {
     console.log('Uploading image to Firebase Storage...');
@@ -492,13 +492,14 @@ export async function createImage(
       spaceId,
       evolutionChain: operation
         ? [
+            ...(parentImage?.evolutionChain || []),
             {
               ...operation,
               timestamp: new Date(operation.timestamp),
             },
           ]
         : [],
-      parentImageId: parentImageId || null,
+      parentImage: parentImage || null,
       imageDownloadUrl,
       storageFilePath,
       isDeleted: false,
