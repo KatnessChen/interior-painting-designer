@@ -1,9 +1,10 @@
 import { GeminiTaskName } from './services/gemini/geminiTasks';
 
 export interface BenjaminMooreColor {
-  code: string;
+  id: string;
   name: string;
   hex: string;
+  notes?: string;
 }
 
 export interface ImageData {

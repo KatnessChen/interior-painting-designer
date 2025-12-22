@@ -679,7 +679,7 @@ const LandingPage: React.FC = () => {
 
                 <div className="mb-8">
                   <Gallery
-                    title="1. Select Original Photos"
+                    title="1. Select Original Photo"
                     images={originalImages}
                     selectedImageIds={selectedOriginalImageIds}
                     onSelectImage={handleSelectOriginalImage}
@@ -699,7 +699,7 @@ const LandingPage: React.FC = () => {
                 <div className="mb-8">
                   {selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name ? (
                     <ColorSelector
-                      title="2. Select a Color"
+                      title="2. Select a Color to Recolor Wall"
                       selectedColor={selectedColor}
                       onSelectColor={setSelectedColor}
                     />
