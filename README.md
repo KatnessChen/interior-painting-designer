@@ -1,19 +1,30 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+## Configure Firebase Storage CORS
 
-# Run and deploy your AI Studio app
+To enable your environment to access images from Firebase Storage, you need to configure CORS (Cross-Origin Resource Sharing) settings.
 
-This contains everything you need to run your app locally.
+### Prerequisites
 
-View your app in AI Studio: https://ai.studio/apps/drive/1URp_9q71PtSnr5G2Y_jYogcsJFXqyge-
+- Google Cloud SDK installed ([Install gsutil](https://cloud.google.com/storage/docs/gsutil_install))
+- Access to your Firebase project
 
-## Run Locally
+### Steps
 
-**Prerequisites:** Node.js
+1. **View your Firebase Storage bucket name**
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+   - Go to [Firebase Console](https://console.firebase.google.com/)
+   - Navigate to Storage
+   - Copy your bucket name (format: `your-project-id.firebasestorage.app`)
+
+2. **Use the provided cors.json file**
+
+   - The project includes a [`cors.json`](./cors.json) file with pre-configured CORS settings
+   - Current settings allow GET requests from:
+     - `http://localhost:3000` (local development)
+     - Add other domains
+
+3. **Apply CORS settings using gsutil**
+
+   ```bash
+   # Set your bucket name
+   gsutil cors set cors.json gs://VIZION_BUCKET_NAME
+   ```
