@@ -4,7 +4,6 @@ import { Timestamp } from 'firebase/firestore';
 import ConfirmImageUpdateModal from '@/components/ConfirmImageUpdateModal';
 import CustomPromptModal from '@/components/CustomPromptModal';
 import Gallery from '@/components/Gallery';
-import ProcessButton from '@/components/ProcessButton';
 import TaskSelector from '@/components/TaskSelector';
 import ImagesComparingModal from '@/components/ImagesComparingModal';
 import ImagesComparingButton from '@/components/ImagesComparingButton';
@@ -125,7 +124,7 @@ const LandingPage: React.FC = () => {
   );
 
   // Use image processing hook
-  const { processImage, processingImage, errorMessage, setErrorMessage } = useImageProcessing({
+  const { processImage, errorMessage, setErrorMessage } = useImageProcessing({
     userId: user?.uid,
     selectedTaskName,
     options: {
@@ -277,7 +276,7 @@ const LandingPage: React.FC = () => {
         setErrorMessage('Failed to save renamed image. Please try again.');
       }
     },
-    [user, activeProjectId, activeSpaceId, dispatch]
+    [user, activeProjectId, activeSpaceId, dispatch, setErrorMessage]
   );
 
   const handleProcessImage = useCallback(
@@ -302,33 +301,8 @@ const LandingPage: React.FC = () => {
         setShowConfirmationModal(true);
       }
     },
-    [selectedOriginalImageIds, originalImages, processImage]
+    [selectedOriginalImageIds, originalImages, processImage, setErrorMessage]
   );
-
-  const handleOpenCustomPromptModal = useCallback(async () => {
-    // Get the first (and only) selected image
-    const selectedImageId = Array.from(selectedOriginalImageIds)[0];
-    const selectedImage = originalImages.find((img) => img.id === selectedImageId);
-    if (!selectedImage) {
-      setErrorMessage('Please select an original photo.');
-      return;
-    }
-
-    if (selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name) {
-      if (!selectedColor) {
-        setErrorMessage('Please select a color first.');
-        return;
-      }
-    } else if (selectedTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name) {
-      if (!selectedTexture) {
-        setErrorMessage('Please select a texture first.');
-        return;
-      }
-    }
-
-    // Show custom prompt modal
-    setShowCustomPromptModal(true);
-  }, [selectedColor, selectedTexture, originalImages, selectedOriginalImageIds, selectedTaskName]);
 
   const handleImageSatisfied = useCallback(
     async (processedImageResult: { base64: string; mimeType: string }) => {
@@ -442,6 +416,7 @@ const LandingPage: React.FC = () => {
       activeProjectId,
       activeSpaceId,
       dispatch,
+      setErrorMessage,
     ]
   );
 
@@ -461,7 +436,7 @@ const LandingPage: React.FC = () => {
       console.error('Failed to refresh images:', error);
       setErrorMessage('Failed to refresh images. Please reload the page.');
     }
-  }, [user, activeProjectId, activeSpaceId, dispatch]);
+  }, [user, activeProjectId, activeSpaceId, dispatch, setErrorMessage]);
 
   const handleSelectOriginalImage = useCallback((imageId: string) => {
     // Single-select mode: toggle selection, max 1 image
@@ -569,6 +544,7 @@ const LandingPage: React.FC = () => {
       activeProjectId,
       activeSpaceId,
       dispatch,
+      setErrorMessage,
     ]
   );
 
@@ -602,7 +578,7 @@ const LandingPage: React.FC = () => {
         });
       }
     });
-  }, [selectedUpdatedImageIds, updatedImages]);
+  }, [selectedUpdatedImageIds, updatedImages, setErrorMessage]);
 
   const handleClearUpdatedSelection = useCallback(() => {
     setSelectedUpdatedImageIds(new Set());
@@ -624,21 +600,11 @@ const LandingPage: React.FC = () => {
     }
 
     return null;
-  }, [activeProjectId, activeSpaceId]);
+  }, [activeProjectId, activeSpaceId, projects.length]);
 
   const selectedOriginalImageId = Array.from(selectedOriginalImageIds)[0] || null;
   const selectedOriginalImage =
     originalImages.find((img) => img.id === selectedOriginalImageId) || null;
-
-  const isProcessingButtonEnabled =
-    selectedOriginalImageIds.size === 1 &&
-    !processingImage &&
-    ((selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name && !!selectedColor) ||
-      (selectedTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name && !!selectedTexture));
-
-  // Compare functionality
-  const totalSelectedPhotos = selectedOriginalImageIds.size + selectedUpdatedImageIds.size;
-  const isCompareButtonEnabled = totalSelectedPhotos >= 2 && totalSelectedPhotos <= 4;
 
   const getSelectedPhotosForComparison = useCallback(() => {
     const selectedPhotos: ImageData[] = [];
@@ -684,71 +650,54 @@ const LandingPage: React.FC = () => {
             {getEmptyStateComponent}
 
             {activeSpaceId && (
-              <>
-                <div className="mb-8">
-                  <TaskSelector
-                    selectedTaskName={selectedTaskName}
-                    onSelectTask={handleSelectTask}
+              <div className="flex flex-col gap-6">
+                <TaskSelector selectedTaskName={selectedTaskName} onSelectTask={handleSelectTask} />
+
+                <Gallery
+                  title="Original Photos"
+                  images={originalImages}
+                  selectedImageIds={selectedOriginalImageIds}
+                  onSelectImage={handleSelectOriginalImage}
+                  onSelectMultiple={handleSelectMultipleOriginal}
+                  onRenameImage={handleRenameImage}
+                  showRemoveButtons={selectedOriginalImageIds.size === 0}
+                  emptyMessage="No photos uploaded yet."
+                  onUploadImage={handleImageUpload}
+                  showUploadCard={true}
+                  onUploadError={setErrorMessage}
+                  enableMultiSelect={true}
+                  onBulkDelete={() => handleBulkDelete('original')}
+                  onClearSelection={handleClearOriginalSelection}
+                  onGenerateMoreSuccess={handleGenerateMoreSuccess}
+                  userId={user?.uid}
+                />
+
+                <Gallery
+                  title="Generated Photos"
+                  images={updatedImages}
+                  selectedImageIds={selectedUpdatedImageIds}
+                  onSelectMultiple={handleSelectUpdatedImage}
+                  onRenameImage={handleRenameImage}
+                  emptyMessage="Satisfied recolored photos will appear here."
+                  enableMultiSelect={true}
+                  onBulkDelete={() => handleBulkDelete('updated')}
+                  onBulkDownload={handleBulkDownloadUpdated}
+                  onClearSelection={handleClearUpdatedSelection}
+                  showDownloadIcon={true}
+                  onGenerateMoreSuccess={handleGenerateMoreSuccess}
+                  userId={user?.uid}
+                />
+
+                <div className="flex justify-end">
+                  <ImagesComparingButton
+                    totalSelectedPhotos={
+                      selectedOriginalImageIds.size + selectedUpdatedImageIds.size
+                    }
+                    isEnabled={selectedOriginalImageIds.size + selectedUpdatedImageIds.size >= 2}
+                    onClick={() => setShowCompareModal(true)}
                   />
                 </div>
-
-                <div className="mb-8">
-                  <Gallery
-                    title="1. Select Original Photo"
-                    images={originalImages}
-                    selectedImageIds={selectedOriginalImageIds}
-                    onSelectImage={handleSelectOriginalImage}
-                    onSelectMultiple={handleSelectMultipleOriginal}
-                    onRenameImage={handleRenameImage}
-                    showRemoveButtons={selectedOriginalImageIds.size === 0}
-                    emptyMessage="No photos uploaded yet."
-                    onUploadImage={handleImageUpload}
-                    showUploadCard={true}
-                    onUploadError={setErrorMessage}
-                    enableMultiSelect={true}
-                    onBulkDelete={() => handleBulkDelete('original')}
-                    onClearSelection={handleClearOriginalSelection}
-                    onGenerateMoreSuccess={handleGenerateMoreSuccess}
-                    userId={user?.uid}
-                  />
-                </div>
-
-                <div className="sticky bottom-4 w-full flex justify-center z-40 p-2">
-                  <div className="flex flex-row gap-3 items-center justify-center">
-                    <ProcessButton
-                      isEnabled={isProcessingButtonEnabled}
-                      isProcessing={processingImage}
-                      selectedTaskName={selectedTaskName}
-                      onOpenCustomPrompt={handleOpenCustomPromptModal}
-                    />
-
-                    {/* Compare Photos Button */}
-                    <ImagesComparingButton
-                      totalSelectedPhotos={totalSelectedPhotos}
-                      isEnabled={isCompareButtonEnabled}
-                      onClick={() => setShowCompareModal(true)}
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-8">
-                  <Gallery
-                    title="3. Generated Photos"
-                    images={updatedImages}
-                    selectedImageIds={selectedUpdatedImageIds}
-                    onSelectMultiple={handleSelectUpdatedImage}
-                    onRenameImage={handleRenameImage}
-                    emptyMessage="Satisfied recolored photos will appear here."
-                    enableMultiSelect={true}
-                    onBulkDelete={() => handleBulkDelete('updated')}
-                    onBulkDownload={handleBulkDownloadUpdated}
-                    onClearSelection={handleClearUpdatedSelection}
-                    showDownloadIcon={true}
-                    onGenerateMoreSuccess={handleGenerateMoreSuccess}
-                    userId={user?.uid}
-                  />
-                </div>
-              </>
+              </div>
             )}
           </>
         )}

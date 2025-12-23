@@ -14,7 +14,7 @@ const TaskSelector: React.FC<TaskSelectorProps> = ({ selectedTaskName, onSelectT
   ];
 
   return (
-    <div className="mb-8 bg-white rounded-lg shadow-md p-6">
+    <div className="bg-white rounded-lg shadow-md p-6">
       <h2 className="text-2xl text-gray-800 mb-6 text-center tracking-tight">
         What do you want to do today?
       </h2>
