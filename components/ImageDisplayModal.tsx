@@ -40,7 +40,7 @@ const ImageDisplayModal: React.FC<ImageDisplayModalProps> = ({
     };
 
     loadCachedImage();
-  }, [image.imageDownloadUrl]);
+  }, [image.imageDownloadUrl, image.mimeType]);
 
   const hasPrevious = currentImageIndex > 0;
   const hasNext = currentImageIndex >= 0 && currentImageIndex < totalImages - 1;

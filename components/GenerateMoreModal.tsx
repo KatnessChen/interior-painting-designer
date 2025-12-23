@@ -234,7 +234,7 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
     >
       <DialogTitle>
         <Typography variant="h5" component="div" fontWeight="bold">
-          Generate More Variations
+          Generate More Images
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
           Create a new color variation from this image
@@ -268,13 +268,13 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
               alignItems: 'center',
               justifyContent: 'center',
               backgroundColor: 'rgba(255, 255, 255, 0.9)',
-              zIndex: 1,
+              zIndex: 10,
               gap: 2,
             }}
           >
             <CircularProgress size={60} />
             <Typography variant="h6" color="text.secondary">
-              Generating new variation...
+              Generating new image...
             </Typography>
           </Box>
         )}

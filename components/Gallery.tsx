@@ -43,8 +43,6 @@ const Gallery: React.FC<GalleryProps> = ({
   onSelectMultiple,
   onRenameImage,
   showDownloadButtons = false,
-  onRemoveImage,
-  showRemoveButtons = false,
   emptyMessage,
   onUploadImage,
   showUploadCard = false,

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { ImageData, BenjaminMooreColor } from '@/types';
-import { recolorWalls, addTexture } from '@/services/gemini/geminiService';
+import { recolorWalls } from '@/services/gemini/geminiService';
 import { GEMINI_TASKS, GeminiTaskName } from '@/services/gemini/geminiTasks';
 import { incrementTaskUsage } from '@/services/userService';
 
@@ -84,7 +84,7 @@ export const useImageProcessing = ({
         return result;
       } catch (error: any) {
         console.error('Processing failed:', error);
-        let msg = error instanceof Error ? error.message : String(error);
+        const msg = error instanceof Error ? error.message : String(error);
         let displayMessage = `Processing failed: ${msg}.`;
 
         let apiError: any = null;

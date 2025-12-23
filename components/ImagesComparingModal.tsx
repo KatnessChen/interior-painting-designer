@@ -69,7 +69,7 @@ const ImagesComparingModal: React.FC<ComparePhotosModalProps> = ({ isOpen, image
         {/* Content - Grid Layout */}
         <div className="flex-1 overflow-scroll p-2">
           <div className="grid grid-cols-2 gap-3 h-full">
-            {images.map((image, index) => (
+            {images.map((image) => (
               <div
                 key={image.id}
                 className="flex flex-col items-center rounded-lg overflow-hidden border border-gray-200 bg-gray-50"

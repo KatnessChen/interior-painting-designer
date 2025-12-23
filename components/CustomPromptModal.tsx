@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Close as CloseIcon, ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
-import { getPromptByTask, wallRecolorPrompts, texturePrompts } from '@/services/gemini/prompts';
+import { wallRecolorPrompts, texturePrompts } from '@/services/gemini/prompts';
 import { GeminiTask, GEMINI_TASKS } from '@/services/gemini/geminiTasks';
 
 interface CustomPromptModalProps {

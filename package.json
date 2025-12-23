@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "eslint .",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -24,11 +26,20 @@
     "react-router-dom": "^7.9.5"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
     "@types/node": "^22.14.0",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
+    "@typescript-eslint/eslint-plugin": "^8.50.1",
+    "@typescript-eslint/parser": "^8.50.1",
     "@vitejs/plugin-react": "^5.0.0",
+    "eslint": "^9.39.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "globals": "^16.5.0",
+    "prettier": "^3.7.4",
     "typescript": "~5.9.3",
+    "typescript-eslint": "^8.50.1",
     "vite": "^6.2.0"
   },
   "packageManager": "pnpm@8.0.0+sha512.0abb2f77c2ca6fe4a8101fdb431459aed4ade518bc83d8e63e0e8c2b27b1313235a5d2dde3880fc1557a7192eada36183efe6afa00033e46136d8afc49e14278"

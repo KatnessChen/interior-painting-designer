@@ -1,13 +1,11 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Timestamp } from 'firebase/firestore';
-import ColorSelector from '@/components/ColorSelector';
 import ConfirmImageUpdateModal from '@/components/ConfirmImageUpdateModal';
 import CustomPromptModal from '@/components/CustomPromptModal';
 import Gallery from '@/components/Gallery';
 import ProcessButton from '@/components/ProcessButton';
 import TaskSelector from '@/components/TaskSelector';
-import TextureSelector from '@/components/TextureSelector';
 import ImagesComparingModal from '@/components/ImagesComparingModal';
 import ImagesComparingButton from '@/components/ImagesComparingButton';
 import AlertModal from '@/components/AlertModal';
@@ -143,18 +141,21 @@ const LandingPage: React.FC = () => {
     }
   }, [errorMessage, showAlertModal]);
 
-  const handleSelectTask = useCallback((taskName: GeminiTaskName) => {
-    setSelectedTaskName(taskName);
+  const handleSelectTask = useCallback(
+    (taskName: GeminiTaskName) => {
+      setSelectedTaskName(taskName);
 
-    // Reset UI state when switching tasks
-    setSelectedColor(null);
-    setSelectedTexture(null);
-    setSelectedOriginalImageIds(new Set());
-    setSelectedUpdatedImageIds(new Set());
-    setGeneratedImage(null);
-    setShowConfirmationModal(false);
-    setErrorMessage(null);
-  }, []);
+      // Reset UI state when switching tasks
+      setSelectedColor(null);
+      setSelectedTexture(null);
+      setSelectedOriginalImageIds(new Set());
+      setSelectedUpdatedImageIds(new Set());
+      setGeneratedImage(null);
+      setShowConfirmationModal(false);
+      setErrorMessage(null);
+    },
+    [setErrorMessage]
+  );
 
   const handleImageUpload = useCallback(
     async (file: File) => {
@@ -227,7 +228,7 @@ const LandingPage: React.FC = () => {
         );
       }
     },
-    [user, activeProjectId, activeSpaceId, dispatch]
+    [user, activeProjectId, activeSpaceId, dispatch, setErrorMessage]
   );
 
   const handleRenameImage = useCallback(
@@ -707,22 +708,9 @@ const LandingPage: React.FC = () => {
                     enableMultiSelect={true}
                     onBulkDelete={() => handleBulkDelete('original')}
                     onClearSelection={handleClearOriginalSelection}
+                    onGenerateMoreSuccess={handleGenerateMoreSuccess}
+                    userId={user?.uid}
                   />
-                </div>
-
-                <div className="mb-8">
-                  {selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name ? (
-                    <ColorSelector
-                      title="2. Select a Color to Recolor Wall"
-                      selectedColor={selectedColor}
-                      onSelectColor={setSelectedColor}
-                    />
-                  ) : (
-                    <TextureSelector
-                      onTextureSelect={setSelectedTexture}
-                      onError={setErrorMessage}
-                    />
-                  )}
                 </div>
 
                 <div className="sticky bottom-4 w-full flex justify-center z-40 p-2">

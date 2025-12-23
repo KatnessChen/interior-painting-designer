@@ -10,7 +10,6 @@ import GenericConfirmModal from '../GenericConfirmModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { AppDispatch } from '@/stores/store';
 import {
-  setProjects,
   addProject,
   updateProject as updateProjectAction,
   removeProject,
@@ -86,7 +85,7 @@ const AsideSection: React.FC<AsideSectionProps> = ({ onProjectSelected, onSpaceS
     };
 
     autoFetchSpaceImages();
-  }, [activeSpaceId]);
+  }, [activeProjectId, activeSpaceId, user, dispatch]);
 
   const handleSelectProject = useCallback(
     async (projectId: string) => {
