@@ -1,4 +1,5 @@
-import { ImageOperation, BenjaminMooreColor } from '@/types';
+import { ImageOperation, ImageData, BenjaminMooreColor } from '@/types';
+import { Timestamp } from 'firebase/firestore';
 import { GeminiTaskName } from '@/services/gemini/geminiTasks';
 
 interface Texture {
@@ -18,7 +19,7 @@ interface Texture {
  * @returns A properly formatted ImageOperation object
  */
 function formatImageOperationData(
-  imageId: string,
+  image: ImageData,
   taskName: GeminiTaskName,
   customPrompt: string | undefined,
   selectedColor: BenjaminMooreColor | null,
@@ -26,7 +27,8 @@ function formatImageOperationData(
 ): ImageOperation {
   // Base operation structure
   const operation: ImageOperation = {
-    imageId,
+    imageId: image.id,
+    imageDownloadUrl: image.imageDownloadUrl,
     taskName,
     customPrompt: customPrompt || null,
     options: {
@@ -35,12 +37,12 @@ function formatImageOperationData(
       textureId: null,
       textureSnapshot: null,
     },
-    timestamp: new Date(),
+    timestamp: Timestamp.fromDate(new Date()),
   };
 
   // Set color-related fields if recoloring
   if (selectedColor) {
-    operation.options.colorId = selectedColor.code || null;
+    operation.options.colorId = selectedColor.id || null;
     operation.options.colorSnapshot = {
       name: selectedColor.name,
       hex: selectedColor.hex,

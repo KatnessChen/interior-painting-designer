@@ -485,32 +485,28 @@ export async function createImage(
     console.log('Image download URL obtained:', imageDownloadUrl);
 
     // Step 2: Create the image document in Firestore with storage information
-    const now = new Date();
-    const nowISOString = now.toISOString();
+    const now = Timestamp.fromDate(new Date());
+
+    // Build evolution chain by spreading parent chain and appending current operation
+    const buildEvolutionChain = (): ImageOperation[] => {
+      if (!operation) return [];
+      return [...(parentImage?.evolutionChain || []), operation];
+    };
+
     const newImageData: ImageData = {
       ...imageMetadata,
       spaceId,
-      evolutionChain: operation
-        ? [
-            ...(parentImage?.evolutionChain || []),
-            {
-              ...operation,
-              timestamp: new Date(operation.timestamp),
-            },
-          ]
-        : [],
-      parentImage: parentImage || null,
+      evolutionChain: buildEvolutionChain(),
+      parentImageId: parentImage?.id || null,
       imageDownloadUrl,
       storageFilePath,
       isDeleted: false,
       deletedAt: null,
-      createdAt: nowISOString,
-      updatedAt: nowISOString,
+      createdAt: now,
+      updatedAt: now,
     };
 
     console.log({ newImageData });
-
-    const batch = writeBatch(db);
 
     // Create the image document in the space's images subcollection
     const docRef = doc(
@@ -525,35 +521,17 @@ export async function createImage(
       newImageData.id
     );
 
-    // Convert Date objects to Firestore Timestamps for storage
-    const imageData = {
-      id: newImageData.id,
-      name: newImageData.name,
-      mimeType: newImageData.mimeType,
-      imageDownloadUrl: newImageData.imageDownloadUrl,
-      storageFilePath: newImageData.storageFilePath,
-      spaceId: newImageData.spaceId || null,
-      parentImageId: newImageData.parentImageId || null,
-      isDeleted: newImageData.isDeleted,
-      deletedAt: newImageData.deletedAt || null,
-      evolutionChain: operation
-        ? [
-            {
-              ...operation,
-              timestamp: Timestamp.fromDate(new Date(operation.timestamp)),
-            },
-          ]
-        : [],
-      createdAt: Timestamp.fromDate(new Date(newImageData.createdAt)),
-      updatedAt: Timestamp.fromDate(new Date(newImageData.updatedAt)),
-    };
-
-    batch.set(docRef, imageData);
+    const batch = writeBatch(db);
+    const { parentImageId, ...firestoreData } = newImageData;
+    batch.set(docRef, {
+      ...firestoreData,
+      parentImageId,
+    });
 
     await batch.commit();
     console.log('Image metadata document created in Firestore:', newImageData.id);
 
-    // Return the object with standard Date objects for use in the local state
+    // Return the ImageData object with Firestore Timestamps
     return newImageData;
   } catch (error) {
     console.error('Failed to add image:', error);

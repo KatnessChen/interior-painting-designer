@@ -1,3 +1,6 @@
+import { Timestamp } from 'firebase/firestore';
+import { imageCache } from './imageCache';
+
 /**
  * Converts a base64 string to a File object.
  *
@@ -18,8 +21,6 @@ function base64ToFile(base64: string, mimeType: string, filename: string): File 
   // Create and return a File object
   return new File([blob], filename, { type: mimeType });
 }
-
-import { imageCache } from './imageCache';
 
 /**
  * Fetches an image from a Firebase Storage URL and converts it to base64.
@@ -77,4 +78,29 @@ async function imageDownloadUrlToBase64(imageDownloadUrl: string): Promise<strin
   }
 }
 
-export { base64ToFile, imageDownloadUrlToBase64 };
+/**
+ * Formats a timestamp (string, Date, or Firestore Timestamp) to a localized date string.
+ *
+ * @param timestamp The timestamp to format (can be ISO string, Date object, or Firestore Timestamp).
+ * @returns A formatted date string in the format "Dec 22, 2025, 03:45 PM".
+ */
+function formatTimestamp(timestamp: string | Date | Timestamp): string {
+  let date: Date;
+  if (typeof timestamp === 'string') {
+    date = new Date(timestamp);
+  } else if (timestamp instanceof Date) {
+    date = timestamp;
+  } else {
+    // Firestore Timestamp
+    date = timestamp.toDate();
+  }
+  return date.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+export { base64ToFile, imageDownloadUrlToBase64, formatTimestamp };

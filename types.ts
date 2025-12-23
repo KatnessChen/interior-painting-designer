@@ -1,3 +1,4 @@
+import { Timestamp } from 'firebase/firestore';
 import { GeminiTaskName } from './services/gemini/geminiTasks';
 
 export interface BenjaminMooreColor {
@@ -16,7 +17,7 @@ export interface ImageData {
 
   // Evolution chain
   evolutionChain: ImageOperation[];
-  parentImage: ImageData | null;
+  parentImageId: string | null;
 
   // Firebase Storage
   imageDownloadUrl: string; // Firebase Storage download URL
@@ -27,11 +28,11 @@ export interface ImageData {
 
   // Soft delete
   isDeleted: boolean;
-  deletedAt: string | null; // ISO 8601 date string for Redux serialization
+  deletedAt: Timestamp | null;
 
-  // Timestamps (ISO 8601 date strings for Redux serialization)
-  createdAt: string;
-  updatedAt: string;
+  // Timestamps
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
 
 /**
@@ -85,7 +86,7 @@ export interface ImageOperation {
     } | null;
   };
 
-  timestamp: Date;
+  timestamp: Timestamp;
 }
 
 export interface User {
@@ -160,7 +161,7 @@ export interface ImageDocument {
   storageFilePath: string;
   mimeType: string;
   isDeleted: boolean;
-  deletedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
+  deletedAt: Timestamp | null;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 }

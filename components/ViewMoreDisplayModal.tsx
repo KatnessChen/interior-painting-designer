@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Modal, Box } from '@mui/material';
 import { Close as CloseIcon, ArrowDownward as ArrowDownwardIcon } from '@mui/icons-material';
 import { ImageData } from '@/types';
-import { imageCache } from '@/utils/imageCache';
+import { imageCache, formatTimestamp } from '@/utils';
 
 interface ViewMoreDisplayModalProps {
   isOpen: boolean;
@@ -12,24 +12,6 @@ interface ViewMoreDisplayModalProps {
 
 const ViewMoreDisplayModal: React.FC<ViewMoreDisplayModalProps> = ({ isOpen, image, onClose }) => {
   const [imageSources, setImageSources] = useState<Record<string, string>>({});
-
-  const formatTimestamp = (timestamp: string | Date) => {
-    const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
-    return date.toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const formatTaskName = (taskName: string) => {
-    return taskName
-      .split('_')
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(' ');
-  };
 
   const hasEvolutionChain = image.evolutionChain && image.evolutionChain.length > 0;
 
@@ -137,9 +119,6 @@ const ViewMoreDisplayModal: React.FC<ViewMoreDisplayModalProps> = ({ isOpen, ima
                         <h4 className="text-sm font-semibold text-gray-700">
                           Generation {index + 1}:
                         </h4>
-                        <span className="text-sm text-gray-600">
-                          {formatTaskName(operation.taskName)}
-                        </span>
                       </div>
                       {operation.timestamp && (
                         <span className="text-xs text-gray-500">
@@ -240,8 +219,15 @@ const ViewMoreDisplayModal: React.FC<ViewMoreDisplayModalProps> = ({ isOpen, ima
               {/* Section C: Current Image */}
               <div className="space-y-3">
                 <div className="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
-                  <div className="px-4 py-3 bg-white border-b border-gray-200">
-                    <h4 className="text-sm font-semibold text-gray-700">Current Image</h4>
+                  <div className="flex justify-between items-center gap-3 px-4 py-3 bg-white border-b border-gray-200">
+                    <h4 className="text-sm font-semibold text-gray-700">
+                      Generation {image.evolutionChain.length + 1} (Current Image)
+                    </h4>
+                    {image.createdAt && (
+                      <span className="text-xs text-gray-500">
+                        {formatTimestamp(image.createdAt)}
+                      </span>
+                    )}
                   </div>
                   <div className="p-4">
                     <img

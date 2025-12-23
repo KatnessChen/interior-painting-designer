@@ -30,6 +30,8 @@ interface GalleryProps {
   onBulkDownload?: () => void; // Callback for bulk download
   onClearSelection?: () => void; // Callback for clearing all selections
   showDownloadIcon?: boolean; // Show Download buttons in multi-select
+  onGenerateMoreSuccess?: () => void;
+  userId?: string | undefined;
 }
 
 const Gallery: React.FC<GalleryProps> = ({
@@ -52,6 +54,8 @@ const Gallery: React.FC<GalleryProps> = ({
   onBulkDownload,
   onClearSelection,
   showDownloadIcon = false,
+  onGenerateMoreSuccess,
+  userId,
 }) => {
   // State for ImageDisplayModal
   const [showImageDisplayModal, setShowImageDisplayModal] = useState<boolean>(false);
@@ -158,6 +162,8 @@ const Gallery: React.FC<GalleryProps> = ({
               onViewPhotoButtonClick={handleViewPhotoImage}
               onViewMoreButtonClick={onViewMoreButtonClick}
               onRename={onRenameImage}
+              onGenerateMoreSuccess={onGenerateMoreSuccess}
+              userId={userId}
             />
           ))}
         </div>

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { Timestamp } from 'firebase/firestore';
 import ColorSelector from '@/components/ColorSelector';
 import ConfirmImageUpdateModal from '@/components/ConfirmImageUpdateModal';
 import CustomPromptModal from '@/components/CustomPromptModal';
@@ -169,7 +170,7 @@ const LandingPage: React.FC = () => {
       }
 
       const tempImageId = crypto.randomUUID();
-      const now = new Date().toISOString();
+      const now = Timestamp.fromDate(new Date());
 
       // Optimistic update - add image immediately to UI
       const optimisticImage = {
@@ -346,7 +347,7 @@ const LandingPage: React.FC = () => {
       }
 
       const tempImageId = crypto.randomUUID();
-      const now = new Date().toISOString();
+      const now = Timestamp.fromDate(new Date());
 
       // Append descriptor to the image name based on task
       let imageName = processingContext.selectedImage.name;
@@ -358,7 +359,7 @@ const LandingPage: React.FC = () => {
 
       // Create ImageOperation for evolution chain using utility function
       const operation: ImageOperation = formatImageOperationData(
-        processingContext.selectedImage.id,
+        processingContext.selectedImage,
         selectedTaskName,
         processingContext.customPrompt,
         selectedColor,
@@ -447,6 +448,19 @@ const LandingPage: React.FC = () => {
     setShowConfirmationModal(false);
     setGeneratedImage(null);
   }, []);
+
+  const handleGenerateMoreSuccess = useCallback(async () => {
+    if (!user || !activeProjectId || !activeSpaceId) return;
+
+    try {
+      // Fetch updated space images from Firestore
+      const images = await fetchSpaceImages(user.uid, activeProjectId, activeSpaceId);
+      dispatch(setSpaceImages({ projectId: activeProjectId, spaceId: activeSpaceId, images }));
+    } catch (error) {
+      console.error('Failed to refresh images:', error);
+      setErrorMessage('Failed to refresh images. Please reload the page.');
+    }
+  }, [user, activeProjectId, activeSpaceId, dispatch]);
 
   const handleSelectOriginalImage = useCallback((imageId: string) => {
     // Single-select mode: toggle selection, max 1 image
@@ -742,6 +756,8 @@ const LandingPage: React.FC = () => {
                     onBulkDownload={handleBulkDownloadUpdated}
                     onClearSelection={handleClearUpdatedSelection}
                     showDownloadIcon={true}
+                    onGenerateMoreSuccess={handleGenerateMoreSuccess}
+                    userId={user?.uid}
                   />
                 </div>
               </>

@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { Timestamp } from 'firebase/firestore';
 import { Project } from '@/types';
 
 interface ProjectState {
@@ -166,7 +167,7 @@ export const projectStore = createSlice({
           const image = space.images.find((img) => img.id === action.payload.imageId);
           if (image) {
             image.name = action.payload.newName;
-            image.updatedAt = new Date().toISOString();
+            image.updatedAt = Timestamp.fromDate(new Date());
           }
         }
       }

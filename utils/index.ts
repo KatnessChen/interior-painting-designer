@@ -4,7 +4,7 @@ import {
   getFileExtension,
   buildDownloadFilename,
 } from './downloadUtils';
-import { base64ToFile, imageDownloadUrlToBase64 } from './fileUtils';
+import { base64ToFile, imageDownloadUrlToBase64, formatTimestamp } from './fileUtils';
 import { formatImageOperationData } from './imageOperationUtils';
 import { FirestoreDataHandler } from './FirestoreDataHandler';
 import { imageCache, cacheImageBase64s } from './imageCache';
@@ -16,6 +16,7 @@ export {
   buildDownloadFilename,
   base64ToFile,
   imageDownloadUrlToBase64,
+  formatTimestamp,
   formatImageOperationData,
   FirestoreDataHandler,
   imageCache,
