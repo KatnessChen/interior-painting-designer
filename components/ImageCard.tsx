@@ -14,7 +14,6 @@ interface ImageCardProps {
   image: ImageData;
   isSelected?: boolean;
   onSelect?: (imageId: string) => void;
-  showDownloadButton?: boolean;
   onViewPhotoButtonClick?: (imageData: ImageData) => void;
   onViewMoreButtonClick?: (imageData: ImageData) => void;
   onGenerateMoreSuccess?: () => void;
@@ -26,7 +25,6 @@ const ImageCard: React.FC<ImageCardProps> = ({
   image,
   isSelected = false,
   onSelect,
-  showDownloadButton = false,
   onViewPhotoButtonClick,
   onViewMoreButtonClick,
   onGenerateMoreSuccess,
@@ -126,7 +124,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
           </div>
         )}
         {/* Overlay buttons - appear on hover */}
-        {(onViewPhotoButtonClick || showDownloadButton || onGenerateMoreSuccess) && (
+        {(onViewPhotoButtonClick || onGenerateMoreSuccess) && (
           <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-200 flex flex-col items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
             {onViewPhotoButtonClick && (
               <button

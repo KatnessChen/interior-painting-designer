@@ -10,6 +10,7 @@ import ImagesComparingButton from '@/components/ImagesComparingButton';
 import AlertModal from '@/components/AlertModal';
 import EmptyState from '@/components/EmptyState';
 import GenericConfirmModal from '@/components/GenericConfirmModal';
+import Footer from '@/components/layout/Footer';
 import { GEMINI_TASKS, GeminiTaskName } from '@/services/gemini/geminiTasks';
 import { BenjaminMooreColor, ImageData, ImageOperation } from '@/types';
 import {
@@ -565,20 +566,33 @@ const LandingPage: React.FC = () => {
     });
   }, []);
 
-  const handleBulkDownloadUpdated = useCallback(() => {
-    if (selectedUpdatedImageIds.size === 0) return;
+  const handleBulkDownload = useCallback(
+    (imageType: 'original' | 'updated') => {
+      const selectedImageIds =
+        imageType === 'original' ? selectedOriginalImageIds : selectedUpdatedImageIds;
+      const imagesToDownload = imageType === 'original' ? originalImages : updatedImages;
 
-    // Download each selected image
-    updatedImages.forEach((img) => {
-      if (selectedUpdatedImageIds.has(img.id)) {
-        const filename = buildDownloadFilename(img.name, img.mimeType);
-        downloadFile(img.imageDownloadUrl, filename).catch((error) => {
-          console.error('Download failed for image:', img.id, error);
-          setErrorMessage('Failed to download one or more images. Please try again.');
-        });
-      }
-    });
-  }, [selectedUpdatedImageIds, updatedImages, setErrorMessage]);
+      if (selectedImageIds.size === 0) return;
+
+      // Download each selected image
+      imagesToDownload.forEach((img) => {
+        if (selectedImageIds.has(img.id)) {
+          const filename = buildDownloadFilename(img.name, img.mimeType);
+          downloadFile(img.imageDownloadUrl, filename).catch((error) => {
+            console.error('Download failed for image:', img.id, error);
+            setErrorMessage('Failed to download one or more images. Please try again.');
+          });
+        }
+      });
+    },
+    [
+      selectedOriginalImageIds,
+      selectedUpdatedImageIds,
+      originalImages,
+      updatedImages,
+      setErrorMessage,
+    ]
+  );
 
   const handleClearUpdatedSelection = useCallback(() => {
     setSelectedUpdatedImageIds(new Set());
@@ -626,13 +640,13 @@ const LandingPage: React.FC = () => {
 
   return (
     <div className="bg-gray-100">
-      <div className="h-full container mx-auto max-w-6xl">
+      <div className="min-h-screen container mx-auto max-w-6xl p-6">
         {!isAppInitiated ? (
-          <div className="h-full flex items-center justify-center">
+          <div className="min-h-screen flex items-center justify-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>
         ) : initError ? (
-          <div className="h-full flex items-center justify-center">
+          <div className="min-h-screen flex items-center justify-center">
             <div className="text-center max-w-md p-6">
               <div className="text-red-600 text-5xl mb-4">🤯</div>
               <h2 className="text-xl text-gray-600 mb-2">Sorry, something went wrong.</h2>
@@ -664,6 +678,7 @@ const LandingPage: React.FC = () => {
                   emptyMessage="No photos uploaded yet."
                   onUploadImage={handleImageUpload}
                   showUploadCard={true}
+                  onBulkDownload={() => handleBulkDownload('original')}
                   onUploadError={setErrorMessage}
                   enableMultiSelect={true}
                   onBulkDelete={() => handleBulkDelete('original')}
@@ -681,89 +696,88 @@ const LandingPage: React.FC = () => {
                   emptyMessage="Satisfied recolored photos will appear here."
                   enableMultiSelect={true}
                   onBulkDelete={() => handleBulkDelete('updated')}
-                  onBulkDownload={handleBulkDownloadUpdated}
                   onClearSelection={handleClearUpdatedSelection}
-                  showDownloadIcon={true}
+                  onBulkDownload={() => handleBulkDownload('updated')}
                   onGenerateMoreSuccess={handleGenerateMoreSuccess}
                   userId={user?.uid}
                 />
-
-                <div className="flex justify-end">
-                  <ImagesComparingButton
-                    totalSelectedPhotos={
-                      selectedOriginalImageIds.size + selectedUpdatedImageIds.size
-                    }
-                    isEnabled={selectedOriginalImageIds.size + selectedUpdatedImageIds.size >= 2}
-                    onClick={() => setShowCompareModal(true)}
-                  />
-                </div>
               </div>
             )}
           </>
         )}
-
-        {selectedOriginalImage && (
-          <ConfirmImageUpdateModal
-            isOpen={showConfirmationModal}
-            originalImage={selectedOriginalImage}
-            generatedImage={generatedImage}
-            onConfirm={handleImageSatisfied}
-            onCancel={handleCancelRecolor}
-            colorName={selectedColor?.name || 'N/A'}
-          />
-        )}
-
-        {/* Custom Prompt Modal */}
-        <CustomPromptModal
-          isOpen={showCustomPromptModal}
-          onConfirm={handleProcessImage}
-          onCancel={() => setShowCustomPromptModal(false)}
-          task={
-            GEMINI_TASKS[
-              selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name
-                ? 'RECOLOR_WALL'
-                : 'ADD_TEXTURE'
-            ]
-          }
-          colorName={selectedColor?.name}
-          colorHex={selectedColor?.hex}
-          textureName={selectedTexture?.name}
-        />
-
-        {/* Compare Photos Modal */}
-        <ImagesComparingModal
-          isOpen={showCompareModal}
-          images={getSelectedPhotosForComparison()}
-          onClose={() => setShowCompareModal(false)}
-        />
-
-        {/* Generic Delete Confirmation Modal */}
-        {deleteConfirmConfig && (
-          <GenericConfirmModal
-            isOpen={showDeleteConfirmModal}
-            title={deleteConfirmConfig.title}
-            message={deleteConfirmConfig.message}
-            confirmButtonText="Delete"
-            cancelButtonText="Cancel"
-            confirmButtonColor="red"
-            onConfirm={deleteConfirmConfig.onConfirm}
-            onCancel={() => {
-              setShowDeleteConfirmModal(false);
-              setDeleteConfirmConfig(null);
-            }}
-            isLoading={isDeletingImages}
-          />
-        )}
-
-        {/* Alert Modal */}
-        <AlertModal
-          isOpen={showAlert}
-          type={alertType}
-          title={alertTitle}
-          message={alertMessage}
-          onClose={() => setShowAlert(false)}
-        />
       </div>
+      <div className="bg-white px-6 py-2 border-t border-gray-200">
+        <div className="flex justify-end">
+          <ImagesComparingButton
+            totalSelectedPhotos={selectedOriginalImageIds.size + selectedUpdatedImageIds.size}
+            isEnabled={selectedOriginalImageIds.size + selectedUpdatedImageIds.size >= 2}
+            onClick={() => setShowCompareModal(true)}
+          />
+        </div>
+      </div>
+      <Footer />
+
+      {selectedOriginalImage && (
+        <ConfirmImageUpdateModal
+          isOpen={showConfirmationModal}
+          originalImage={selectedOriginalImage}
+          generatedImage={generatedImage}
+          onConfirm={handleImageSatisfied}
+          onCancel={handleCancelRecolor}
+          colorName={selectedColor?.name || 'N/A'}
+        />
+      )}
+
+      {/* Custom Prompt Modal */}
+      <CustomPromptModal
+        isOpen={showCustomPromptModal}
+        onConfirm={handleProcessImage}
+        onCancel={() => setShowCustomPromptModal(false)}
+        task={
+          GEMINI_TASKS[
+            selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name
+              ? 'RECOLOR_WALL'
+              : 'ADD_TEXTURE'
+          ]
+        }
+        colorName={selectedColor?.name}
+        colorHex={selectedColor?.hex}
+        textureName={selectedTexture?.name}
+      />
+
+      {/* Compare Photos Modal */}
+      <ImagesComparingModal
+        isOpen={showCompareModal}
+        images={getSelectedPhotosForComparison()}
+        onClose={() => setShowCompareModal(false)}
+      />
+
+      {/* Generic Delete Confirmation Modal */}
+      {deleteConfirmConfig && (
+        <GenericConfirmModal
+          isOpen={showDeleteConfirmModal}
+          title={deleteConfirmConfig.title}
+          message={deleteConfirmConfig.message}
+          confirmButtonText="Delete"
+          cancelButtonText="Cancel"
+          confirmButtonColor="red"
+          onConfirm={deleteConfirmConfig.onConfirm}
+          onCancel={() => {
+            setShowDeleteConfirmModal(false);
+            setDeleteConfirmConfig(null);
+          }}
+          isLoading={isDeletingImages}
+        />
+      )}
+
+      {/* Alert Modal */}
+      <AlertModal
+        isOpen={showAlert}
+        type={alertType}
+        title={alertTitle}
+        message={alertMessage}
+        onClose={() => setShowAlert(false)}
+      />
     </div>
   );
 };

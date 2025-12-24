@@ -4,6 +4,7 @@ import ImageCard from './ImageCard';
 import UploadCard from './UploadCard';
 import ImageDisplayModal from './ImageDisplayModal';
 import ViewMoreDisplayModal from './ViewMoreDisplayModal';
+import GenerationGuideCard from './GenerationGuideCard';
 import {
   Delete as DeleteIcon,
   Download as DownloadIcon,
@@ -29,7 +30,6 @@ interface GalleryProps {
   onBulkDelete?: () => void; // Callback for bulk delete
   onBulkDownload?: () => void; // Callback for bulk download
   onClearSelection?: () => void; // Callback for clearing all selections
-  showDownloadIcon?: boolean; // Show Download buttons in multi-select
   onGenerateMoreSuccess?: () => void;
   userId?: string | undefined;
 }
@@ -42,7 +42,6 @@ const Gallery: React.FC<GalleryProps> = ({
   onSelectImage,
   onSelectMultiple,
   onRenameImage,
-  showDownloadButtons = false,
   emptyMessage,
   onUploadImage,
   showUploadCard = false,
@@ -51,7 +50,6 @@ const Gallery: React.FC<GalleryProps> = ({
   onBulkDelete,
   onBulkDownload,
   onClearSelection,
-  showDownloadIcon = false,
   onGenerateMoreSuccess,
   userId,
 }) => {
@@ -105,11 +103,11 @@ const Gallery: React.FC<GalleryProps> = ({
   return (
     <div className="p-4 bg-white rounded-lg shadow-md">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg text-gray-800">{title}</h2>
+        <h2 className="text-lg font-semibold text-gray-800">{title}</h2>
         {enableMultiSelect && hasSelection && (
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-600">{selectedImageIds.size} selected</span>
-            {showDownloadIcon && (
+            {onBulkDownload && (
               <>
                 <button
                   onClick={onBulkDownload}
@@ -144,27 +142,32 @@ const Gallery: React.FC<GalleryProps> = ({
       {images.length === 0 && !showUploadCard ? (
         <div className="text-center py-8 text-gray-500 italic">{emptyMessage}</div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {showUploadCard && onUploadImage && onUploadError && (
-            <UploadCard onImageUpload={onUploadImage} onError={onUploadError} />
-          )}
-          {images.map((image) => (
-            <ImageCard
-              key={image.id}
-              image={image}
-              isSelected={
-                enableMultiSelect ? selectedImageIds.has(image.id) : selectedImageId === image.id
-              }
-              onSelect={enableMultiSelect ? onSelectMultiple : onSelectImage}
-              showDownloadButton={showDownloadButtons && !enableMultiSelect}
-              onViewPhotoButtonClick={handleViewPhotoImage}
-              onViewMoreButtonClick={onViewMoreButtonClick}
-              onRename={onRenameImage}
-              onGenerateMoreSuccess={onGenerateMoreSuccess}
-              userId={userId}
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {showUploadCard && onUploadImage && onUploadError && (
+              <UploadCard onImageUpload={onUploadImage} onError={onUploadError} />
+            )}
+            {images.map((image) => (
+              <ImageCard
+                key={image.id}
+                image={image}
+                isSelected={
+                  enableMultiSelect ? selectedImageIds.has(image.id) : selectedImageId === image.id
+                }
+                onSelect={enableMultiSelect ? onSelectMultiple : onSelectImage}
+                onViewPhotoButtonClick={handleViewPhotoImage}
+                onViewMoreButtonClick={onViewMoreButtonClick}
+                onRename={onRenameImage}
+                onGenerateMoreSuccess={onGenerateMoreSuccess}
+                userId={userId}
+              />
+            ))}
+            <GenerationGuideCard
+              showGenerationTip={images.length > 0}
+              showUploadTip={showUploadCard && images.length === 0}
             />
-          ))}
-        </div>
+          </div>
+        </>
       )}
 
       {/* Image Display Modal */}

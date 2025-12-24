@@ -33,7 +33,7 @@ const ProtectedLayout: React.FC = () => {
         {/* Fixed Aside Section */}
         <AsideSection />
         {/* Main Content with left margin to avoid overlap */}
-        <div className="flex-1 overflow-scroll p-6">
+        <div className="flex-1 overflow-scroll">
           <LandingPage />
         </div>
       </div>
