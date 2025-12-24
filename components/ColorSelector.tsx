@@ -122,13 +122,13 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({ title, selectedColor, onS
             </FormControl>
 
             {/* Add Color Button */}
-            <Button
+            {/* <Button
               variant="outlined"
               onClick={() => setIsModalOpen(true)}
               sx={{ alignSelf: 'flex-end' }}
             >
               Add Custom Color
-            </Button>
+            </Button> */}
           </div>
 
           {/* Add Color Modal */}
