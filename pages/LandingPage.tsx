@@ -640,7 +640,7 @@ const LandingPage: React.FC = () => {
 
   return (
     <div className="bg-gray-100">
-      <div className="min-h-screen container mx-auto max-w-6xl p-6">
+      <div className="min-h-screen container p-6">
         {!isAppInitiated ? (
           <div className="min-h-screen flex items-center justify-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -717,7 +717,7 @@ const LandingPage: React.FC = () => {
       </div>
       <Footer />
 
-      {selectedOriginalImage && (
+      {showConfirmationModal && selectedOriginalImage && (
         <ConfirmImageUpdateModal
           isOpen={showConfirmationModal}
           originalImage={selectedOriginalImage}
@@ -729,31 +729,35 @@ const LandingPage: React.FC = () => {
       )}
 
       {/* Custom Prompt Modal */}
-      <CustomPromptModal
-        isOpen={showCustomPromptModal}
-        onConfirm={handleProcessImage}
-        onCancel={() => setShowCustomPromptModal(false)}
-        task={
-          GEMINI_TASKS[
-            selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name
-              ? 'RECOLOR_WALL'
-              : 'ADD_TEXTURE'
-          ]
-        }
-        colorName={selectedColor?.name}
-        colorHex={selectedColor?.hex}
-        textureName={selectedTexture?.name}
-      />
+      {showCustomPromptModal && (
+        <CustomPromptModal
+          isOpen={showCustomPromptModal}
+          onConfirm={handleProcessImage}
+          onCancel={() => setShowCustomPromptModal(false)}
+          task={
+            GEMINI_TASKS[
+              selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name
+                ? 'RECOLOR_WALL'
+                : 'ADD_TEXTURE'
+            ]
+          }
+          colorName={selectedColor?.name}
+          colorHex={selectedColor?.hex}
+          textureName={selectedTexture?.name}
+        />
+      )}
 
       {/* Compare Photos Modal */}
-      <ImagesComparingModal
-        isOpen={showCompareModal}
-        images={getSelectedPhotosForComparison()}
-        onClose={() => setShowCompareModal(false)}
-      />
+      {showCompareModal && (
+        <ImagesComparingModal
+          isOpen={showCompareModal}
+          images={getSelectedPhotosForComparison()}
+          onClose={() => setShowCompareModal(false)}
+        />
+      )}
 
       {/* Generic Delete Confirmation Modal */}
-      {deleteConfirmConfig && (
+      {showDeleteConfirmModal && deleteConfirmConfig && (
         <GenericConfirmModal
           isOpen={showDeleteConfirmModal}
           title={deleteConfirmConfig.title}
@@ -771,13 +775,15 @@ const LandingPage: React.FC = () => {
       )}
 
       {/* Alert Modal */}
-      <AlertModal
-        isOpen={showAlert}
-        type={alertType}
-        title={alertTitle}
-        message={alertMessage}
-        onClose={() => setShowAlert(false)}
-      />
+      {showAlert && (
+        <AlertModal
+          isOpen={showAlert}
+          type={alertType}
+          title={alertTitle}
+          message={alertMessage}
+          onClose={() => setShowAlert(false)}
+        />
+      )}
     </div>
   );
 };

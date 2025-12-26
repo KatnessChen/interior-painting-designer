@@ -223,7 +223,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
       )}
 
       {/* Generate More Modal */}
-      {onGenerateMoreSuccess && (
+      {showGenerateMoreModal && onGenerateMoreSuccess && (
         <GenerateMoreModal
           isOpen={showGenerateMoreModal}
           sourceImage={image}

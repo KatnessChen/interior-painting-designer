@@ -11,12 +11,14 @@ import {
   CircularProgress,
   Alert,
   Typography,
+  Snackbar,
+  Tooltip,
 } from '@mui/material';
 import { ImageData, BenjaminMooreColor, ImageOperation } from '@/types';
 import { imageCache } from '@/utils/imageCache';
 import { GEMINI_TASKS } from '@/services/gemini/geminiTasks';
 import { createImage } from '@/services/firestoreService';
-import { formatImageOperationData } from '@/utils';
+import { formatImageOperationData, formatTaskName } from '@/utils';
 import { selectActiveProjectId, selectActiveSpaceId } from '@/stores/projectStore';
 import { useImageProcessing } from '@/hooks/useImageProcessing';
 import ColorSelector from './ColorSelector';
@@ -50,6 +52,8 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
   );
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [savingImage, setSavingImage] = useState(false);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
 
   // Use image processing hook
   const { processImage, processingImage, errorMessage, setErrorMessage } = useImageProcessing({
@@ -60,25 +64,6 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
       selectedTexture: null,
     },
   });
-
-  // Extract color from sourceImage evolution chain
-  useEffect(() => {
-    if (!sourceImage) {
-      setSelectedColor(null);
-      return;
-    }
-
-    const lastOperation = sourceImage.evolutionChain[sourceImage.evolutionChain.length - 1];
-    const lastColor = lastOperation?.options?.colorSnapshot
-      ? {
-          id: lastOperation.options.colorId || '',
-          name: lastOperation.options.colorSnapshot.name,
-          hex: lastOperation.options.colorSnapshot.hex,
-        }
-      : null;
-
-    setSelectedColor(lastColor);
-  }, [sourceImage]);
 
   // Load cached image
   useEffect(() => {
@@ -146,6 +131,31 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
       setGeneratedImage(result);
       setShowConfirmationModal(true);
     }
+  };
+
+  const applyLastOperation = () => {
+    if (!sourceImage || sourceImage.evolutionChain.length === 0) {
+      return;
+    }
+
+    const lastOperation = sourceImage.evolutionChain[sourceImage.evolutionChain.length - 1];
+
+    // Apply color
+    if (lastOperation.options.colorSnapshot && lastOperation.options.colorId) {
+      setSelectedColor({
+        id: lastOperation.options.colorId,
+        name: lastOperation.options.colorSnapshot.name,
+        hex: lastOperation.options.colorSnapshot.hex,
+      });
+    }
+
+    // Apply custom prompt
+    if (lastOperation.customPrompt) {
+      setCustomPrompt(lastOperation.customPrompt);
+    }
+
+    setSnackbarMessage('Settings applied from last operation');
+    setSnackbarOpen(true);
   };
 
   const handleClose = () => {
@@ -222,6 +232,8 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
     setGeneratedImage(null);
   };
 
+  const lastOperation = sourceImage?.evolutionChain[sourceImage.evolutionChain.length - 1];
+
   if (!sourceImage) return null;
 
   return (
@@ -281,10 +293,35 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
 
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
           {/* Left Column: Source Image */}
-          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <Typography variant="h6" gutterBottom fontWeight="medium">
-              Source Image
+          <Box sx={{ width: 0, flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <Typography variant="h6" fontWeight="medium" sx={{ mb: 1 }}>
+              Current Image
             </Typography>
+
+            {/* Image Info */}
+            <Box sx={{ mb: 2 }}>
+              <Tooltip title={sourceImage.name} arrow>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    mb: 0.5,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  <strong>Filename:</strong> {sourceImage.name}
+                </Typography>
+              </Tooltip>
+              <Typography variant="body2">
+                <strong>Created:</strong>{' '}
+                {sourceImage.createdAt instanceof Object && 'toDate' in sourceImage.createdAt
+                  ? sourceImage.createdAt.toDate().toLocaleString()
+                  : new Date(sourceImage.createdAt).toLocaleString()}
+              </Typography>
+            </Box>
+
+            {/* Source Image Preview */}
             <Box
               sx={{
                 flex: 1,
@@ -311,11 +348,41 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
           </Box>
 
           {/* Right Column: Color Selector & Custom Prompt */}
-          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {/* Last Operation Info */}
+            {lastOperation && (
+              <div>
+                <Typography variant="h6" fontWeight="medium" sx={{ mb: 1 }}>
+                  Last Operation
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="body2" sx={{ mb: 0.5 }}>
+                      <strong>Task:</strong> {formatTaskName(lastOperation.taskName)}
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 0.5 }}>
+                      <strong>Color:</strong> {lastOperation.options.colorSnapshot?.name || 'N/A'}
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong>Custom Prompt:</strong> {lastOperation.customPrompt || 'N/A'}
+                    </Typography>
+                  </Box>
+                  <Button
+                    onClick={applyLastOperation}
+                    variant="outlined"
+                    color="primary"
+                    size="small"
+                  >
+                    Apply
+                  </Button>
+                </Box>
+              </div>
+            )}
+
             {/* Color Selector */}
             <Box>
               <ColorSelector
-                title="Select Wall Color"
+                title="Select New Wall Color"
                 selectedColor={selectedColor}
                 onSelectColor={setSelectedColor}
               />
@@ -323,17 +390,20 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
 
             {/* Custom Prompt */}
             <Box>
+              <Typography variant="h6" gutterBottom fontWeight="medium">
+                Custom Prompt (Optional)
+              </Typography>
               <TextField
                 fullWidth
                 multiline
                 rows={6}
-                label="Custom Prompt (Optional)"
                 placeholder="Enter any specific instructions for the AI... (e.g., 'Make the walls lighter', 'Add more warmth to the color')"
                 value={customPrompt}
-                onChange={(e) => setCustomPrompt(e.target.value)}
+                onChange={(e) => setCustomPrompt(e.target.value.slice(0, 200))}
                 disabled={processingImage}
                 variant="outlined"
-                helperText="Leave blank to use default AI generation settings"
+                helperText={`${customPrompt.length}/200 characters`}
+                inputProps={{ maxLength: 200 }}
               />
             </Box>
           </Box>
@@ -371,6 +441,14 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
           colorName={selectedColor?.name || 'N/A'}
         />
       )}
+
+      {/* Snackbar for Apply Success */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={3000}
+        onClose={() => setSnackbarOpen(false)}
+        message={snackbarMessage}
+      />
     </Dialog>
   );
 };

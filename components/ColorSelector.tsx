@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BenjaminMooreColor } from '@/types';
 import { BENJAMIN_MOORE_COLORS } from '@/constants';
 import { Check as CheckIcon } from '@mui/icons-material';
-import { Select, MenuItem, FormControl, InputLabel, Box, Button } from '@mui/material';
+import { Select, MenuItem, FormControl, InputLabel, Box, Typography } from '@mui/material';
 import AddColorModal from './AddColorModal';
 
 interface ColorSelectorProps {
@@ -75,8 +75,10 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({ title, selectedColor, onS
   };
 
   return (
-    <div className="p-4 bg-white rounded-lg shadow-md mb-6">
-      <h2 className="text-lg mb-4 text-gray-800">{title}</h2>
+    <div>
+      <Typography variant="h6" gutterBottom fontWeight="medium">
+        {title}
+      </Typography>
 
       {isLoading ? (
         <div className="flex items-center justify-center py-8">
