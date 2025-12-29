@@ -1,4 +1,4 @@
-import { ImageOperation, ImageData, BenjaminMooreColor } from '@/types';
+import { ImageOperation, ImageData, Color } from '@/types';
 import { Timestamp } from 'firebase/firestore';
 import { GeminiTaskName } from '@/services/gemini/geminiTasks';
 
@@ -22,7 +22,7 @@ function formatImageOperationData(
   image: ImageData,
   taskName: GeminiTaskName,
   customPrompt: string | undefined,
-  selectedColor: BenjaminMooreColor | null,
+  selectedColor: Color | null,
   selectedTexture: Texture | null
 ): ImageOperation {
   // Base operation structure

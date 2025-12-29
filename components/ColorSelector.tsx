@@ -1,19 +1,32 @@
-import React, { useState, useEffect } from 'react';
-import { BenjaminMooreColor } from '@/types';
+import React, { useState } from 'react';
+import { useSelector } from 'react-redux';
+import { Color } from '@/types';
 import { BENJAMIN_MOORE_COLORS } from '@/constants';
 import { Check as CheckIcon } from '@mui/icons-material';
-import { Select, MenuItem, FormControl, InputLabel, Box, Typography } from '@mui/material';
+import {
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Box,
+  Typography,
+  Button,
+  Alert,
+  Snackbar,
+} from '@mui/material';
 import AddColorModal from './AddColorModal';
+import { useCustomColors } from '@/hooks/useCustomColors';
+import { RootState } from '@/stores/store';
 
 interface ColorSelectorProps {
-  title: string;
-  selectedColor: BenjaminMooreColor | null;
-  onSelectColor: (color: BenjaminMooreColor) => void;
+  title?: string;
+  selectedColor: Color | null;
+  onSelectColor: (color: Color) => void;
 }
 
 // Reusable Color Option Display Component
 const ColorOptionDisplay: React.FC<{
-  color: BenjaminMooreColor;
+  color: Color;
   showCheckmark?: boolean;
 }> = ({ color, showCheckmark = false }) => {
   return (
@@ -47,31 +60,50 @@ const ColorOptionDisplay: React.FC<{
   );
 };
 
-const ColorSelector: React.FC<ColorSelectorProps> = ({ title, selectedColor, onSelectColor }) => {
-  const [availableColors, setAvailableColors] =
-    useState<BenjaminMooreColor[]>(BENJAMIN_MOORE_COLORS);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+const ColorSelector: React.FC<ColorSelectorProps> = ({
+  title = 'Select New Wall Color',
+  selectedColor,
+  onSelectColor,
+}) => {
+  const activeProjectId = useSelector((state: RootState) => state.project.activeProjectId);
+  const { customColors, isLoadingColors, addColor } = useCustomColors(activeProjectId);
+  const [isAddColorModalOpen, setIsAddColorModalOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error';
+  }>({ open: false, message: '', severity: 'success' });
 
-  // Load custom colors on component mount
-  useEffect(() => {
-    const loadCustomColors = async () => {
-      try {
-        const allColors = [...BENJAMIN_MOORE_COLORS];
-        setAvailableColors(allColors);
-      } catch (error) {
-        console.error('Failed to load custom colors:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const availableColors = [...customColors, ...BENJAMIN_MOORE_COLORS];
 
-    loadCustomColors();
-  }, []);
+  const handleAddColor = async (color: Color) => {
+    try {
+      setError(null);
+      const newColor = await addColor({
+        name: color.name,
+        hex: color.hex,
+        notes: color.notes,
+      });
 
-  const handleAddColor = (color: BenjaminMooreColor) => {
-    // TODO: Persist custom colors to localStorage or Firestore to prevent loss on page refresh
-    setAvailableColors((prevColors) => [...prevColors, color]);
+      onSelectColor(newColor);
+      setIsAddColorModalOpen(false);
+      setToast({
+        open: true,
+        message: `Color "${newColor.name}" added successfully!`,
+        severity: 'success',
+      });
+    } catch (error) {
+      console.error('Failed to save custom color:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to save custom color. Please try again.';
+      setError(errorMessage);
+      setToast({
+        open: true,
+        message: errorMessage,
+        severity: 'error',
+      });
+    }
   };
 
   return (
@@ -80,7 +112,13 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({ title, selectedColor, onS
         {title}
       </Typography>
 
-      {isLoading ? (
+      {error && (
+        <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+
+      {isLoadingColors ? (
         <div className="flex items-center justify-center py-8">
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
           <span className="ml-2 text-gray-600">Loading colors...</span>
@@ -124,24 +162,43 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({ title, selectedColor, onS
             </FormControl>
 
             {/* Add Color Button */}
-            {/* <Button
+            <Button
               variant="outlined"
-              onClick={() => setIsModalOpen(true)}
+              onClick={() => setIsAddColorModalOpen(true)}
               sx={{ alignSelf: 'flex-end' }}
             >
               Add Custom Color
-            </Button> */}
+            </Button>
           </div>
 
           {/* Add Color Modal */}
-          <AddColorModal
-            open={isModalOpen}
-            onClose={() => setIsModalOpen(false)}
-            onAdd={handleAddColor}
-            existingColors={availableColors}
-          />
+          {isAddColorModalOpen && (
+            <AddColorModal
+              open={isAddColorModalOpen}
+              onClose={() => setIsAddColorModalOpen(false)}
+              onAdd={handleAddColor}
+              existingColors={availableColors}
+            />
+          )}
         </>
       )}
+
+      {/* Toast Notification */}
+      <Snackbar
+        open={toast.open}
+        autoHideDuration={4000}
+        onClose={() => setToast({ ...toast, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setToast({ ...toast, open: false })}
+          severity={toast.severity}
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {toast.message}
+        </Alert>
+      </Snackbar>
     </div>
   );
 };

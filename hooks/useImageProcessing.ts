@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { ImageData, BenjaminMooreColor } from '@/types';
+import { ImageData, Color } from '@/types';
 import { recolorWalls } from '@/services/gemini/geminiService';
 import { GEMINI_TASKS, GeminiTaskName } from '@/services/gemini/geminiTasks';
 import { incrementTaskUsage } from '@/services/userService';
@@ -13,7 +13,7 @@ interface UseImageProcessingProps {
   userId: string | undefined;
   selectedTaskName: GeminiTaskName;
   options: {
-    selectedColor?: BenjaminMooreColor | null;
+    selectedColor?: Color | null;
     selectedTexture?: Texture | null;
   };
 }

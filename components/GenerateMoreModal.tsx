@@ -14,7 +14,7 @@ import {
   Snackbar,
   Tooltip,
 } from '@mui/material';
-import { ImageData, BenjaminMooreColor, ImageOperation } from '@/types';
+import { ImageData, Color, ImageOperation } from '@/types';
 import { imageCache } from '@/utils/imageCache';
 import { GEMINI_TASKS } from '@/services/gemini/geminiTasks';
 import { createImage } from '@/services/firestoreService';
@@ -45,7 +45,7 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
 
   const [cachedImageSrc, setCachedImageSrc] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [selectedColor, setSelectedColor] = useState<BenjaminMooreColor | null>(null);
+  const [selectedColor, setSelectedColor] = useState<Color | null>(null);
   const [customPrompt, setCustomPrompt] = useState<string>('');
   const [generatedImage, setGeneratedImage] = useState<{ base64: string; mimeType: string } | null>(
     null
@@ -293,7 +293,7 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
 
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
           {/* Left Column: Source Image */}
-          <Box sx={{ width: 0, flex: 1, display: 'flex', flexDirection: 'column' }}>
+          <Box sx={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column' }}>
             <Typography variant="h6" fontWeight="medium" sx={{ mb: 1 }}>
               Current Image
             </Typography>
@@ -381,11 +381,7 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
 
             {/* Color Selector */}
             <Box>
-              <ColorSelector
-                title="Select New Wall Color"
-                selectedColor={selectedColor}
-                onSelectColor={setSelectedColor}
-              />
+              <ColorSelector selectedColor={selectedColor} onSelectColor={setSelectedColor} />
             </Box>
 
             {/* Custom Prompt */}

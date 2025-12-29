@@ -1,6 +1,6 @@
-import { BenjaminMooreColor } from './types';
+import { Color } from './types';
 
-export const BENJAMIN_MOORE_COLORS: BenjaminMooreColor[] = [
+export const BENJAMIN_MOORE_COLORS: Color[] = [
   // Red
   { id: 'AC-18', name: 'Fire Red', hex: '#DA3C26' },
   { id: '2818-10', name: 'Barn Red', hex: '#6E1E1E' },

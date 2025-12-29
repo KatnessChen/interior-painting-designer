@@ -12,7 +12,7 @@ import EmptyState from '@/components/EmptyState';
 import GenericConfirmModal from '@/components/GenericConfirmModal';
 import Footer from '@/components/layout/Footer';
 import { GEMINI_TASKS, GeminiTaskName } from '@/services/gemini/geminiTasks';
-import { BenjaminMooreColor, ImageData, ImageOperation } from '@/types';
+import { Color, ImageData, ImageOperation } from '@/types';
 import {
   createImage,
   deleteImages,
@@ -65,7 +65,7 @@ const LandingPage: React.FC = () => {
   );
 
   // Recolor task state
-  const [selectedColor, setSelectedColor] = useState<BenjaminMooreColor | null>(null);
+  const [selectedColor, setSelectedColor] = useState<Color | null>(null);
 
   // Add texture task state
   const [selectedTexture, setSelectedTexture] = useState<Texture | null>(null);

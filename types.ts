@@ -1,13 +1,6 @@
 import { Timestamp } from 'firebase/firestore';
 import { GeminiTaskName } from './services/gemini/geminiTasks';
 
-export interface BenjaminMooreColor {
-  id: string;
-  name: string;
-  hex: string;
-  notes?: string;
-}
-
 export interface ImageData {
   id: string;
   name: string;
@@ -164,4 +157,21 @@ export interface ImageDocument {
   deletedAt: Timestamp | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+}
+
+// ============================================================================
+// Custom Assets Types
+// ============================================================================
+
+/**
+ * Custom Color document structure in Firestore.
+ * Path: users/{userId}/projects/{projectId}/custom_assets/colors/{colorId}
+ */
+export interface Color {
+  id: string;
+  name: string;
+  hex: string;
+  notes?: string;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
 }

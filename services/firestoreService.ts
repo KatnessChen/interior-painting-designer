@@ -16,7 +16,15 @@ import {
 } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { app } from '@/config/firebaseConfig';
-import { ImageData, ImageOperation, Project, Space, ProjectDocument, SpaceDocument } from '@/types';
+import {
+  ImageData,
+  ImageOperation,
+  Project,
+  Space,
+  ProjectDocument,
+  SpaceDocument,
+  Color,
+} from '@/types';
 import { base64ToFile, FirestoreDataHandler, cacheImageBase64s } from '@/utils';
 
 // Initialize Firestore and Storage with the shared Firebase app instance
@@ -640,7 +648,6 @@ export async function deleteImages(
         const imageDoc = await getDoc(docRef);
 
         if (imageDoc.exists()) {
-          const imageData = imageDoc.data();
           const now = new Date();
 
           // Soft delete in Firestore - mark as deleted
@@ -682,5 +689,166 @@ export async function deleteImages(
       throw new Error(`Failed to delete images: ${error.message}`);
     }
     throw new Error('Failed to delete images from Firebase.');
+  }
+}
+
+// ============================================================================
+// Custom Colors Management
+// ============================================================================
+
+/**
+ * Adds a custom color to a project.
+ *
+ * @param userId The ID of the user.
+ * @param projectId The ID of the project.
+ * @param colorData The color data (name, hex, notes).
+ * @returns The newly created Color object.
+ */
+export async function addColor(
+  userId: string,
+  projectId: string,
+  colorData: { name: string; hex: string; notes?: string }
+): Promise<Color> {
+  if (!userId || !projectId) {
+    throw new Error('User ID and Project ID are required');
+  }
+
+  try {
+    const colorId = crypto.randomUUID();
+    const now = Timestamp.now();
+
+    const colorDoc: Color = {
+      id: colorId,
+      name: colorData.name.trim(),
+      hex: colorData.hex.toUpperCase(),
+      notes: colorData.notes?.trim() || '',
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const docRef = doc(db, 'users', userId, 'projects', projectId, 'custom_colors', colorId);
+
+    await setDoc(docRef, colorDoc);
+
+    console.log('Custom color added to Firestore:', colorId);
+
+    return {
+      id: colorDoc.id,
+      name: colorDoc.name,
+      hex: colorDoc.hex,
+      notes: colorDoc.notes,
+    };
+  } catch (error) {
+    console.error('Failed to add color:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to add color: ${error.message}`);
+    }
+    throw new Error('Failed to add color to Firestore.');
+  }
+}
+
+/**
+ * Fetches all custom colors for a project.
+ *
+ * @param userId The ID of the user.
+ * @param projectId The ID of the project.
+ * @returns An array of Color objects.
+ */
+export async function fetchColors(userId: string, projectId: string): Promise<Color[]> {
+  if (!userId || !projectId) {
+    throw new Error('User ID and Project ID are required');
+  }
+
+  try {
+    const colorsRef = collection(db, 'users', userId, 'projects', projectId, 'custom_colors');
+
+    const colorsQuery = query(colorsRef, orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(colorsQuery);
+
+    return snapshot.docs.map((doc) => {
+      const data = doc.data() as Color;
+      return {
+        id: data.id,
+        name: data.name,
+        hex: data.hex,
+        notes: data.notes,
+      };
+    });
+  } catch (error) {
+    console.error('Failed to fetch colors:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to fetch colors: ${error.message}`);
+    }
+    throw new Error('Failed to fetch colors from Firestore.');
+  }
+}
+
+/**
+ * Updates a custom color.
+ *
+ * @param userId The ID of the user.
+ * @param projectId The ID of the project.
+ * @param colorId The ID of the color.
+ * @param updates The fields to update.
+ */
+export async function updateColor(
+  userId: string,
+  projectId: string,
+  colorId: string,
+  updates: { name?: string; hex?: string; notes?: string }
+): Promise<void> {
+  if (!userId || !projectId || !colorId) {
+    throw new Error('User ID, Project ID, and Color ID are required');
+  }
+
+  try {
+    const docRef = doc(db, 'users', userId, 'projects', projectId, 'custom_colors', colorId);
+
+    const updateData: any = {
+      updatedAt: Timestamp.now(),
+    };
+
+    if (updates.name !== undefined) updateData.name = updates.name.trim();
+    if (updates.hex !== undefined) updateData.hex = updates.hex.toUpperCase();
+    if (updates.notes !== undefined) updateData.notes = updates.notes.trim();
+
+    await updateDoc(docRef, updateData);
+    console.log('Custom color updated:', colorId);
+  } catch (error) {
+    console.error('Failed to update color:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to update color: ${error.message}`);
+    }
+    throw new Error('Failed to update color in Firestore.');
+  }
+}
+
+/**
+ * Deletes a custom color.
+ *
+ * @param userId The ID of the user.
+ * @param projectId The ID of the project.
+ * @param colorId The ID of the color.
+ */
+export async function deleteColor(
+  userId: string,
+  projectId: string,
+  colorId: string
+): Promise<void> {
+  if (!userId || !projectId || !colorId) {
+    throw new Error('User ID, Project ID, and Color ID are required');
+  }
+
+  try {
+    const docRef = doc(db, 'users', userId, 'projects', projectId, 'custom_colors', colorId);
+
+    await deleteDoc(docRef);
+    console.log('Custom color deleted:', colorId);
+  } catch (error) {
+    console.error('Failed to delete color:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to delete color: ${error.message}`);
+    }
+    throw new Error('Failed to delete color from Firestore.');
   }
 }

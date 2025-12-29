@@ -8,13 +8,13 @@ import {
   Button,
   Box,
 } from '@mui/material';
-import { BenjaminMooreColor } from '@/types';
+import { Color } from '@/types';
 
 interface AddColorModalProps {
   open: boolean;
   onClose: () => void;
-  onAdd: (color: BenjaminMooreColor) => void;
-  existingColors: BenjaminMooreColor[];
+  onAdd: (color: Color) => void;
+  existingColors: Color[];
 }
 
 // Convert RGB/RGBA format to HEX format
@@ -58,6 +58,8 @@ const normalizeColorInput = (input: string): string | null => {
 };
 
 const DEFAULT_COLOR_PICKER_VALUE = '#FFFFF0';
+const MAX_COLOR_NAME_LENGTH = 15;
+const MAX_NOTES_LENGTH = 50;
 
 const AddColorModal: React.FC<AddColorModalProps> = ({ open, onClose, onAdd, existingColors }) => {
   const [colorName, setColorName] = useState('');
@@ -85,12 +87,27 @@ const AddColorModal: React.FC<AddColorModalProps> = ({ open, onClose, onAdd, exi
     setErrors({});
   };
 
+  // Handle color name input; rely on validateForm for length enforcement
+  const handleColorNameChange = (value: string) => {
+    setColorName(value);
+  };
+
+  // Handle notes input; rely on validateForm for length enforcement
+  const handleNotesChange = (value: string) => {
+    setNotes(value);
+  };
+
+  // ...
+  // (rest of the component remains unchanged)
+  // ...
   const validateForm = (): boolean => {
     const newErrors: { name?: string; hex?: string; notes?: string } = {};
 
-    // Validate Color Name (required)
+    // Validate Color Name (required, max 15 characters)
     if (!colorName.trim()) {
       newErrors.name = 'Color name is required';
+    } else if (colorName.trim().length > MAX_COLOR_NAME_LENGTH) {
+      newErrors.name = `Color name must be ${MAX_COLOR_NAME_LENGTH} characters or less`;
     } else if (
       existingColors.some((c) => c.name.toLowerCase() === colorName.trim().toLowerCase())
     ) {
@@ -108,9 +125,9 @@ const AddColorModal: React.FC<AddColorModalProps> = ({ open, onClose, onAdd, exi
       }
     }
 
-    // Validate Notes (optional, max 100 characters)
-    if (notes.length > 100) {
-      newErrors.notes = 'Notes must be 100 characters or less';
+    // Validate Notes (optional, max 50 characters)
+    if (notes.length > MAX_NOTES_LENGTH) {
+      newErrors.notes = `Notes must be ${MAX_NOTES_LENGTH} characters or less`;
     }
 
     setErrors(newErrors);
@@ -125,7 +142,7 @@ const AddColorModal: React.FC<AddColorModalProps> = ({ open, onClose, onAdd, exi
     const normalizedHex = normalizeColorInput(colorHex.trim());
     if (!normalizedHex) return;
 
-    const newColor: BenjaminMooreColor = {
+    const newColor: Color = {
       id: crypto.randomUUID(),
       name: colorName.trim(),
       hex: normalizedHex,
@@ -150,9 +167,9 @@ const AddColorModal: React.FC<AddColorModalProps> = ({ open, onClose, onAdd, exi
           <TextField
             label="Color Name"
             value={colorName}
-            onChange={(e) => setColorName(e.target.value)}
+            onChange={(e) => handleColorNameChange(e.target.value)}
             error={!!errors.name}
-            helperText={errors.name}
+            helperText={errors.name || `${colorName.length}/${MAX_COLOR_NAME_LENGTH} characters`}
             required
             fullWidth
             placeholder="e.g., Sky Blue"
@@ -191,14 +208,13 @@ const AddColorModal: React.FC<AddColorModalProps> = ({ open, onClose, onAdd, exi
           <TextField
             label="Notes"
             value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            onChange={(e) => handleNotesChange(e.target.value)}
             error={!!errors.notes}
-            helperText={errors.notes || `${notes.length}/100 characters`}
+            helperText={errors.notes || `${notes.length}/${MAX_NOTES_LENGTH} characters`}
             fullWidth
             multiline
             rows={2}
-            placeholder="Optional notes (max 100 characters)"
-            inputProps={{ maxLength: 100 }}
+            placeholder="Optional notes (max 50 characters)"
           />
         </Box>
       </DialogContent>

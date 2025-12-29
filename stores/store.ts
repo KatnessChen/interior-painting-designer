@@ -2,11 +2,13 @@ import { configureStore } from '@reduxjs/toolkit';
 import { Timestamp } from 'firebase/firestore';
 import projectReducer from './projectStore';
 import imageReducer from './imageStore';
+import customAssetsReducer from './customAssetsStore';
 
 export const store = configureStore({
   reducer: {
     project: projectReducer,
     image: imageReducer,
+    customAssets: customAssetsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
