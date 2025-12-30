@@ -680,7 +680,6 @@ const LandingPage: React.FC = () => {
                   showUploadCard={true}
                   onBulkDownload={() => handleBulkDownload('original')}
                   onUploadError={setErrorMessage}
-                  enableMultiSelect={true}
                   onBulkDelete={() => handleBulkDelete('original')}
                   onClearSelection={handleClearOriginalSelection}
                   onGenerateMoreSuccess={handleGenerateMoreSuccess}
@@ -694,7 +693,6 @@ const LandingPage: React.FC = () => {
                   onSelectMultiple={handleSelectUpdatedImage}
                   onRenameImage={handleRenameImage}
                   emptyMessage="Satisfied recolored photos will appear here."
-                  enableMultiSelect={true}
                   onBulkDelete={() => handleBulkDelete('updated')}
                   onClearSelection={handleClearUpdatedSelection}
                   onBulkDownload={() => handleBulkDownload('updated')}

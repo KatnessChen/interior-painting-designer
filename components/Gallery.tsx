@@ -5,6 +5,7 @@ import UploadCard from './UploadCard';
 import ImageDisplayModal from './ImageDisplayModal';
 import ViewMoreDisplayModal from './ViewMoreDisplayModal';
 import GenerationGuideCard from './GenerationGuideCard';
+import { Button } from '@mui/material';
 import {
   Delete as DeleteIcon,
   Download as DownloadIcon,
@@ -26,7 +27,6 @@ interface GalleryProps {
   onUploadImage?: (file: File) => void; // Prop for uploading files
   showUploadCard?: boolean; // Show upload card as first item
   onUploadError?: (message: string) => void; // Prop for upload errors
-  enableMultiSelect?: boolean; // Enable multi-select mode
   onBulkDelete?: () => void; // Callback for bulk delete
   onBulkDownload?: () => void; // Callback for bulk download
   onClearSelection?: () => void; // Callback for clearing all selections
@@ -37,16 +37,13 @@ interface GalleryProps {
 const Gallery: React.FC<GalleryProps> = ({
   title,
   images,
-  selectedImageId,
   selectedImageIds = new Set(),
-  onSelectImage,
   onSelectMultiple,
   onRenameImage,
   emptyMessage,
   onUploadImage,
   showUploadCard = false,
   onUploadError,
-  enableMultiSelect = false,
   onBulkDelete,
   onBulkDownload,
   onClearSelection,
@@ -104,39 +101,47 @@ const Gallery: React.FC<GalleryProps> = ({
     <div className="p-4 bg-white rounded-lg shadow-md">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-gray-800">{title}</h2>
-        {enableMultiSelect && hasSelection && (
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
+          {hasSelection && (
             <span className="text-sm text-gray-600">{selectedImageIds.size} selected</span>
-            {onBulkDownload && (
-              <>
-                <button
-                  onClick={onBulkDownload}
-                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
-                  title="Download selected photos"
-                >
-                  <DownloadIcon sx={{ fontSize: 18, marginRight: 0.5 }} />
-                  Download
-                </button>
-              </>
-            )}
-            <button
+          )}
+          {onBulkDownload && (
+            <Button
+              onClick={onBulkDownload}
+              disabled={!hasSelection}
+              variant="outlined"
+              color="secondary"
+              startIcon={<DownloadIcon />}
+              size="small"
+            >
+              Download
+            </Button>
+          )}
+          {onBulkDelete && (
+            <Button
               onClick={onBulkDelete}
-              className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
-              title="Delete selected photos"
+              disabled={!hasSelection}
+              variant="outlined"
+              color="error"
+              startIcon={<DeleteIcon />}
+              size="small"
             >
-              <DeleteIcon sx={{ fontSize: 18, marginRight: 0.5 }} />
               Delete
-            </button>
-            <button
+            </Button>
+          )}
+          {onClearSelection && (
+            <Button
               onClick={onClearSelection}
-              className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md text-white bg-gray-500 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
-              title="Clear all selections"
+              disabled={!hasSelection}
+              variant="outlined"
+              color="inherit"
+              startIcon={<ClearIcon />}
+              size="small"
             >
-              <ClearIcon sx={{ fontSize: 18, marginRight: 0.5 }} />
               Clear
-            </button>
-          </div>
-        )}
+            </Button>
+          )}
+        </div>
       </div>
 
       {images.length === 0 && !showUploadCard ? (
@@ -151,10 +156,8 @@ const Gallery: React.FC<GalleryProps> = ({
               <ImageCard
                 key={image.id}
                 image={image}
-                isSelected={
-                  enableMultiSelect ? selectedImageIds.has(image.id) : selectedImageId === image.id
-                }
-                onSelect={enableMultiSelect ? onSelectMultiple : onSelectImage}
+                isSelected={selectedImageIds.has(image.id)}
+                onSelect={onSelectMultiple}
                 onViewPhotoButtonClick={handleViewPhotoImage}
                 onViewMoreButtonClick={onViewMoreButtonClick}
                 onRename={onRenameImage}

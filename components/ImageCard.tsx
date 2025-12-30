@@ -107,7 +107,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
     <div
       className={`relative group rounded-lg overflow-hidden shadow-md bg-white transition-all duration-200
                   ${onSelect ? 'cursor-pointer hover:shadow-lg' : ''}
-                  ${isSelected ? 'ring-4 ring-blue-500 ring-offset-2' : ''}`}
+                  ${isSelected ? 'ring-4 ring-indigo-500 ring-offset-2' : ''}`}
       onClick={onSelect ? handleCardClick : undefined} // Only add onClick if selectable
     >
       {/* Image container with overlay buttons */}
@@ -218,7 +218,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
       </div>
       {isSelected && (
         <div className="absolute top-2 right-2">
-          <CheckmarkBadgeIcon sx={{ fontSize: 24, color: '#3b82f6' }} />
+          <CheckmarkBadgeIcon sx={{ fontSize: 24, color: '#6366f1' }} />
         </div>
       )}
 
