@@ -16,21 +16,22 @@ interface GalleryProps {
   title: string;
   images: ImageData[];
   selectedImageId?: string | null;
-  selectedImageIds?: Set<string>; // For multi-select mode
+  selectedImageIds?: Set<string>;
   onSelectImage?: (imageId: string) => void;
-  onSelectMultiple?: (imageId: string) => void; // For multi-select
+  onSelectMultiple?: (imageId: string) => void;
   onRenameImage?: (imageId: string, newName: string) => void;
   showDownloadButtons?: boolean;
   onRemoveImage?: (imageId: string) => void;
   showRemoveButtons?: boolean;
   emptyMessage: string;
-  onUploadImage?: (file: File) => void; // Prop for uploading files
-  showUploadCard?: boolean; // Show upload card as first item
-  onUploadError?: (message: string) => void; // Prop for upload errors
-  onBulkDelete?: () => void; // Callback for bulk delete
-  onBulkDownload?: () => void; // Callback for bulk download
-  onClearSelection?: () => void; // Callback for clearing all selections
+  onUploadImage?: (file: File) => void;
+  showUploadCard?: boolean;
+  onUploadError?: (message: string) => void;
+  onBulkDelete?: () => void;
+  onBulkDownload?: () => void;
+  onClearSelection?: () => void;
   onGenerateMoreSuccess?: () => void;
+  onGenerateMoreClick?: (image: ImageData) => void;
   userId?: string | undefined;
 }
 
@@ -48,6 +49,7 @@ const Gallery: React.FC<GalleryProps> = ({
   onBulkDownload,
   onClearSelection,
   onGenerateMoreSuccess,
+  onGenerateMoreClick,
   userId,
 }) => {
   // State for ImageDisplayModal
@@ -105,41 +107,45 @@ const Gallery: React.FC<GalleryProps> = ({
           {hasSelection && (
             <span className="text-sm text-gray-600">{selectedImageIds.size} selected</span>
           )}
-          {onBulkDownload && (
-            <Button
-              onClick={onBulkDownload}
-              disabled={!hasSelection}
-              variant="outlined"
-              color="secondary"
-              startIcon={<DownloadIcon />}
-              size="small"
-            >
-              Download
-            </Button>
-          )}
-          {onBulkDelete && (
-            <Button
-              onClick={onBulkDelete}
-              disabled={!hasSelection}
-              variant="outlined"
-              color="error"
-              startIcon={<DeleteIcon />}
-              size="small"
-            >
-              Delete
-            </Button>
-          )}
-          {onClearSelection && (
-            <Button
-              onClick={onClearSelection}
-              disabled={!hasSelection}
-              variant="outlined"
-              color="inherit"
-              startIcon={<ClearIcon />}
-              size="small"
-            >
-              Clear
-            </Button>
+          {images.length > 0 && (
+            <>
+              {onBulkDownload && (
+                <Button
+                  onClick={onBulkDownload}
+                  disabled={!hasSelection}
+                  variant="outlined"
+                  color="secondary"
+                  startIcon={<DownloadIcon />}
+                  size="small"
+                >
+                  Download
+                </Button>
+              )}
+              {onBulkDelete && (
+                <Button
+                  onClick={onBulkDelete}
+                  disabled={!hasSelection}
+                  variant="outlined"
+                  color="error"
+                  startIcon={<DeleteIcon />}
+                  size="small"
+                >
+                  Delete
+                </Button>
+              )}
+              {onClearSelection && (
+                <Button
+                  onClick={onClearSelection}
+                  disabled={!hasSelection}
+                  variant="outlined"
+                  color="inherit"
+                  startIcon={<ClearIcon />}
+                  size="small"
+                >
+                  Clear
+                </Button>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -161,7 +167,7 @@ const Gallery: React.FC<GalleryProps> = ({
                 onViewPhotoButtonClick={handleViewPhotoImage}
                 onViewMoreButtonClick={onViewMoreButtonClick}
                 onRename={onRenameImage}
-                onGenerateMoreSuccess={onGenerateMoreSuccess}
+                onGenerateMoreClick={onGenerateMoreClick}
                 userId={userId}
               />
             ))}

@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { Timestamp } from 'firebase/firestore';
 import ConfirmImageUpdateModal from '@/components/ConfirmImageUpdateModal';
 import CustomPromptModal from '@/components/CustomPromptModal';
+import GenerateMoreModal from '@/components/GenerateMoreModal';
 import Gallery from '@/components/Gallery';
 import TaskSelector from '@/components/TaskSelector';
 import ImagesComparingModal from '@/components/ImagesComparingModal';
@@ -94,6 +95,12 @@ const LandingPage: React.FC = () => {
 
   // State for compare photos modal
   const [showCompareModal, setShowCompareModal] = useState<boolean>(false);
+
+  // State for Generate More Modal
+  const [showGenerateMoreModal, setShowGenerateMoreModal] = useState<boolean>(false);
+  const [selectedImageForGeneration, setSelectedImageForGeneration] = useState<ImageData | null>(
+    null
+  );
 
   // State for alert modal
   const [showAlert, setShowAlert] = useState<boolean>(false);
@@ -306,7 +313,9 @@ const LandingPage: React.FC = () => {
   );
 
   const handleImageSatisfied = useCallback(
-    async (processedImageResult: { base64: string; mimeType: string }) => {
+    async (processedImageResult: { base64: string; mimeType: string }, customFileName: string) => {
+      setShowGenerateMoreModal(false);
+
       if (!user) {
         setErrorMessage('Please log in to save images.');
         return;
@@ -325,13 +334,8 @@ const LandingPage: React.FC = () => {
       const tempImageId = crypto.randomUUID();
       const now = Timestamp.fromDate(new Date());
 
-      // Append descriptor to the image name based on task
-      let imageName = processingContext.selectedImage.name;
-      if (selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name && selectedColor) {
-        imageName = `${processingContext.selectedImage.name} (${selectedColor.name})`;
-      } else if (selectedTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name && selectedTexture) {
-        imageName = `${processingContext.selectedImage.name} (${selectedTexture.name})`;
-      }
+      // Use custom name from modal
+      const imageName = customFileName;
 
       // Create ImageOperation for evolution chain using utility function
       const operation: ImageOperation = formatImageOperationData(
@@ -438,6 +442,16 @@ const LandingPage: React.FC = () => {
       setErrorMessage('Failed to refresh images. Please reload the page.');
     }
   }, [user, activeProjectId, activeSpaceId, dispatch, setErrorMessage]);
+
+  const handleOpenGenerateMore = useCallback((image: ImageData) => {
+    setSelectedImageForGeneration(image);
+    setShowGenerateMoreModal(true);
+  }, []);
+
+  const handleGenerateMoreCancel = useCallback(() => {
+    setShowGenerateMoreModal(false);
+    setSelectedImageForGeneration(null);
+  }, []);
 
   const handleSelectOriginalImage = useCallback((imageId: string) => {
     // Single-select mode: toggle selection, max 1 image
@@ -683,6 +697,7 @@ const LandingPage: React.FC = () => {
                   onBulkDelete={() => handleBulkDelete('original')}
                   onClearSelection={handleClearOriginalSelection}
                   onGenerateMoreSuccess={handleGenerateMoreSuccess}
+                  onGenerateMoreClick={handleOpenGenerateMore}
                   userId={user?.uid}
                 />
 
@@ -697,6 +712,7 @@ const LandingPage: React.FC = () => {
                   onClearSelection={handleClearUpdatedSelection}
                   onBulkDownload={() => handleBulkDownload('updated')}
                   onGenerateMoreSuccess={handleGenerateMoreSuccess}
+                  onGenerateMoreClick={handleOpenGenerateMore}
                   userId={user?.uid}
                 />
               </div>
@@ -780,6 +796,20 @@ const LandingPage: React.FC = () => {
           title={alertTitle}
           message={alertMessage}
           onClose={() => setShowAlert(false)}
+        />
+      )}
+
+      {/* Generate More Modal */}
+      {showGenerateMoreModal && selectedImageForGeneration && (
+        <GenerateMoreModal
+          isOpen={showGenerateMoreModal}
+          sourceImage={selectedImageForGeneration}
+          userId={user?.uid}
+          onSuccess={() => {
+            handleGenerateMoreSuccess();
+            handleGenerateMoreCancel();
+          }}
+          onCancel={handleGenerateMoreCancel}
         />
       )}
     </div>

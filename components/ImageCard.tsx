@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { ImageData } from '@/types';
 import { imageCache } from '@/utils/imageCache';
 import {
@@ -8,7 +8,6 @@ import {
   Info as InfoIcon,
   AutoAwesome as AutoAwesomeIcon,
 } from '@mui/icons-material';
-import GenerateMoreModal from './GenerateMoreModal';
 
 interface ImageCardProps {
   image: ImageData;
@@ -16,7 +15,7 @@ interface ImageCardProps {
   onSelect?: (imageId: string) => void;
   onViewPhotoButtonClick?: (imageData: ImageData) => void;
   onViewMoreButtonClick?: (imageData: ImageData) => void;
-  onGenerateMoreSuccess?: () => void;
+  onGenerateMoreClick?: (image: ImageData) => void;
   onRename?: (imageId: string, newName: string) => void;
   userId?: string | undefined;
 }
@@ -27,9 +26,8 @@ const ImageCard: React.FC<ImageCardProps> = ({
   onSelect,
   onViewPhotoButtonClick,
   onViewMoreButtonClick,
-  onGenerateMoreSuccess,
+  onGenerateMoreClick,
   onRename,
-  userId,
 }) => {
   // Rename state
   const [isEditing, setIsEditing] = useState(false);
@@ -38,9 +36,6 @@ const ImageCard: React.FC<ImageCardProps> = ({
   // Cached image state
   const [cachedImageSrc, setCachedImageSrc] = useState<string | null>(null);
   const [isLoadingCache, setIsLoadingCache] = useState(false);
-
-  // Generate More modal state
-  const [showGenerateMoreModal, setShowGenerateMoreModal] = useState(false);
 
   // Load cached base64 on mount
   useEffect(() => {
@@ -83,20 +78,6 @@ const ImageCard: React.FC<ImageCardProps> = ({
     setIsEditing(false);
   };
 
-  const handleOpenGenerateMore = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    setShowGenerateMoreModal(true);
-  }, []);
-
-  const handleGenerateMoreSuccess = useCallback(() => {
-    setShowGenerateMoreModal(false);
-    onGenerateMoreSuccess?.();
-  }, [onGenerateMoreSuccess]);
-
-  const handleGenerateMoreCancel = useCallback(() => {
-    setShowGenerateMoreModal(false);
-  }, []);
-
   const handleCardClick = () => {
     if (onSelect) {
       onSelect(image.id); // Main card click now solely for selection
@@ -124,7 +105,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
           </div>
         )}
         {/* Overlay buttons - appear on hover */}
-        {(onViewPhotoButtonClick || onGenerateMoreSuccess) && (
+        {onViewPhotoButtonClick && (
           <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-200 flex flex-col items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
             {onViewPhotoButtonClick && (
               <button
@@ -139,9 +120,12 @@ const ImageCard: React.FC<ImageCardProps> = ({
                 Expand
               </button>
             )}
-            {onGenerateMoreSuccess && (
+            {onGenerateMoreClick && (
               <button
-                onClick={handleOpenGenerateMore}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onGenerateMoreClick(image);
+                }}
                 className="flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-purple-700 bg-purple-100 hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors w-40"
                 aria-label={`Generate more variations of ${image.name}`}
               >
@@ -220,17 +204,6 @@ const ImageCard: React.FC<ImageCardProps> = ({
         <div className="absolute top-2 right-2">
           <CheckmarkBadgeIcon sx={{ fontSize: 24, color: '#6366f1' }} />
         </div>
-      )}
-
-      {/* Generate More Modal */}
-      {showGenerateMoreModal && onGenerateMoreSuccess && (
-        <GenerateMoreModal
-          isOpen={showGenerateMoreModal}
-          sourceImage={image}
-          userId={userId}
-          onSuccess={handleGenerateMoreSuccess}
-          onCancel={handleGenerateMoreCancel}
-        />
       )}
     </div>
   );

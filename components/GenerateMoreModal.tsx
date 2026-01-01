@@ -169,7 +169,10 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
     }
   };
 
-  const handleConfirmImage = async (imageData: { base64: string; mimeType: string }) => {
+  const handleConfirmImage = async (
+    imageData: { base64: string; mimeType: string },
+    customName: string
+  ) => {
     if (!sourceImage || !selectedColor || !userId || !activeProjectId || !activeSpaceId) {
       setErrorMessage('Missing required data to save image.');
       return;
@@ -180,7 +183,7 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
 
     try {
       const tempImageId = crypto.randomUUID();
-      const imageName = `${sourceImage.name} (${selectedColor.name})`;
+      const imageName = customName;
 
       // Create ImageOperation for evolution chain
       const operation: ImageOperation = formatImageOperationData(
