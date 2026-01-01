@@ -8,7 +8,7 @@ const Footer: React.FC = () => {
       <div className="container mx-auto p-6">
         <div className="flex items-center justify-between text-sm text-gray-600">
           <p>© {currentYear} Vizion. All rights reserved.</p>
-          <p className="font-semibold">v.0.3.0</p>
+          <p className="font-semibold">v.0.4.0</p>
         </div>
       </div>
     </footer>
