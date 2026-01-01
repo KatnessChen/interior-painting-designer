@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import {
   Dialog,
@@ -13,9 +13,13 @@ import {
   Typography,
   Snackbar,
   Tooltip,
+  IconButton,
+  Drawer,
 } from '@mui/material';
+import { ExpandMore as ExpandMoreIcon, InfoOutlined as InfoIcon } from '@mui/icons-material';
 import { ImageData, Color, ImageOperation } from '@/types';
 import { imageCache } from '@/utils/imageCache';
+import { wallRecolorPrompts } from '@/services/gemini/prompts';
 import { GEMINI_TASKS } from '@/services/gemini/geminiTasks';
 import { createImage } from '@/services/firestoreService';
 import { formatImageOperationData, formatTaskName } from '@/utils';
@@ -54,6 +58,7 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
   const [savingImage, setSavingImage] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [isDefaultPromptExpanded, setIsDefaultPromptExpanded] = useState(false);
 
   // Use image processing hook
   const { processImage, processingImage, errorMessage, setErrorMessage } = useImageProcessing({
@@ -64,6 +69,11 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
       selectedTexture: null,
     },
   });
+
+  // Calculate default prompt based on selected color
+  const defaultPrompt = useMemo(() => {
+    return wallRecolorPrompts(selectedColor?.name, selectedColor?.hex, undefined);
+  }, [selectedColor]);
 
   // Load cached image
   useEffect(() => {
@@ -294,10 +304,10 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
           </Box>
         )}
 
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 4 }}>
           {/* Left Column: Source Image */}
-          <Box sx={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <Typography variant="h6" fontWeight="medium" sx={{ mb: 1 }}>
+          <Box sx={{ minWidth: 0, flex: 4, display: 'flex', flexDirection: 'column' }}>
+            <Typography variant="h6" fontWeight="medium">
               Current Image
             </Typography>
 
@@ -351,7 +361,7 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
           </Box>
 
           {/* Right Column: Color Selector & Custom Prompt */}
-          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Box sx={{ flex: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
             {/* Last Operation Info */}
             {lastOperation && (
               <div>
@@ -389,9 +399,33 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
 
             {/* Custom Prompt */}
             <Box>
-              <Typography variant="h6" gutterBottom fontWeight="medium">
-                Custom Prompt (Optional)
-              </Typography>
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  mb: 1,
+                }}
+              >
+                <Typography variant="h6" fontWeight="medium">
+                  Custom Prompt (Optional)
+                </Typography>
+                <Button
+                  onClick={() => setIsDefaultPromptExpanded(true)}
+                  endIcon={<InfoIcon />}
+                  sx={{
+                    textTransform: 'none',
+                    fontSize: '0.875rem',
+                    color: 'primary.main',
+                    p: 0,
+                    '&:hover': { backgroundColor: 'transparent' },
+                  }}
+                >
+                  View Default Prompt
+                </Button>
+              </Box>
+
+              {/* Custom Prompt Input */}
               <TextField
                 fullWidth
                 multiline
@@ -448,6 +482,57 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
         onClose={() => setSnackbarOpen(false)}
         message={snackbarMessage}
       />
+
+      {/* Default Prompt Drawer */}
+      <Drawer
+        anchor="right"
+        open={isDefaultPromptExpanded}
+        onClose={() => setIsDefaultPromptExpanded(false)}
+        style={{ zIndex: 1400 }}
+      >
+        <Box
+          sx={{
+            width: 400,
+            p: 3,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+            height: '100%',
+          }}
+        >
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6" fontWeight="medium">
+              Default Prompt
+            </Typography>
+            <IconButton
+              onClick={() => setIsDefaultPromptExpanded(false)}
+              size="small"
+              sx={{ color: 'text.secondary' }}
+            >
+              <ExpandMoreIcon sx={{ transform: 'rotate(90deg)' }} />
+            </IconButton>
+          </Box>
+
+          <Box
+            sx={{
+              backgroundColor: '#f3f4f6',
+              borderRadius: 1,
+              p: 2,
+              fontFamily: 'monospace',
+              fontSize: '0.8rem',
+              lineHeight: 1.5,
+              color: 'text.secondary',
+              border: '1px solid #e5e7eb',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              flex: 1,
+              overflow: 'auto',
+            }}
+          >
+            {defaultPrompt}
+          </Box>
+        </Box>
+      </Drawer>
     </Dialog>
   );
 };
