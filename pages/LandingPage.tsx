@@ -11,6 +11,7 @@ import ImagesComparingButton from '@/components/ImagesComparingButton';
 import AlertModal from '@/components/AlertModal';
 import EmptyState from '@/components/EmptyState';
 import GenericConfirmModal from '@/components/GenericConfirmModal';
+import MyBreadcrumb from '@/components/MyBreadcrumb';
 import Footer from '@/components/layout/Footer';
 import { GEMINI_TASKS, GeminiTaskName } from '@/services/gemini/geminiTasks';
 import { Color, ImageData, ImageOperation } from '@/types';
@@ -653,29 +654,38 @@ const LandingPage: React.FC = () => {
   }, [selectedOriginalImageIds, selectedUpdatedImageIds, originalImages, updatedImages]);
 
   return (
-    <div className="bg-gray-100">
-      <div className="min-h-screen container p-6">
-        {!isAppInitiated ? (
-          <div className="min-h-screen flex items-center justify-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          </div>
-        ) : initError ? (
-          <div className="min-h-screen flex items-center justify-center">
-            <div className="text-center max-w-md p-6">
-              <div className="text-red-600 text-5xl mb-4">🤯</div>
-              <h2 className="text-xl text-gray-600 mb-2">Sorry, something went wrong.</h2>
-              <p className="text-gray-600 mb-4">{initError}</p>
-              <button
-                onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-indigo-500 text-white rounded-md hover:bg-blue-700 transition"
-              >
-                Retry
-              </button>
-            </div>
-          </div>
-        ) : (
-          <>
-            {getEmptyStateComponent}
+    <div className="flex h-screen bg-gray-50">
+      <main
+        className="flex-1 flex flex-col"
+        style={{ height: 'calc(100vh - var(--header-height))' }}
+      >
+        <div className="bg-gray-100">
+          <MyBreadcrumb
+            onProjectSelected={handleProjectSelected}
+            onSpaceSelected={handleSpaceSelected}
+          />
+          <div className="min-h-screen container p-6">
+            {!isAppInitiated ? (
+              <div className="min-h-screen flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              </div>
+            ) : initError ? (
+              <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center max-w-md p-6">
+                  <div className="text-red-600 text-5xl mb-4">🤯</div>
+                  <h2 className="text-xl text-gray-600 mb-2">Sorry, something went wrong.</h2>
+                  <p className="text-gray-600 mb-4">{initError}</p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="px-4 py-2 bg-indigo-500 text-white rounded-md hover:bg-blue-700 transition"
+                  >
+                    Retry
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {getEmptyStateComponent}
 
             {activeSpaceId && (
               <div className="flex flex-col gap-6">
