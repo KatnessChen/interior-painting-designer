@@ -2,10 +2,8 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Timestamp } from 'firebase/firestore';
 import ConfirmImageUpdateModal from '@/components/ConfirmImageUpdateModal';
-import CustomPromptModal from '@/components/CustomPromptModal';
 import GenerateMoreModal from '@/components/GenerateMoreModal';
 import Gallery from '@/components/Gallery';
-import TaskSelector from '@/components/TaskSelector';
 import ImagesComparingModal from '@/components/ImagesComparingModal';
 import ImagesComparingButton from '@/components/ImagesComparingButton';
 import AlertModal from '@/components/AlertModal';
@@ -13,8 +11,8 @@ import EmptyState from '@/components/EmptyState';
 import GenericConfirmModal from '@/components/GenericConfirmModal';
 import MyBreadcrumb from '@/components/MyBreadcrumb';
 import Footer from '@/components/layout/Footer';
-import { GEMINI_TASKS, GeminiTaskName } from '@/services/gemini/geminiTasks';
-import { Color, ImageData, ImageOperation } from '@/types';
+import { GEMINI_TASKS } from '@/services/gemini/geminiTasks';
+import { ImageData, ImageOperation } from '@/types';
 import {
   createImage,
   deleteImages,
@@ -38,11 +36,11 @@ import {
   removeImagesOptimistic,
   updateImageOptimistic,
 } from '@/stores/projectStore';
-
-interface Texture {
-  name: string;
-  description?: string;
-}
+import {
+  selectSelectedTaskNames,
+  selectSelectedColor,
+  selectSelectedTexture,
+} from '@/stores/taskStore';
 
 const LandingPage: React.FC = () => {
   // Get authenticated user
@@ -61,16 +59,10 @@ const LandingPage: React.FC = () => {
   const originalImages = useSelector(selectOriginalImages);
   const updatedImages = useSelector(selectUpdatedImages);
 
-  // Task selection
-  const [selectedTaskName, setSelectedTaskName] = useState<GeminiTaskName>(
-    GEMINI_TASKS.RECOLOR_WALL.task_name
-  );
-
-  // Recolor task state
-  const [selectedColor, setSelectedColor] = useState<Color | null>(null);
-
-  // Add texture task state
-  const [selectedTexture, setSelectedTexture] = useState<Texture | null>(null);
+  // Get task-related state from taskStore
+  const selectedTaskNames = useSelector(selectSelectedTaskNames);
+  const selectedColor = useSelector(selectSelectedColor);
+  const selectedTexture = useSelector(selectSelectedTexture);
 
   const [selectedOriginalImageIds, setSelectedOriginalImageIds] = useState<Set<string>>(new Set());
 
@@ -81,9 +73,6 @@ const LandingPage: React.FC = () => {
   const [selectedUpdatedImageIds, setSelectedUpdatedImageIds] = useState<Set<string>>(new Set());
 
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
-
-  // State for custom prompt modal
-  const [showCustomPromptModal, setShowCustomPromptModal] = useState<boolean>(false);
 
   // State for processing context (to track source image and custom prompt)
   const [processingContext, setProcessingContext] = useState<{
@@ -133,9 +122,9 @@ const LandingPage: React.FC = () => {
   );
 
   // Use image processing hook
-  const { processImage, errorMessage, setErrorMessage } = useImageProcessing({
+  const { errorMessage, setErrorMessage } = useImageProcessing({
     userId: user?.uid,
-    selectedTaskName,
+    selectedTaskName: selectedTaskNames[0] || GEMINI_TASKS.RECOLOR_WALL.task_name,
     options: {
       selectedColor,
       selectedTexture,
@@ -148,22 +137,6 @@ const LandingPage: React.FC = () => {
       showAlertModal('error', 'Error', errorMessage);
     }
   }, [errorMessage, showAlertModal]);
-
-  const handleSelectTask = useCallback(
-    (taskName: GeminiTaskName) => {
-      setSelectedTaskName(taskName);
-
-      // Reset UI state when switching tasks
-      setSelectedColor(null);
-      setSelectedTexture(null);
-      setSelectedOriginalImageIds(new Set());
-      setSelectedUpdatedImageIds(new Set());
-      setGeneratedImage(null);
-      setShowConfirmationModal(false);
-      setErrorMessage(null);
-    },
-    [setErrorMessage]
-  );
 
   const handleImageUpload = useCallback(
     async (file: File) => {
@@ -288,31 +261,6 @@ const LandingPage: React.FC = () => {
     [user, activeProjectId, activeSpaceId, dispatch, setErrorMessage]
   );
 
-  const handleProcessImage = useCallback(
-    async (customPrompt: string | undefined) => {
-      // Get the first (and only) selected image
-      const selectedImageId = Array.from(selectedOriginalImageIds)[0];
-      const selectedImage = originalImages.find((img) => img.id === selectedImageId);
-      if (!selectedImage) {
-        setErrorMessage('Please select an original photo.');
-        return;
-      }
-
-      setShowCustomPromptModal(false);
-
-      // Save context for later use in handleImageSatisfied
-      setProcessingContext({ selectedImage, customPrompt });
-
-      const generatedImage = await processImage(selectedImage, customPrompt);
-
-      if (generatedImage) {
-        setGeneratedImage(generatedImage);
-        setShowConfirmationModal(true);
-      }
-    },
-    [selectedOriginalImageIds, originalImages, processImage, setErrorMessage]
-  );
-
   const handleImageSatisfied = useCallback(
     async (processedImageResult: { base64: string; mimeType: string }, customFileName: string) => {
       setShowGenerateMoreModal(false);
@@ -341,7 +289,7 @@ const LandingPage: React.FC = () => {
       // Create ImageOperation for evolution chain using utility function
       const operation: ImageOperation = formatImageOperationData(
         processingContext.selectedImage,
-        selectedTaskName,
+        selectedTaskNames[0] || GEMINI_TASKS.RECOLOR_WALL.task_name,
         processingContext.customPrompt,
         selectedColor,
         selectedTexture
@@ -417,7 +365,7 @@ const LandingPage: React.FC = () => {
       user,
       selectedColor,
       selectedTexture,
-      selectedTaskName,
+      selectedTaskNames,
       processingContext,
       activeProjectId,
       activeSpaceId,
@@ -660,10 +608,7 @@ const LandingPage: React.FC = () => {
         style={{ height: 'calc(100vh - var(--header-height))' }}
       >
         <div className="bg-gray-100">
-          <MyBreadcrumb
-            onProjectSelected={handleProjectSelected}
-            onSpaceSelected={handleSpaceSelected}
-          />
+          <MyBreadcrumb />
           <div className="min-h-screen container p-6">
             {!isAppInitiated ? (
               <div className="min-h-screen flex items-center justify-center">
@@ -687,59 +632,59 @@ const LandingPage: React.FC = () => {
               <>
                 {getEmptyStateComponent}
 
-            {activeSpaceId && (
-              <div className="flex flex-col gap-6">
-                <TaskSelector selectedTaskName={selectedTaskName} onSelectTask={handleSelectTask} />
+                {activeSpaceId && (
+                  <div className="flex flex-col gap-6">
+                    <Gallery
+                      title="Original Photos"
+                      images={originalImages}
+                      selectedImageIds={selectedOriginalImageIds}
+                      onSelectImage={handleSelectOriginalImage}
+                      onSelectMultiple={handleSelectMultipleOriginal}
+                      onRenameImage={handleRenameImage}
+                      showRemoveButtons={selectedOriginalImageIds.size === 0}
+                      emptyMessage="No photos uploaded yet."
+                      onUploadImage={handleImageUpload}
+                      showUploadCard={true}
+                      onBulkDownload={() => handleBulkDownload('original')}
+                      onUploadError={setErrorMessage}
+                      onBulkDelete={() => handleBulkDelete('original')}
+                      onClearSelection={handleClearOriginalSelection}
+                      onGenerateMoreSuccess={handleGenerateMoreSuccess}
+                      onGenerateMoreClick={handleOpenGenerateMore}
+                      userId={user?.uid}
+                    />
 
-                <Gallery
-                  title="Original Photos"
-                  images={originalImages}
-                  selectedImageIds={selectedOriginalImageIds}
-                  onSelectImage={handleSelectOriginalImage}
-                  onSelectMultiple={handleSelectMultipleOriginal}
-                  onRenameImage={handleRenameImage}
-                  showRemoveButtons={selectedOriginalImageIds.size === 0}
-                  emptyMessage="No photos uploaded yet."
-                  onUploadImage={handleImageUpload}
-                  showUploadCard={true}
-                  onBulkDownload={() => handleBulkDownload('original')}
-                  onUploadError={setErrorMessage}
-                  onBulkDelete={() => handleBulkDelete('original')}
-                  onClearSelection={handleClearOriginalSelection}
-                  onGenerateMoreSuccess={handleGenerateMoreSuccess}
-                  onGenerateMoreClick={handleOpenGenerateMore}
-                  userId={user?.uid}
-                />
-
-                <Gallery
-                  title="Generated Photos"
-                  images={updatedImages}
-                  selectedImageIds={selectedUpdatedImageIds}
-                  onSelectMultiple={handleSelectUpdatedImage}
-                  onRenameImage={handleRenameImage}
-                  emptyMessage="Satisfied recolored photos will appear here."
-                  onBulkDelete={() => handleBulkDelete('updated')}
-                  onClearSelection={handleClearUpdatedSelection}
-                  onBulkDownload={() => handleBulkDownload('updated')}
-                  onGenerateMoreSuccess={handleGenerateMoreSuccess}
-                  onGenerateMoreClick={handleOpenGenerateMore}
-                  userId={user?.uid}
-                />
-              </div>
+                    <Gallery
+                      title="Generated Photos"
+                      images={updatedImages}
+                      selectedImageIds={selectedUpdatedImageIds}
+                      onSelectMultiple={handleSelectUpdatedImage}
+                      onRenameImage={handleRenameImage}
+                      emptyMessage="Satisfied recolored photos will appear here."
+                      onBulkDelete={() => handleBulkDelete('updated')}
+                      onClearSelection={handleClearUpdatedSelection}
+                      onBulkDownload={() => handleBulkDownload('updated')}
+                      onGenerateMoreSuccess={handleGenerateMoreSuccess}
+                      onGenerateMoreClick={handleOpenGenerateMore}
+                      userId={user?.uid}
+                    />
+                  </div>
+                )}
+              </>
             )}
-          </>
-        )}
-      </div>
-      <div className="bg-white px-6 py-2 border-t border-gray-200">
-        <div className="flex justify-end">
-          <ImagesComparingButton
-            totalSelectedPhotos={selectedOriginalImageIds.size + selectedUpdatedImageIds.size}
-            isEnabled={selectedOriginalImageIds.size + selectedUpdatedImageIds.size >= 2}
-            onClick={() => setShowCompareModal(true)}
-          />
+          </div>
         </div>
-      </div>
-      <Footer />
+        <div className="bg-white px-6 py-2 border-t border-gray-200">
+          <div className="flex justify-end">
+            <ImagesComparingButton
+              totalSelectedPhotos={selectedOriginalImageIds.size + selectedUpdatedImageIds.size}
+              isEnabled={selectedOriginalImageIds.size + selectedUpdatedImageIds.size >= 2}
+              onClick={() => setShowCompareModal(true)}
+            />
+          </div>
+        </div>
+        <Footer />
+      </main>
 
       {showConfirmationModal && selectedOriginalImage && (
         <ConfirmImageUpdateModal
@@ -749,25 +694,6 @@ const LandingPage: React.FC = () => {
           onConfirm={handleImageSatisfied}
           onCancel={handleCancelRecolor}
           colorName={selectedColor?.name || 'N/A'}
-        />
-      )}
-
-      {/* Custom Prompt Modal */}
-      {showCustomPromptModal && (
-        <CustomPromptModal
-          isOpen={showCustomPromptModal}
-          onConfirm={handleProcessImage}
-          onCancel={() => setShowCustomPromptModal(false)}
-          task={
-            GEMINI_TASKS[
-              selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name
-                ? 'RECOLOR_WALL'
-                : 'ADD_TEXTURE'
-            ]
-          }
-          colorName={selectedColor?.name}
-          colorHex={selectedColor?.hex}
-          textureName={selectedTexture?.name}
         />
       )}
 

@@ -2,13 +2,8 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Breadcrumb, Dropdown, Space, Tooltip, Button } from 'antd';
 import type { MenuProps } from 'antd';
-import {
-  EditOutlined,
-  DeleteOutlined,
-  HomeOutlined,
-  FolderOutlined,
-  PlusOutlined,
-} from '@ant-design/icons';
+import { EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { Home as HomeIcon, Category as CategoryIcon } from '@mui/icons-material';
 import { Box, Modal, Skeleton, Typography } from '@mui/material';
 import GenericConfirmModal from './GenericConfirmModal';
 import { useAuth } from '@/contexts/AuthContext';
@@ -389,7 +384,7 @@ const MyBreadcrumb: React.FC<BreadcrumbProps> = ({ onProjectSelected, onSpaceSel
             placement="bottomLeft"
           >
             <span style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <HomeOutlined />
+              <HomeIcon />
               {activeProjectId && activeProject ? activeProject.name : 'Select Project'}
             </span>
           </Dropdown>
@@ -421,7 +416,7 @@ const MyBreadcrumb: React.FC<BreadcrumbProps> = ({ onProjectSelected, onSpaceSel
               placement="bottomLeft"
             >
               <span style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <FolderOutlined />
+                <CategoryIcon />
                 {activeSpaceId && activeProject.spaces.find((s) => s.id === activeSpaceId)
                   ? activeProject.spaces.find((s) => s.id === activeSpaceId)?.name
                   : 'Select Space'}

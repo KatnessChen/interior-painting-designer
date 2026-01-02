@@ -175,3 +175,8 @@ export interface Color {
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }
+
+export interface Texture {
+  name: string;
+  description?: string;
+}

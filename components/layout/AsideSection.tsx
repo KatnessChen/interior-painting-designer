@@ -1,4 +1,5 @@
 import React from 'react';
+import TaskSelector from '@/components/TaskSelector';
 
 const AsideSection: React.FC = () => {
   return (
@@ -6,8 +7,7 @@ const AsideSection: React.FC = () => {
       className="w-[240px] p-6 bg-white flex flex-col shadow-lg border-r border-gray-200"
       style={{ height: 'calc(100vh - var(--header-height))' }}
     >
-      {/* This section is intentionally left blank after refactoring. */}
-      {/* Project and Space management has been moved to Breadcrumb. */}
+      <TaskSelector />
     </aside>
   );
 };
