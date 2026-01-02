@@ -1,19 +1,9 @@
 import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
+import { Select, Button, Alert, Space } from 'antd';
 import { Color } from '@/types';
 import { BENJAMIN_MOORE_COLORS } from '@/constants';
-import { Check as CheckIcon } from '@mui/icons-material';
-import {
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Box,
-  Typography,
-  Button,
-  Alert,
-  Snackbar,
-} from '@mui/material';
+import { Box, Typography, Snackbar } from '@mui/material';
 import AddColorModal from './AddColorModal';
 import { useCustomColors } from '@/hooks/useCustomColors';
 import { RootState } from '@/stores/store';
@@ -23,42 +13,6 @@ interface ColorSelectorProps {
   selectedColor: Color | null;
   onSelectColor: (color: Color) => void;
 }
-
-// Reusable Color Option Display Component
-const ColorOptionDisplay: React.FC<{
-  color: Color;
-  showCheckmark?: boolean;
-}> = ({ color, showCheckmark = false }) => {
-  return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: '100%' }}>
-      <Box
-        sx={{
-          width: 80,
-          height: 32,
-          borderRadius: 1,
-          border: '1px solid #d1d5db',
-          backgroundColor: color.hex,
-          flexShrink: 0,
-        }}
-      />
-      <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-        <Box sx={{ fontSize: '0.875rem', fontWeight: 500, color: '#111827' }}>{color.name}</Box>
-        <Box
-          sx={{
-            display: 'flex',
-            gap: 1,
-            fontSize: '0.75rem',
-            color: '#6b7280',
-          }}
-        >
-          <span style={{ fontFamily: 'monospace' }}>{color.hex}</span>
-          {color.notes && <span>{color.notes}</span>}
-        </Box>
-      </Box>
-      {showCheckmark && <CheckIcon sx={{ fontSize: 18, color: '#3b82f6' }} />}
-    </Box>
-  );
-};
 
 const ColorSelector: React.FC<ColorSelectorProps> = ({
   title = 'Select New Wall Color',
@@ -113,9 +67,14 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({
       </Typography>
 
       {error && (
-        <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>
-          {error}
-        </Alert>
+        <Alert
+          message="Error"
+          description={error}
+          type="error"
+          closable
+          onClose={() => setError(null)}
+          style={{ marginBottom: 16 }}
+        />
       )}
 
       {isLoadingColors ? (
@@ -124,52 +83,48 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({
           <span className="ml-2 text-gray-600">Loading colors...</span>
         </div>
       ) : (
-        <>
-          <div className="flex flex-col gap-4">
-            {/* Color Dropdown Selector */}
-            <FormControl fullWidth>
-              <InputLabel id="color-select-label">Select Color</InputLabel>
-              <Select
-                labelId="color-select-label"
-                value={selectedColor?.id || ''}
-                label="Select Color"
-                onChange={(e) => {
-                  const color = availableColors.find((c) => c.id === e.target.value);
-                  if (color) onSelectColor(color);
-                }}
-                renderValue={(value) => {
-                  const color = availableColors.find((c) => c.id === value);
-                  if (!color) return '';
-                  return <ColorOptionDisplay color={color} />;
-                }}
-                MenuProps={{
-                  PaperProps: {
-                    style: {
-                      maxHeight: 400,
-                    },
-                  },
-                }}
-              >
-                {availableColors.map((color) => (
-                  <MenuItem key={color.id} value={color.id}>
-                    <ColorOptionDisplay
-                      color={color}
-                      showCheckmark={selectedColor?.id === color.id}
-                    />
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+          {/* Color Select */}
+          <Select
+            placeholder="Select a color"
+            value={selectedColor?.id || undefined}
+            onChange={(value) => {
+              const color = availableColors.find((c) => c.id === value);
+              if (color) onSelectColor(color);
+            }}
+            options={availableColors.map((color) => ({
+              label: (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box
+                    sx={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 1,
+                      border: '1px solid #d1d5db',
+                      backgroundColor: color.hex,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <Box>
+                    <div style={{ fontSize: '0.875rem', fontWeight: 500, color: '#111827' }}>
+                      {color.name}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                      {color.hex}
+                      {color.notes && ` • ${color.notes}`}
+                    </div>
+                  </Box>
+                </Box>
+              ),
+              value: color.id,
+            }))}
+            style={{ width: '100%' }}
+          />
 
-            {/* Add Color Button */}
-            <Button
-              variant="outlined"
-              onClick={() => setIsAddColorModalOpen(true)}
-              sx={{ alignSelf: 'flex-end' }}
-            >
-              Add Custom Color
-            </Button>
-          </div>
+          {/* Add Color Button */}
+          <Button type="dashed" block onClick={() => setIsAddColorModalOpen(true)}>
+            Add Custom Color
+          </Button>
 
           {/* Add Color Modal */}
           {isAddColorModalOpen && (
@@ -180,7 +135,7 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({
               existingColors={availableColors}
             />
           )}
-        </>
+        </Space>
       )}
 
       {/* Toast Notification */}
@@ -195,9 +150,8 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({
           severity={toast.severity}
           variant="filled"
           sx={{ width: '100%' }}
-        >
-          {toast.message}
-        </Alert>
+          message={toast.message}
+        />
       </Snackbar>
     </div>
   );
