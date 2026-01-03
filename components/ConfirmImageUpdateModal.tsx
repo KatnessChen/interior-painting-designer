@@ -38,6 +38,7 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
   const [suffixMimeType, setSuffixMimeType] = useState<boolean>(false);
   const [suffixColorName, setSuffixColorName] = useState<boolean>(false);
   const [suffixTextureName, setSuffixTextureName] = useState<boolean>(false);
+  const [suffixTimestamp, setSuffixTimestamp] = useState<boolean>(false);
   const [nameError, setNameError] = useState<string>('');
 
   // Initialize base name (remove extension from original image name)
@@ -82,6 +83,12 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
       name = `${name}_${textureName}`;
     }
 
+    // Suffix timestamp
+    if (suffixTimestamp) {
+      const timestamp = generateTimestamp();
+      name = `${name}_${timestamp}`;
+    }
+
     // Suffix mime type extension
     if (suffixMimeType && generatedImage) {
       const extension = getFileExtension(generatedImage.mimeType);
@@ -95,6 +102,7 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
     suffixMimeType,
     suffixColorName,
     suffixTextureName,
+    suffixTimestamp,
     colorName,
     textureName,
     generatedImage,
@@ -252,7 +260,7 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
         </div>
 
         {/* Checkbox Options */}
-        <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ marginBottom: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Checkbox
             checked={prefixTimestamp}
             onChange={(e) => setPrefixTimestamp(e.target.checked)}
@@ -261,6 +269,12 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
           </Checkbox>
           <Checkbox checked={suffixMimeType} onChange={(e) => setSuffixMimeType(e.target.checked)}>
             Suffix with file extension
+          </Checkbox>
+          <Checkbox
+            checked={suffixTimestamp}
+            onChange={(e) => setSuffixTimestamp(e.target.checked)}
+          >
+            Suffix with timestamp
           </Checkbox>
           {taskName === GEMINI_TASKS.RECOLOR_WALL.task_name && colorName && (
             <Checkbox

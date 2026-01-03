@@ -41,7 +41,7 @@ const ToolkitPanel: React.FC = () => {
   }, [selectedOriginalImageIds, selectedUpdatedImageIds, originalImages, updatedImages]);
 
   return (
-    <div className="w-full border-t border-gray-100 relative pt-6">
+    <div className="w-full border-t border-gray-100 relative pt-4">
       {/* Expand/Collapse Icon - positioned on border */}
       <div
         className="absolute -top-4 left-1/2 transform -translate-x-1/2 cursor-pointer"
@@ -79,7 +79,7 @@ const ToolkitPanel: React.FC = () => {
           opacity: isExpanded ? 1 : 0,
         }}
       >
-        <div className="px-6 pb-6">
+        <div className="px-6 pb-4">
           {/* Compare Button - Show when expanded */}
           <div className="animate-in fade-in slide-in-from-left-2 duration-300">
             <ImagesComparingButton

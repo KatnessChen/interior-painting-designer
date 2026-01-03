@@ -48,7 +48,6 @@ const Gallery: React.FC<GalleryProps> = ({
   onBulkDelete,
   onBulkDownload,
   onClearSelection,
-  onGenerateMoreSuccess,
   onGenerateMoreClick,
   userId,
 }) => {
@@ -142,7 +141,7 @@ const Gallery: React.FC<GalleryProps> = ({
                   startIcon={<ClearIcon />}
                   size="small"
                 >
-                  Clear
+                  Deselect
                 </Button>
               )}
             </>

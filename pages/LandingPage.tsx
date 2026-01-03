@@ -468,7 +468,7 @@ const LandingPage: React.FC = () => {
               })
             );
 
-            setSelectedImageIds(new Set());
+            dispatch(setSelectedImageIds(new Set()));
 
             // Delete images from Firestore and Firebase Storage
             await deleteImages(
@@ -517,8 +517,8 @@ const LandingPage: React.FC = () => {
   );
 
   const handleClearOriginalSelection = useCallback(() => {
-    setSelectedOriginalImageIds(new Set());
-  }, []);
+    dispatch(setSelectedOriginalImageIds(new Set()));
+  }, [dispatch]);
 
   // Multi-select handlers for updated photos
   const handleSelectUpdatedImage = useCallback(
@@ -563,8 +563,8 @@ const LandingPage: React.FC = () => {
   );
 
   const handleClearUpdatedSelection = useCallback(() => {
-    setSelectedUpdatedImageIds(new Set());
-  }, []);
+    dispatch(setSelectedUpdatedImageIds(new Set()));
+  }, [dispatch]);
 
   const getEmptyStateComponent = useMemo(() => {
     const hasNoProject = projects.length === 0 || !activeProjectId;
@@ -591,7 +591,10 @@ const LandingPage: React.FC = () => {
   return (
     <div className="flex bg-gray-50">
       <main className="flex-1 flex flex-col">
-        <div className="bg-gray-100" style={{ minHeight: 'calc(100% - var(--footer-height))' }}>
+        <div
+          className="bg-gray-100"
+          style={{ minHeight: 'calc(100vh - var(--header-height) - var(--footer-height))' }}
+        >
           <MyBreadcrumb />
           <div className="container p-6">
             {!isAppInitiated ? (
