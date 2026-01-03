@@ -1,31 +1,22 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSelector } from 'react-redux';
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  TextField,
-  Box,
-  CircularProgress,
-  Alert,
-  Typography,
-  Snackbar,
-  Tooltip,
-  IconButton,
-  Drawer,
-} from '@mui/material';
-import { ExpandMore as ExpandMoreIcon, InfoOutlined as InfoIcon } from '@mui/icons-material';
-import { ImageData, Color, ImageOperation } from '@/types';
+import { Modal, Button, Input, Spin, Alert, Tooltip, Drawer, Typography, message } from 'antd';
+import { InfoCircleOutlined, CloseOutlined } from '@ant-design/icons';
+import { ImageData, Color, Texture, ImageOperation } from '@/types';
 import { imageCache } from '@/utils/imageCache';
-import { wallRecolorPrompts } from '@/services/gemini/prompts';
+import { wallRecolorPrompts, texturePrompts } from '@/services/gemini/prompts';
 import { GEMINI_TASKS } from '@/services/gemini/geminiTasks';
 import { createImage } from '@/services/firestoreService';
 import { formatImageOperationData, formatTaskName } from '@/utils';
 import { selectActiveProjectId, selectActiveSpaceId } from '@/stores/projectStore';
 import { useImageProcessing } from '@/hooks/useImageProcessing';
+import {
+  selectSelectedColor,
+  selectSelectedTexture,
+  selectSelectedTaskNames,
+} from '@/stores/taskStore';
 import ColorSelector from './ColorSelector';
+import TextureSelector from './TextureSelector';
 import ConfirmImageUpdateModal from './ConfirmImageUpdateModal';
 
 interface GenerateMoreModalProps {
@@ -47,33 +38,49 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
   const activeProjectId = useSelector(selectActiveProjectId);
   const activeSpaceId = useSelector(selectActiveSpaceId);
 
+  const selectedTaskNames = useSelector(selectSelectedTaskNames);
+  const preselectedColor = useSelector(selectSelectedColor);
+  const preselectTexture = useSelector(selectSelectedTexture);
+
   const [cachedImageSrc, setCachedImageSrc] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [selectedColor, setSelectedColor] = useState<Color | null>(null);
+  const [selectedColor, setSelectedColor] = useState<Color | null>(preselectedColor);
+  const [selectedTexture, setSelectedTexture] = useState<Texture | null>(preselectTexture);
   const [customPrompt, setCustomPrompt] = useState<string>('');
   const [generatedImage, setGeneratedImage] = useState<{ base64: string; mimeType: string } | null>(
     null
   );
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [savingImage, setSavingImage] = useState(false);
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('');
   const [isDefaultPromptExpanded, setIsDefaultPromptExpanded] = useState(false);
+
+  // Determine the active task from selectedTaskNames (assuming single task)
+  const activeTaskName = useMemo(() => {
+    if (selectedTaskNames.length === 0) return null;
+    return selectedTaskNames[0];
+  }, [selectedTaskNames]);
 
   // Use image processing hook
   const { processImage, processingImage, errorMessage, setErrorMessage } = useImageProcessing({
     userId,
-    selectedTaskName: GEMINI_TASKS.RECOLOR_WALL.task_name,
+    selectedTaskName: activeTaskName || GEMINI_TASKS.RECOLOR_WALL.task_name,
     options: {
       selectedColor,
-      selectedTexture: null,
+      selectedTexture,
     },
   });
 
-  // Calculate default prompt based on selected color
+  // Calculate default prompt based on active task
   const defaultPrompt = useMemo(() => {
-    return wallRecolorPrompts(selectedColor?.name, selectedColor?.hex, undefined);
-  }, [selectedColor]);
+    if (!activeTaskName) return '';
+
+    if (activeTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name) {
+      return wallRecolorPrompts(selectedColor?.name, selectedColor?.hex, undefined);
+    } else if (activeTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name) {
+      return texturePrompts(selectedTexture?.name || '', undefined);
+    }
+    return '';
+  }, [activeTaskName, selectedColor, selectedTexture]);
 
   // Load cached image
   useEffect(() => {
@@ -104,8 +111,20 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
   }, [selectedColor]);
 
   const handleGenerate = async () => {
-    if (!selectedColor) {
-      setValidationError('Please select a color before generating.');
+    // Check if a task is selected
+    if (!activeTaskName) {
+      setValidationError('Please select a task first.');
+      return;
+    }
+
+    // Validate based on task type
+    if (activeTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name && !selectedColor) {
+      setValidationError('Please select a color for recoloring.');
+      return;
+    }
+
+    if (activeTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name && !selectedTexture) {
+      setValidationError('Please select a texture.');
       return;
     }
 
@@ -121,18 +140,21 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
 
     setValidationError(null);
 
-    console.log('[GenerateMoreModal] Starting recolor with:', {
+    console.log('[GenerateMoreModal] Starting image processing with:', {
       userId,
       sourceImageId: sourceImage.id,
-      colorName: selectedColor.name,
-      colorHex: selectedColor.hex,
+      taskName: activeTaskName,
+      colorName: selectedColor?.name,
+      colorHex: selectedColor?.hex,
+      textureName: selectedTexture?.name,
+      textureUrl: selectedTexture?.textureImageDownloadUrl,
       hasCustomPrompt: !!customPrompt.trim(),
     });
 
     const result = await processImage(sourceImage, customPrompt.trim() || undefined);
 
     if (result) {
-      console.log('[GenerateMoreModal] Recolor successful, result:', {
+      console.log('[GenerateMoreModal] Processing successful, result:', {
         hasMimeType: !!result.mimeType,
         hasBase64: !!result.base64,
         base64Length: result.base64?.length || 0,
@@ -164,8 +186,7 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
       setCustomPrompt(lastOperation.customPrompt);
     }
 
-    setSnackbarMessage('Settings applied from last operation');
-    setSnackbarOpen(true);
+    message.success('Settings applied from last operation');
   };
 
   const handleClose = () => {
@@ -183,8 +204,19 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
     imageData: { base64: string; mimeType: string },
     customName: string
   ) => {
-    if (!sourceImage || !selectedColor || !userId || !activeProjectId || !activeSpaceId) {
+    if (!sourceImage || !userId || !activeProjectId || !activeSpaceId || !activeTaskName) {
       setErrorMessage('Missing required data to save image.');
+      return;
+    }
+
+    // Validate based on task type
+    if (activeTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name && !selectedColor) {
+      setErrorMessage('Color information is required.');
+      return;
+    }
+
+    if (activeTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name && !selectedTexture) {
+      setErrorMessage('Texture information is required.');
       return;
     }
 
@@ -198,10 +230,10 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
       // Create ImageOperation for evolution chain
       const operation: ImageOperation = formatImageOperationData(
         sourceImage,
-        GEMINI_TASKS.RECOLOR_WALL.task_name,
+        activeTaskName,
         customPrompt.trim() || undefined,
         selectedColor,
-        null // no texture for recolor
+        selectedTexture
       );
 
       // Save processed image to Firestore
@@ -247,293 +279,251 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
 
   const lastOperation = sourceImage?.evolutionChain[sourceImage.evolutionChain.length - 1];
 
+  // Dynamic modal title based on task
+  const getModalTitle = () => {
+    if (!activeTaskName) return 'Generate Image';
+
+    if (activeTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name) {
+      return 'Generate Recolored Image';
+    } else if (activeTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name) {
+      return 'Apply Texture to Wall';
+    }
+    return 'Generate More Images';
+  };
+
+  const getModalDescription = () => {
+    if (!activeTaskName) return 'Please select a task first';
+
+    if (activeTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name) {
+      return 'Create a new color variation from this image';
+    } else if (activeTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name) {
+      return 'Apply a texture pattern to the wall surface';
+    }
+    return 'Transform this image';
+  };
+
   if (!sourceImage) return null;
 
   return (
-    <Dialog
-      open={isOpen}
-      onClose={handleClose}
-      maxWidth="lg"
-      fullWidth
-      disableEscapeKeyDown={processingImage || savingImage}
-    >
-      <DialogTitle>
-        <Typography variant="h5" component="div" fontWeight="bold">
-          Generate More Images
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          Create a new color variation from this image
-        </Typography>
-      </DialogTitle>
-
-      <DialogContent dividers>
-        {/* Error Messages */}
-        {errorMessage && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {errorMessage}
-          </Alert>
-        )}
-        {validationError && (
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            {validationError}
-          </Alert>
-        )}
-
-        {/* Loading Overlay */}
-        {processingImage && (
-          <Box
-            sx={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: 'rgba(255, 255, 255, 0.9)',
-              zIndex: 10,
-              gap: 2,
-            }}
+    <>
+      <Modal
+        title={
+          <div>
+            <Typography.Title level={4} style={{ margin: 0 }}>
+              {getModalTitle()}
+            </Typography.Title>
+            <Typography.Text type="secondary">{getModalDescription()}</Typography.Text>
+          </div>
+        }
+        open={isOpen}
+        onCancel={handleClose}
+        width={1200}
+        maskClosable={!processingImage && !savingImage}
+        keyboard={!processingImage && !savingImage}
+        footer={[
+          <Button
+            key="cancel"
+            onClick={handleClose}
+            disabled={processingImage || savingImage}
+            size="large"
           >
-            <CircularProgress size={60} />
-            <Typography variant="h6" color="text.secondary">
-              Generating new image...
-            </Typography>
-          </Box>
-        )}
+            Cancel
+          </Button>,
+          <Button
+            key="generate"
+            type="primary"
+            onClick={handleGenerate}
+            disabled={!activeTaskName || processingImage || savingImage}
+            size="large"
+          >
+            Generate
+          </Button>,
+        ]}
+      >
+        <Spin spinning={processingImage} tip="Generating new image..." size="large">
+          {/* Error Messages */}
+          {errorMessage && (
+            <Alert message={errorMessage} type="error" showIcon style={{ marginBottom: 16 }} />
+          )}
+          {validationError && (
+            <Alert message={validationError} type="warning" showIcon style={{ marginBottom: 16 }} />
+          )}
 
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 4 }}>
-          {/* Left Column: Source Image */}
-          <Box sx={{ minWidth: 0, flex: 4, display: 'flex', flexDirection: 'column' }}>
-            <Typography variant="h6" fontWeight="medium">
-              Current Image
-            </Typography>
-
-            {/* Image Info */}
-            <Box sx={{ mb: 2 }}>
-              <Tooltip title={sourceImage.name} arrow>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    mb: 0.5,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  <strong>Filename:</strong> {sourceImage.name}
-                </Typography>
-              </Tooltip>
-              <Typography variant="body2">
-                <strong>Created:</strong>{' '}
-                {sourceImage.createdAt instanceof Object && 'toDate' in sourceImage.createdAt
-                  ? sourceImage.createdAt.toDate().toLocaleString()
-                  : new Date(sourceImage.createdAt).toLocaleString()}
-              </Typography>
-            </Box>
-
-            {/* Source Image Preview */}
-            <Box
-              sx={{
-                flex: 1,
-                minHeight: 400,
-                backgroundColor: '#f3f4f6',
-                borderRadius: 2,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                overflow: 'hidden',
-                border: '1px solid #e5e7eb',
-              }}
+          <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
+            {/* Left Column: Source Image */}
+            <div
+              style={{ minWidth: 0, flex: '1 1 400px', display: 'flex', flexDirection: 'column' }}
             >
-              <img
-                src={cachedImageSrc || sourceImage.imageDownloadUrl}
-                alt={sourceImage.name}
-                style={{
-                  maxWidth: '100%',
-                  maxHeight: '100%',
-                  objectFit: 'contain',
-                }}
-              />
-            </Box>
-          </Box>
+              <Typography.Title level={5}>Current Image</Typography.Title>
 
-          {/* Right Column: Color Selector & Custom Prompt */}
-          <Box sx={{ flex: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {/* Last Operation Info */}
-            {lastOperation && (
-              <div>
-                <Typography variant="h6" fontWeight="medium" sx={{ mb: 1 }}>
-                  Last Operation
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="body2" sx={{ mb: 0.5 }}>
-                      <strong>Task:</strong> {formatTaskName(lastOperation.taskName)}
-                    </Typography>
-                    <Typography variant="body2" sx={{ mb: 0.5 }}>
-                      <strong>Color:</strong> {lastOperation.options.colorSnapshot?.name || 'N/A'}
-                    </Typography>
-                    <Typography variant="body2">
-                      <strong>Custom Prompt:</strong> {lastOperation.customPrompt || 'N/A'}
-                    </Typography>
-                  </Box>
-                  <Button
-                    onClick={applyLastOperation}
-                    variant="outlined"
-                    color="primary"
-                    size="small"
+              {/* Image Info */}
+              <div style={{ marginBottom: 16 }}>
+                <Tooltip title={sourceImage.name}>
+                  <div
+                    style={{
+                      marginBottom: 4,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
                   >
-                    Apply
-                  </Button>
-                </Box>
+                    <strong>Filename:</strong> {sourceImage.name}
+                  </div>
+                </Tooltip>
+                <div>
+                  <strong>Created:</strong>{' '}
+                  {sourceImage.createdAt instanceof Object && 'toDate' in sourceImage.createdAt
+                    ? sourceImage.createdAt.toDate().toLocaleString()
+                    : new Date(sourceImage.createdAt).toLocaleString()}
+                </div>
               </div>
-            )}
 
-            {/* Color Selector */}
-            <Box>
-              <ColorSelector selectedColor={selectedColor} onSelectColor={setSelectedColor} />
-            </Box>
+              {/* Last Operation Info */}
+              {lastOperation && (
+                <div style={{ marginBottom: 16 }}>
+                  <Typography.Title level={5} style={{ marginBottom: 8 }}>
+                    Last Operation
+                  </Typography.Title>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ marginBottom: 4 }}>
+                        <strong>Task:</strong> {formatTaskName(lastOperation.taskName)}
+                      </div>
+                      <div style={{ marginBottom: 4 }}>
+                        <strong>Color:</strong> {lastOperation.options.colorSnapshot?.name || 'N/A'}
+                      </div>
+                      <div>
+                        <strong>Custom Prompt:</strong> {lastOperation.customPrompt || 'N/A'}
+                      </div>
+                    </div>
+                    <Button onClick={applyLastOperation} size="small">
+                      Apply
+                    </Button>
+                  </div>
+                </div>
+              )}
 
-            {/* Custom Prompt */}
-            <Box>
-              <Box
-                sx={{
+              {/* Source Image Preview */}
+              <div
+                style={{
+                  flex: 1,
+                  minHeight: 400,
+                  backgroundColor: '#f3f4f6',
+                  borderRadius: 8,
                   display: 'flex',
-                  justifyContent: 'space-between',
                   alignItems: 'center',
-                  mb: 1,
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  border: '1px solid #e5e7eb',
                 }}
               >
-                <Typography variant="h6" fontWeight="medium">
-                  Custom Prompt (Optional)
-                </Typography>
-                <Button
-                  onClick={() => setIsDefaultPromptExpanded(true)}
-                  endIcon={<InfoIcon />}
-                  sx={{
-                    textTransform: 'none',
-                    fontSize: '0.875rem',
-                    color: 'primary.main',
-                    p: 0,
-                    '&:hover': { backgroundColor: 'transparent' },
+                <img
+                  src={cachedImageSrc || sourceImage.imageDownloadUrl}
+                  alt={sourceImage.name}
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    objectFit: 'contain',
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Right Column: Color Selector & Custom Prompt */}
+            <div style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {selectedTaskNames.includes('recolor_wall') && (
+                <div>
+                  <ColorSelector selectedColor={selectedColor} onSelectColor={setSelectedColor} />
+                </div>
+              )}
+
+              {selectedTaskNames.includes('add_texture') && (
+                <div>
+                  <TextureSelector onTextureSelect={setSelectedTexture} />
+                </div>
+              )}
+
+              {/* Custom Prompt */}
+              <div>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: 8,
                   }}
                 >
-                  View Default Prompt
-                </Button>
-              </Box>
+                  <Typography.Title level={5} style={{ margin: 0 }}>
+                    Custom Prompt (Optional)
+                  </Typography.Title>
+                  <Button
+                    type="link"
+                    onClick={() => setIsDefaultPromptExpanded(true)}
+                    icon={<InfoCircleOutlined />}
+                    style={{ padding: 0 }}
+                  >
+                    View Default Prompt
+                  </Button>
+                </div>
 
-              {/* Custom Prompt Input */}
-              <TextField
-                fullWidth
-                multiline
-                rows={6}
-                placeholder="Enter any specific instructions for the AI... (e.g., 'Make the walls lighter', 'Add more warmth to the color')"
-                value={customPrompt}
-                onChange={(e) => setCustomPrompt(e.target.value.slice(0, 200))}
-                disabled={processingImage}
-                variant="outlined"
-                helperText={`${customPrompt.length}/200 characters`}
-                inputProps={{ maxLength: 200 }}
-              />
-            </Box>
-          </Box>
-        </Box>
-      </DialogContent>
-
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button
-          onClick={handleClose}
-          disabled={processingImage || savingImage}
-          variant="outlined"
-          size="large"
-        >
-          Cancel
-        </Button>
-        <Button
-          onClick={handleGenerate}
-          disabled={processingImage || savingImage}
-          variant="contained"
-          size="large"
-          color="primary"
-        >
-          Generate
-        </Button>
-      </DialogActions>
+                {/* Custom Prompt Input */}
+                <Input.TextArea
+                  rows={6}
+                  placeholder="Enter any specific instructions for the AI... (e.g., 'Make the walls lighter', 'Add more warmth to the color')"
+                  value={customPrompt}
+                  onChange={(e) => setCustomPrompt(e.target.value.slice(0, 200))}
+                  disabled={processingImage}
+                  maxLength={200}
+                  showCount
+                />
+              </div>
+            </div>
+          </div>
+        </Spin>
+      </Modal>
 
       {/* Confirmation Modal for Generated Image */}
-      {sourceImage && generatedImage && (
+      {sourceImage && generatedImage && activeTaskName && (
         <ConfirmImageUpdateModal
           isOpen={showConfirmationModal}
           originalImage={sourceImage}
           generatedImage={generatedImage}
           onConfirm={handleConfirmImage}
           onCancel={handleCancelConfirmation}
-          colorName={selectedColor?.name || 'N/A'}
+          taskName={activeTaskName}
+          colorName={selectedColor?.name}
+          textureName={selectedTexture?.name}
         />
       )}
 
-      {/* Snackbar for Apply Success */}
-      <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={3000}
-        onClose={() => setSnackbarOpen(false)}
-        message={snackbarMessage}
-      />
-
       {/* Default Prompt Drawer */}
       <Drawer
-        anchor="right"
+        title="Default Prompt"
+        placement="right"
         open={isDefaultPromptExpanded}
         onClose={() => setIsDefaultPromptExpanded(false)}
-        style={{ zIndex: 1400 }}
+        width={400}
+        closeIcon={<CloseOutlined />}
       >
-        <Box
-          sx={{
-            width: 400,
-            p: 3,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 2,
-            height: '100%',
+        <div
+          style={{
+            backgroundColor: '#f3f4f6',
+            borderRadius: 4,
+            padding: 16,
+            fontFamily: 'monospace',
+            fontSize: '0.8rem',
+            lineHeight: 1.5,
+            color: '#666',
+            border: '1px solid #e5e7eb',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            overflow: 'auto',
           }}
         >
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h6" fontWeight="medium">
-              Default Prompt
-            </Typography>
-            <IconButton
-              onClick={() => setIsDefaultPromptExpanded(false)}
-              size="small"
-              sx={{ color: 'text.secondary' }}
-            >
-              <ExpandMoreIcon sx={{ transform: 'rotate(90deg)' }} />
-            </IconButton>
-          </Box>
-
-          <Box
-            sx={{
-              backgroundColor: '#f3f4f6',
-              borderRadius: 1,
-              p: 2,
-              fontFamily: 'monospace',
-              fontSize: '0.8rem',
-              lineHeight: 1.5,
-              color: 'text.secondary',
-              border: '1px solid #e5e7eb',
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-word',
-              flex: 1,
-              overflow: 'auto',
-            }}
-          >
-            {defaultPrompt}
-          </Box>
-        </Box>
+          {defaultPrompt}
+        </div>
       </Drawer>
-    </Dialog>
+    </>
   );
 };
 

@@ -7,12 +7,14 @@ import { selectSelectedTaskNames, setSelectedTaskNames } from '@/stores/taskStor
 import { useAuth } from '@/contexts/AuthContext';
 
 interface TaskSelectorProps {
+  multiSelect?: boolean;
   onTaskChange?: (taskNames: GeminiTaskName[]) => void;
   onError?: (message: string | null) => void;
   onModalStateChange?: (isOpen: boolean) => void;
 }
 
 const TaskSelector: React.FC<TaskSelectorProps> = ({
+  multiSelect = false,
   onTaskChange,
   onError,
   onModalStateChange,
@@ -49,16 +51,27 @@ const TaskSelector: React.FC<TaskSelectorProps> = ({
     const isChecked = e.target.checked;
     let newSelectedTasks: GeminiTaskName[];
 
-    if (isChecked) {
-      // Add task if not already selected
-      if (!selectedTaskNames.includes(taskValue)) {
-        newSelectedTasks = [...selectedTaskNames, taskValue];
+    if (multiSelect) {
+      // Multi-select mode: add or remove from array
+      if (isChecked) {
+        // Add task if not already selected
+        if (!selectedTaskNames.includes(taskValue)) {
+          newSelectedTasks = [...selectedTaskNames, taskValue];
+        } else {
+          return; // Already selected
+        }
       } else {
-        return; // Already selected
+        // Remove task
+        newSelectedTasks = selectedTaskNames.filter((name) => name !== taskValue);
       }
     } else {
-      // Remove task
-      newSelectedTasks = selectedTaskNames.filter((name) => name !== taskValue);
+      // Single-select mode: replace the array with only the selected task
+      if (isChecked) {
+        newSelectedTasks = [taskValue];
+      } else {
+        // If unchecking in single-select mode, clear selection
+        newSelectedTasks = [];
+      }
     }
 
     // Update Redux store

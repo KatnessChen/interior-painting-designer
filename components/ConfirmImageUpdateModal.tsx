@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ImageData } from '@/types';
 import { imageCache } from '@/utils/imageCache';
-
+import { Modal, Button, Input, Checkbox, Typography } from 'antd';
+import { GeminiTaskName, GEMINI_TASKS } from '@/services/gemini/geminiTasks';
 import { getFileExtension } from '@/utils/downloadUtils';
-import { Button } from '@mui/material';
 import { removeExtension, generateTimestamp } from '@/utils/fileNameUtils';
 
 const MAX_IMAGE_NAME_LENGTH = 50;
@@ -14,7 +14,9 @@ interface ConfirmImageUpdateModalProps {
   generatedImage: { base64: string; mimeType: string } | null;
   onConfirm: (imageData: { base64: string; mimeType: string }, customName: string) => void;
   onCancel: () => void;
-  colorName: string;
+  taskName: GeminiTaskName;
+  colorName?: string;
+  textureName?: string;
 }
 
 const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
@@ -23,7 +25,9 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
   generatedImage,
   onConfirm,
   onCancel,
+  taskName,
   colorName,
+  textureName,
 }) => {
   // Cached image state for original image
   const [cachedImageSrc, setCachedImageSrc] = useState<string | null>(null);
@@ -33,6 +37,7 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
   const [prefixTimestamp, setPrefixTimestamp] = useState<boolean>(false);
   const [suffixMimeType, setSuffixMimeType] = useState<boolean>(false);
   const [suffixColorName, setSuffixColorName] = useState<boolean>(false);
+  const [suffixTextureName, setSuffixTextureName] = useState<boolean>(false);
   const [nameError, setNameError] = useState<string>('');
 
   // Initialize base name (remove extension from original image name)
@@ -68,8 +73,13 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
     }
 
     // Suffix color name
-    if (suffixColorName) {
+    if (suffixColorName && colorName) {
       name = `${name}_${colorName}`;
+    }
+
+    // Suffix texture name
+    if (suffixTextureName && textureName) {
+      name = `${name}_${textureName}`;
     }
 
     // Suffix mime type extension
@@ -79,7 +89,16 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
     }
 
     return name;
-  }, [baseName, prefixTimestamp, suffixMimeType, suffixColorName, colorName, generatedImage]);
+  }, [
+    baseName,
+    prefixTimestamp,
+    suffixMimeType,
+    suffixColorName,
+    suffixTextureName,
+    colorName,
+    textureName,
+    generatedImage,
+  ]);
 
   // Validate name and update error
   useEffect(() => {
@@ -102,134 +121,196 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
     onConfirm(generatedImage, finalName);
   };
 
-  if (!isOpen || !generatedImage || !originalImage) return null;
+  const getModalDescription = () => {
+    if (taskName === GEMINI_TASKS.RECOLOR_WALL.task_name && colorName) {
+      return (
+        <>
+          The walls have been recolored to <strong>{colorName}</strong>.
+        </>
+      );
+    } else if (taskName === GEMINI_TASKS.ADD_TEXTURE.task_name && textureName) {
+      return (
+        <>
+          The <strong>{textureName}</strong> texture has been applied to the walls.
+        </>
+      );
+    }
+    return 'The image has been processed.';
+  };
+
+  if (!generatedImage || !originalImage) return null;
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl w-[90vw] h-[90vh] p-6 relative flex flex-col overflow-y-auto">
-        <h3 className="text-2xl font-bold text-gray-800 mb-4 text-center">
-          Is this new wall color satisfactory?
-        </h3>
-        <p className="text-gray-600 text-center mb-6">
-          The walls have been recolored to <span className="font-semibold">{colorName}</span>.
-        </p>
-
-        {/* Image Comparison Section */}
-        <div className="flex flex-col md:flex-row gap-6 mb-6 flex-1 h-0 min-h-[400px]">
-          {/* Original Photo */}
-          <div className="flex-1 flex flex-col items-center min-h-0">
-            <h4 className="text-xl font-semibold text-gray-700 mb-3">Original Photo</h4>
-            <div className="relative w-full flex-1 bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center">
-              <img
-                src={cachedImageSrc || originalImage.imageDownloadUrl}
-                alt="Original"
-                className="max-w-full max-h-full object-contain"
-              />
-            </div>
-          </div>
-          {/* Recolored Photo */}
-          <div className="flex-1 flex flex-col items-center min-h-0">
-            <h4 className="text-xl font-semibold text-gray-700 mb-3">Recolored Photo</h4>
-            <div className="relative w-full flex-1 bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center">
-              <img
-                src={`data:${generatedImage.mimeType};base64,${generatedImage.base64}`}
-                alt="Generated Recolor"
-                className="max-w-full max-h-full object-contain"
-              />
-            </div>
-          </div>
+    <Modal
+      title={
+        <div>
+          <Typography.Title level={3} style={{ margin: 0 }}>
+            Is this result satisfactory?
+          </Typography.Title>
+          <Typography.Text type="secondary">{getModalDescription()}</Typography.Text>
         </div>
-
-        {/* Image Naming Section */}
-        <div className="border-t border-gray-200 pt-4 pb-4">
-          <h4 className="text-lg font-semibold text-gray-700 mb-3">Customize Image Name</h4>
-
-          {/* Base Name Input */}
-          <div className="mb-3">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Base Name</label>
-            <input
-              type="text"
-              value={baseName}
-              onChange={(e) => setBaseName(e.target.value)}
-              maxLength={MAX_IMAGE_NAME_LENGTH}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              placeholder="Enter image name"
-            />
-            {nameError && <p className="mt-1 text-sm text-red-600">{nameError}</p>}
-          </div>
-
-          {/* Checkbox Options */}
-          <div className="mb-3 flex flex-col sm:flex-row sm:flex-wrap gap-4">
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                checked={prefixTimestamp}
-                onChange={(e) => setPrefixTimestamp(e.target.checked)}
-                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-              />
-              <span className="ml-2 text-sm text-gray-700">Prefix with timestamp</span>
-            </label>
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                checked={suffixMimeType}
-                onChange={(e) => setSuffixMimeType(e.target.checked)}
-                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-              />
-              <span className="ml-2 text-sm text-gray-700">Suffix with file extension</span>
-            </label>
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                checked={suffixColorName}
-                onChange={(e) => setSuffixColorName(e.target.checked)}
-                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-              />
-              <span className="ml-2 text-sm text-gray-700">Suffix with color name</span>
-            </label>
-          </div>
-
-          {/* Final Name Preview */}
-          <div className="bg-gray-50 rounded-md p-3 border border-gray-200">
-            <div className="flex justify-between items-center mb-1">
-              <span className="text-sm font-medium text-gray-700">Final Name Preview:</span>
-              <span
-                className={`text-sm ${
-                  finalName.length > MAX_IMAGE_NAME_LENGTH
-                    ? 'text-red-600 font-semibold'
-                    : 'text-gray-500'
-                }`}
-              >
-                {finalName.length} / {MAX_IMAGE_NAME_LENGTH} characters
-              </span>
-            </div>
-            <p
-              className={`text-sm font-mono break-all ${
-                nameError ? 'text-red-600' : 'text-gray-800'
-              }`}
-            >
-              {finalName || '(empty)'}
-            </p>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row justify-end gap-4 mt-4">
-          <Button
-            onClick={handleConfirm}
-            disabled={!!nameError}
-            variant="contained"
-            color="success"
+      }
+      open={isOpen}
+      onCancel={onCancel}
+      width="90vw"
+      style={{ top: 20, maxWidth: 1600 }}
+      styles={{ body: { maxHeight: 'calc(90vh - 200px)', overflowY: 'auto' } }}
+      zIndex={1500}
+      footer={[
+        <Button key="cancel" onClick={onCancel} size="large">
+          No, Discard
+        </Button>,
+        <Button
+          key="confirm"
+          type="primary"
+          onClick={handleConfirm}
+          disabled={!!nameError}
+          size="large"
+        >
+          Yes, I'm Satisfied!
+        </Button>,
+      ]}
+    >
+      {/* Image Comparison Section */}
+      <div style={{ display: 'flex', gap: 24, marginBottom: 24, flexWrap: 'wrap' }}>
+        {/* Original Photo */}
+        <div
+          style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', minHeight: 400 }}
+        >
+          <Typography.Title level={5} style={{ marginBottom: 12 }}>
+            Original Photo
+          </Typography.Title>
+          <div
+            style={{
+              flex: 1,
+              backgroundColor: '#f0f0f0',
+              borderRadius: 8,
+              overflow: 'hidden',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
           >
-            Yes, I'm Satisfied!
-          </Button>
-          {/* MUI Button for Cancel */}
-          <Button onClick={onCancel} variant="outlined" color="inherit" size="large">
-            No, Discard
-          </Button>
+            <img
+              src={cachedImageSrc || originalImage.imageDownloadUrl}
+              alt="Original"
+              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+            />
+          </div>
+        </div>
+
+        {/* Recolored Photo */}
+        <div
+          style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', minHeight: 400 }}
+        >
+          <Typography.Title level={5} style={{ marginBottom: 12 }}>
+            Processed Photo
+          </Typography.Title>
+          <div
+            style={{
+              flex: 1,
+              backgroundColor: '#f0f0f0',
+              borderRadius: 8,
+              overflow: 'hidden',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <img
+              src={`data:${generatedImage.mimeType};base64,${generatedImage.base64}`}
+              alt="Processed Photo"
+              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+            />
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Image Naming Section */}
+      <div style={{ borderTop: '1px solid #e8e8e8', paddingTop: 16 }}>
+        <Typography.Title level={5} style={{ marginBottom: 12 }}>
+          Customize Image Name
+        </Typography.Title>
+
+        {/* Base Name Input */}
+        <div style={{ marginBottom: 16 }}>
+          <Typography.Text strong style={{ display: 'block', marginBottom: 4 }}>
+            Base Name
+          </Typography.Text>
+          <Input
+            value={baseName}
+            onChange={(e) => setBaseName(e.target.value)}
+            maxLength={MAX_IMAGE_NAME_LENGTH}
+            placeholder="Enter image name"
+            status={nameError ? 'error' : ''}
+          />
+          {nameError && (
+            <Typography.Text type="danger" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
+              {nameError}
+            </Typography.Text>
+          )}
+        </div>
+
+        {/* Checkbox Options */}
+        <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <Checkbox
+            checked={prefixTimestamp}
+            onChange={(e) => setPrefixTimestamp(e.target.checked)}
+          >
+            Prefix with timestamp
+          </Checkbox>
+          <Checkbox checked={suffixMimeType} onChange={(e) => setSuffixMimeType(e.target.checked)}>
+            Suffix with file extension
+          </Checkbox>
+          {taskName === GEMINI_TASKS.RECOLOR_WALL.task_name && colorName && (
+            <Checkbox
+              checked={suffixColorName}
+              onChange={(e) => setSuffixColorName(e.target.checked)}
+            >
+              Suffix with color name
+            </Checkbox>
+          )}
+          {taskName === GEMINI_TASKS.ADD_TEXTURE.task_name && textureName && (
+            <Checkbox
+              checked={suffixTextureName}
+              onChange={(e) => setSuffixTextureName(e.target.checked)}
+            >
+              Suffix with texture name
+            </Checkbox>
+          )}
+        </div>
+
+        {/* Final Name Preview */}
+        <div
+          style={{
+            backgroundColor: '#fafafa',
+            borderRadius: 4,
+            padding: 12,
+            border: '1px solid #e8e8e8',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+            <Typography.Text strong>Final Name Preview:</Typography.Text>
+            <Typography.Text
+              type={finalName.length > MAX_IMAGE_NAME_LENGTH ? 'danger' : 'secondary'}
+              style={{ fontSize: 12 }}
+            >
+              {finalName.length} / {MAX_IMAGE_NAME_LENGTH} characters
+            </Typography.Text>
+          </div>
+          <Typography.Text
+            code
+            style={{
+              display: 'block',
+              wordBreak: 'break-all',
+              color: nameError ? '#ff4d4f' : undefined,
+            }}
+          >
+            {finalName || '(empty)'}
+          </Typography.Text>
+        </div>
+      </div>
+    </Modal>
   );
 };
 

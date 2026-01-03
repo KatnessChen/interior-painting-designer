@@ -1,12 +1,15 @@
 import { useState, useCallback } from 'react';
 import { ImageData, Color } from '@/types';
-import { recolorWalls } from '@/services/gemini/geminiService';
+import { generateRecoloredImage, generateRetexturedImage } from '@/services/gemini/geminiService';
 import { GEMINI_TASKS, GeminiTaskName } from '@/services/gemini/geminiTasks';
 import { incrementTaskUsage } from '@/services/userService';
 
 interface Texture {
+  id: string;
   name: string;
-  description?: string;
+  textureImageDownloadUrl: string;
+  mimeType?: string;
+  notes?: string;
 }
 
 interface UseImageProcessingProps {
@@ -34,6 +37,12 @@ export const useImageProcessing = ({
       setProcessingImage(true);
       setErrorMessage(null);
 
+      if (!userId) {
+        setErrorMessage('User ID is required to process images.');
+        setProcessingImage(false);
+        return null;
+      }
+
       try {
         let result: { base64: string; mimeType: string };
 
@@ -44,13 +53,7 @@ export const useImageProcessing = ({
             return null;
           }
 
-          if (!userId) {
-            setErrorMessage('User ID is required to process images.');
-            setProcessingImage(false);
-            return null;
-          }
-
-          result = await recolorWalls(
+          result = await generateRecoloredImage(
             userId,
             imageData,
             selectedColor.name,
@@ -63,9 +66,14 @@ export const useImageProcessing = ({
             setProcessingImage(false);
             return null;
           }
-
-          // TODO: handel TextureImage storage
-          throw new Error('Add Texture feature is not yet implemented.');
+          result = await generateRetexturedImage(
+            userId,
+            imageData,
+            selectedTexture.textureImageDownloadUrl,
+            selectedTexture.mimeType || 'image/jpeg',
+            selectedTexture.name,
+            customPrompt
+          );
         } else {
           throw new Error('Unknown task type');
         }
