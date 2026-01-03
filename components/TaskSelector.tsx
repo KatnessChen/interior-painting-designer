@@ -87,7 +87,7 @@ const TaskSelector: React.FC<TaskSelectorProps> = ({
   const firstName = user?.displayName?.split(' ')[0] || '';
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 p-6">
       <h2 className="text-lg text-gray-800">
         👋 Hi {firstName || ''}! Select your tasks to get started.
       </h2>

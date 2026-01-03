@@ -4,8 +4,6 @@ import { Timestamp } from 'firebase/firestore';
 import ConfirmImageUpdateModal from '@/components/ConfirmImageUpdateModal';
 import GenerateMoreModal from '@/components/GenerateMoreModal';
 import Gallery from '@/components/Gallery';
-import ImagesComparingModal from '@/components/ImagesComparingModal';
-import ImagesComparingButton from '@/components/ImagesComparingButton';
 import AlertModal from '@/components/AlertModal';
 import EmptyState from '@/components/EmptyState';
 import GenericConfirmModal from '@/components/GenericConfirmModal';
@@ -23,7 +21,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAppInit } from '@/hooks/useAppInit';
 import { useImageProcessing } from '@/hooks/useImageProcessing';
 import { formatImageOperationData, downloadFile, buildDownloadFilename } from '@/utils';
-import { selectOriginalImages, selectUpdatedImages } from '@/stores/imageStore';
+import {
+  selectOriginalImages,
+  selectUpdatedImages,
+  selectSelectedOriginalImageIds,
+  selectSelectedUpdatedImageIds,
+  setSelectedOriginalImageIds,
+  setSelectedUpdatedImageIds,
+} from '@/stores/imageStore';
 import {
   setSpaceImages,
   selectProjects,
@@ -64,13 +69,13 @@ const LandingPage: React.FC = () => {
   const selectedColor = useSelector(selectSelectedColor);
   const selectedTexture = useSelector(selectSelectedTexture);
 
-  const [selectedOriginalImageIds, setSelectedOriginalImageIds] = useState<Set<string>>(new Set());
+  // Get selected image IDs from Redux
+  const selectedOriginalImageIds = useSelector(selectSelectedOriginalImageIds);
+  const selectedUpdatedImageIds = useSelector(selectSelectedUpdatedImageIds);
 
   const [generatedImage, setGeneratedImage] = useState<{ base64: string; mimeType: string } | null>(
     null
   );
-
-  const [selectedUpdatedImageIds, setSelectedUpdatedImageIds] = useState<Set<string>>(new Set());
 
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
 
@@ -82,9 +87,6 @@ const LandingPage: React.FC = () => {
     selectedImage: null,
     customPrompt: undefined,
   });
-
-  // State for compare photos modal
-  const [showCompareModal, setShowCompareModal] = useState<boolean>(false);
 
   // State for Generate More Modal
   const [showGenerateMoreModal, setShowGenerateMoreModal] = useState<boolean>(false);
@@ -402,10 +404,10 @@ const LandingPage: React.FC = () => {
     setSelectedImageForGeneration(null);
   }, []);
 
-  const handleSelectOriginalImage = useCallback((imageId: string) => {
-    // Single-select mode: toggle selection, max 1 image
-    setSelectedOriginalImageIds((prev) => {
-      const newSet = new Set(prev);
+  const handleSelectOriginalImage = useCallback(
+    (imageId: string) => {
+      // Single-select mode: toggle selection, max 1 image
+      const newSet = new Set(selectedOriginalImageIds);
       if (newSet.has(imageId)) {
         newSet.delete(imageId);
       } else {
@@ -413,21 +415,23 @@ const LandingPage: React.FC = () => {
         newSet.clear();
         newSet.add(imageId);
       }
-      return newSet;
-    });
-  }, []);
+      dispatch(setSelectedOriginalImageIds(newSet));
+    },
+    [selectedOriginalImageIds, dispatch]
+  );
 
-  const handleSelectMultipleOriginal = useCallback((imageId: string) => {
-    setSelectedOriginalImageIds((prev) => {
-      const newSet = new Set(prev);
+  const handleSelectMultipleOriginal = useCallback(
+    (imageId: string) => {
+      const newSet = new Set(selectedOriginalImageIds);
       if (newSet.has(imageId)) {
         newSet.delete(imageId);
       } else {
         newSet.add(imageId);
       }
-      return newSet;
-    });
-  }, []);
+      dispatch(setSelectedOriginalImageIds(newSet));
+    },
+    [selectedOriginalImageIds, dispatch]
+  );
 
   const handleBulkDelete = useCallback(
     async (imageType: 'original' | 'updated') => {
@@ -517,17 +521,18 @@ const LandingPage: React.FC = () => {
   }, []);
 
   // Multi-select handlers for updated photos
-  const handleSelectUpdatedImage = useCallback((imageId: string) => {
-    setSelectedUpdatedImageIds((prev) => {
-      const newSet = new Set(prev);
+  const handleSelectUpdatedImage = useCallback(
+    (imageId: string) => {
+      const newSet = new Set(selectedUpdatedImageIds);
       if (newSet.has(imageId)) {
         newSet.delete(imageId);
       } else {
         newSet.add(imageId);
       }
-      return newSet;
-    });
-  }, []);
+      dispatch(setSelectedUpdatedImageIds(newSet));
+    },
+    [selectedUpdatedImageIds, dispatch]
+  );
 
   const handleBulkDownload = useCallback(
     (imageType: 'original' | 'updated') => {
@@ -583,39 +588,18 @@ const LandingPage: React.FC = () => {
   const selectedOriginalImage =
     originalImages.find((img) => img.id === selectedOriginalImageId) || null;
 
-  const getSelectedPhotosForComparison = useCallback(() => {
-    const selectedPhotos: ImageData[] = [];
-
-    // Add selected original images
-    selectedOriginalImageIds.forEach((id) => {
-      const img = originalImages.find((img) => img.id === id);
-      if (img) selectedPhotos.push(img);
-    });
-
-    // Add selected updated images
-    selectedUpdatedImageIds.forEach((id) => {
-      const img = updatedImages.find((img) => img.id === id);
-      if (img) selectedPhotos.push(img);
-    });
-
-    return selectedPhotos;
-  }, [selectedOriginalImageIds, selectedUpdatedImageIds, originalImages, updatedImages]);
-
   return (
-    <div className="flex h-screen bg-gray-50">
-      <main
-        className="flex-1 flex flex-col"
-        style={{ height: 'calc(100vh - var(--header-height))' }}
-      >
-        <div className="bg-gray-100">
+    <div className="flex bg-gray-50">
+      <main className="flex-1 flex flex-col">
+        <div className="bg-gray-100" style={{ minHeight: 'calc(100% - var(--footer-height))' }}>
           <MyBreadcrumb />
-          <div className="min-h-screen container p-6">
+          <div className="container p-6">
             {!isAppInitiated ? (
-              <div className="min-h-screen flex items-center justify-center">
+              <div className="flex items-center justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
               </div>
             ) : initError ? (
-              <div className="min-h-screen flex items-center justify-center">
+              <div className="flex items-center justify-center">
                 <div className="text-center max-w-md p-6">
                   <div className="text-red-600 text-5xl mb-4">🤯</div>
                   <h2 className="text-xl text-gray-600 mb-2">Sorry, something went wrong.</h2>
@@ -674,15 +658,6 @@ const LandingPage: React.FC = () => {
             )}
           </div>
         </div>
-        <div className="bg-white px-6 py-2 border-t border-gray-200">
-          <div className="flex justify-end">
-            <ImagesComparingButton
-              totalSelectedPhotos={selectedOriginalImageIds.size + selectedUpdatedImageIds.size}
-              isEnabled={selectedOriginalImageIds.size + selectedUpdatedImageIds.size >= 2}
-              onClick={() => setShowCompareModal(true)}
-            />
-          </div>
-        </div>
         <Footer />
       </main>
 
@@ -694,15 +669,7 @@ const LandingPage: React.FC = () => {
           onConfirm={handleImageSatisfied}
           onCancel={handleCancelRecolor}
           colorName={selectedColor?.name || 'N/A'}
-        />
-      )}
-
-      {/* Compare Photos Modal */}
-      {showCompareModal && (
-        <ImagesComparingModal
-          isOpen={showCompareModal}
-          images={getSelectedPhotosForComparison()}
-          onClose={() => setShowCompareModal(false)}
+          taskName={selectedTaskNames[0] || GEMINI_TASKS.RECOLOR_WALL.task_name}
         />
       )}
 

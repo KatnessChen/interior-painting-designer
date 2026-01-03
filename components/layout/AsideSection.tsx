@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import TaskSelector from '@/components/TaskSelector';
 import ColorSelector from '@/components/ColorSelector';
 import TextureSelector from '@/components/TextureSelector';
+import ToolkitPanel from './ToolkitPanel';
 import { GEMINI_TASKS } from '@/services/gemini/geminiTasks';
 import {
   selectSelectedTaskNames,
@@ -29,25 +30,27 @@ const AsideSection: React.FC = () => {
   };
 
   return (
-    <aside
-      className="w-[240px] p-6 bg-white flex flex-col shadow-lg border-r border-gray-200 overflow-y-auto"
-      style={{ height: 'calc(100vh - var(--header-height))' }}
-    >
+    <aside className="h-full w-[240px] bg-white flex flex-col shadow-lg border-r border-gray-200 overflow-y-auto">
       <TaskSelector />
 
       {/* Show ColorSelector when Recolor task is selected */}
       {isRecolorSelected && (
-        <div className="mt-6 pt-6 border-t border-gray-200">
+        <div className="pt-6 border-t border-gray-200 px-6">
           <ColorSelector title="" selectedColor={selectedColor} onSelectColor={handleSelectColor} />
         </div>
       )}
 
       {/* Show TextureSelector when Add Texture task is selected */}
       {isTextureSelected && (
-        <div className="mt-6 pt-6 border-t border-gray-200">
+        <div className="pt-6 border-t border-gray-200 px-6">
           <TextureSelector title="" onTextureSelect={handleSelectTexture} />
         </div>
       )}
+
+      {/* Toolkit Panel at the bottom */}
+      <div className="mt-auto border-t border-gray-200">
+        <ToolkitPanel />
+      </div>
     </aside>
   );
 };

@@ -43,6 +43,7 @@ import {
   setLoadColorsError,
   setLoadTexturesError,
 } from '@/stores/customAssetsStore';
+import { setSelectedColor, setSelectedTexture } from '@/stores/taskStore';
 
 export const ModalMode = {
   ADD_PROJECT: 'add-project',
@@ -101,6 +102,9 @@ const MyBreadcrumb: React.FC<BreadcrumbProps> = ({ onProjectSelected, onSpaceSel
       const firstSpace = selectedProject?.spaces?.[0];
       dispatch(setActiveSpaceId(firstSpace ? firstSpace.id : null));
       onProjectSelected?.(projectId);
+
+      dispatch(setSelectedColor(null));
+      dispatch(setSelectedTexture(null));
 
       // Fetch custom assets for new project
       const loadCustomAssets = async () => {
