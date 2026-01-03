@@ -177,6 +177,12 @@ export interface Color {
 }
 
 export interface Texture {
+  id: string;
   name: string;
-  description?: string;
+  textureImageDownloadUrl: string;
+  notes?: string;
+  base64?: string;
+  mimeType?: string;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
 }

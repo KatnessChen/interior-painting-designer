@@ -2,9 +2,15 @@ import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import TaskSelector from '@/components/TaskSelector';
 import ColorSelector from '@/components/ColorSelector';
+import TextureSelector from '@/components/TextureSelector';
 import { GEMINI_TASKS } from '@/services/gemini/geminiTasks';
-import { selectSelectedTaskNames, selectSelectedColor, setSelectedColor } from '@/stores/taskStore';
-import { Color } from '@/types';
+import {
+  selectSelectedTaskNames,
+  selectSelectedColor,
+  setSelectedColor,
+  setSelectedTexture,
+} from '@/stores/taskStore';
+import { Color, Texture } from '@/types';
 
 const AsideSection: React.FC = () => {
   const dispatch = useDispatch();
@@ -12,9 +18,14 @@ const AsideSection: React.FC = () => {
   const selectedColor = useSelector(selectSelectedColor);
 
   const isRecolorSelected = selectedTaskNames.includes(GEMINI_TASKS.RECOLOR_WALL.task_name);
+  const isTextureSelected = selectedTaskNames.includes(GEMINI_TASKS.ADD_TEXTURE.task_name);
 
   const handleSelectColor = (color: Color) => {
     dispatch(setSelectedColor(color));
+  };
+
+  const handleSelectTexture = (texture: Texture) => {
+    dispatch(setSelectedTexture(texture));
   };
 
   return (
@@ -28,6 +39,13 @@ const AsideSection: React.FC = () => {
       {isRecolorSelected && (
         <div className="mt-6 pt-6 border-t border-gray-200">
           <ColorSelector title="" selectedColor={selectedColor} onSelectColor={handleSelectColor} />
+        </div>
+      )}
+
+      {/* Show TextureSelector when Add Texture task is selected */}
+      {isTextureSelected && (
+        <div className="mt-6 pt-6 border-t border-gray-200">
+          <TextureSelector title="" onTextureSelect={handleSelectTexture} />
         </div>
       )}
     </aside>

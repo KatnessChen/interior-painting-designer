@@ -83,7 +83,7 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({
           <span className="ml-2 text-gray-600">Loading colors...</span>
         </div>
       ) : (
-        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+        <Space orientation="vertical" style={{ width: '100%' }} size="small">
           {/* Color Select */}
           <Select
             placeholder="Select a color"

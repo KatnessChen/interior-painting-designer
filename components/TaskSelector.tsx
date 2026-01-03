@@ -3,12 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { Checkbox } from 'antd';
 import type { CheckboxChangeEvent } from 'antd/es/checkbox';
 import { GEMINI_TASKS, GeminiTaskName } from '@/services/gemini/geminiTasks';
-import {
-  selectSelectedTaskNames,
-  setSelectedTaskNames,
-  setSelectedColor,
-  setSelectedTexture,
-} from '@/stores/taskStore';
+import { selectSelectedTaskNames, setSelectedTaskNames } from '@/stores/taskStore';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface TaskSelectorProps {
@@ -33,11 +28,9 @@ const TaskSelector: React.FC<TaskSelectorProps> = ({
 
   // Reset related state when tasks change
   const resetRelatedState = useCallback(() => {
-    dispatch(setSelectedColor(null));
-    dispatch(setSelectedTexture(null));
     onModalStateChange?.(false); // Close any open confirmation modal
     onError?.(null); // Clear any error messages
-  }, [dispatch, onModalStateChange, onError]);
+  }, [onModalStateChange, onError]);
 
   const tasks = [
     {

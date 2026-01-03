@@ -32,7 +32,17 @@ import {
   updateSpace,
   deleteSpace,
   fetchSpaceImages,
+  fetchColors,
+  fetchTextures,
 } from '@/services/firestoreService';
+import {
+  setCustomColors,
+  setCustomTextures,
+  setLoadingColors,
+  setLoadingTextures,
+  setLoadColorsError,
+  setLoadTexturesError,
+} from '@/stores/customAssetsStore';
 
 export const ModalMode = {
   ADD_PROJECT: 'add-project',
@@ -84,11 +94,45 @@ const MyBreadcrumb: React.FC<BreadcrumbProps> = ({ onProjectSelected, onSpaceSel
   const handleSelectProject = useCallback(
     (projectId: string) => {
       if (!user || activeProjectId === projectId) return;
+
       dispatch(setActiveProjectId(projectId));
+
       const selectedProject = projects.find((p) => p.id === projectId);
       const firstSpace = selectedProject?.spaces?.[0];
       dispatch(setActiveSpaceId(firstSpace ? firstSpace.id : null));
       onProjectSelected?.(projectId);
+
+      // Fetch custom assets for new project
+      const loadCustomAssets = async () => {
+        try {
+          dispatch(setLoadingColors({ projectId, isLoadingColors: true }));
+          dispatch(setLoadingTextures({ projectId, isLoadingTextures: true }));
+
+          const [colors, textures] = await Promise.all([
+            fetchColors(user.uid, projectId),
+            fetchTextures(user.uid, projectId),
+          ]);
+
+          dispatch(setCustomColors({ projectId, colors }));
+          dispatch(setCustomTextures({ projectId, textures }));
+        } catch (error) {
+          console.error('Failed to load custom assets:', error);
+          dispatch(
+            setLoadColorsError({
+              projectId,
+              error: error instanceof Error ? error.message : 'Unknown error',
+            })
+          );
+          dispatch(
+            setLoadTexturesError({
+              projectId,
+              error: error instanceof Error ? error.message : 'Unknown error',
+            })
+          );
+        }
+      };
+
+      loadCustomAssets();
     },
     [user, dispatch, projects, activeProjectId, onProjectSelected]
   );
