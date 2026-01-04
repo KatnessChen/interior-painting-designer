@@ -19,7 +19,7 @@ const ToolkitPanel: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const selectedImageCount = selectedOriginalImageIds.size + selectedUpdatedImageIds.size;
-  const isEnabled = selectedImageCount >= 2;
+  const isEnabled = selectedImageCount >= 2 && selectedImageCount <= 4;
 
   // Get actual image objects for comparison modal
   const getSelectedPhotosForComparison = useMemo(() => {
@@ -81,7 +81,7 @@ const ToolkitPanel: React.FC = () => {
       >
         <div className="px-6 pb-4">
           {/* Compare Button - Show when expanded */}
-          <div className="animate-in fade-in slide-in-from-left-2 duration-300">
+          <div className="flex flex-col gap-2 animate-in fade-in slide-in-from-left-2 duration-300">
             <ImagesComparingButton
               totalSelectedPhotos={selectedImageCount}
               isEnabled={isEnabled}

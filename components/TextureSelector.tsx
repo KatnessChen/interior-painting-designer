@@ -189,6 +189,7 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({
       <Space orientation="vertical" style={{ width: '100%' }} size="small">
         <Select
           placeholder="Select a texture"
+          size="large"
           value={selectedTexture?.id || undefined}
           onChange={handleSelectTexture}
           loading={isLoadingTextures}
@@ -252,6 +253,7 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({
         >
           <Button
             type="dashed"
+            size="large"
             block
             icon={<UploadOutlined />}
             loading={isUploading}

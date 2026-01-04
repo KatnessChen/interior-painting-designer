@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Timestamp } from 'firebase/firestore';
+import { message } from 'antd';
 import ConfirmImageUpdateModal from '@/components/ConfirmImageUpdateModal';
 import GenerateMoreModal from '@/components/GenerateMoreModal';
 import Gallery from '@/components/Gallery';
-import AlertModal from '@/components/AlertModal';
 import EmptyState from '@/components/EmptyState';
 import GenericConfirmModal from '@/components/GenericConfirmModal';
+import CopyImageModal from '@/components/CopyImageModal';
 import MyBreadcrumb from '@/components/MyBreadcrumb';
 import Footer from '@/components/layout/Footer';
 import { GEMINI_TASKS } from '@/services/gemini/geminiTasks';
@@ -16,6 +17,7 @@ import {
   deleteImages,
   fetchSpaceImages,
   updateImageName,
+  duplicateImage,
 } from '@/services/firestoreService';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppInit } from '@/hooks/useAppInit';
@@ -94,12 +96,6 @@ const LandingPage: React.FC = () => {
     null
   );
 
-  // State for alert modal
-  const [showAlert, setShowAlert] = useState<boolean>(false);
-  const [alertType, setAlertType] = useState<'error' | 'success' | 'info' | 'warning'>('error');
-  const [alertTitle, setAlertTitle] = useState<string>('');
-  const [alertMessage, setAlertMessage] = useState<string>('');
-
   // State for generic confirm modal (for delete operations)
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState<boolean>(false);
   const [deleteConfirmConfig, setDeleteConfirmConfig] = useState<{
@@ -109,19 +105,13 @@ const LandingPage: React.FC = () => {
   } | null>(null);
   const [isDeletingImages, setIsDeletingImages] = useState<boolean>(false);
 
+  // State for copy modal
+  const [showCopyModal, setShowCopyModal] = useState<boolean>(false);
+  const [imageTypeToCopy, setImageTypeToCopy] = useState<'original' | 'updated' | null>(null);
+  const [isCopyingImages, setIsCopyingImages] = useState<boolean>(false);
+
   // Initialize app on mount
   useAppInit();
-
-  // Helper function to show alert
-  const showAlertModal = useCallback(
-    (type: 'error' | 'success' | 'info' | 'warning', title: string, message: string) => {
-      setAlertType(type);
-      setAlertTitle(title);
-      setAlertMessage(message);
-      setShowAlert(true);
-    },
-    []
-  );
 
   // Use image processing hook
   const { errorMessage, setErrorMessage } = useImageProcessing({
@@ -133,12 +123,12 @@ const LandingPage: React.FC = () => {
     },
   });
 
-  // Show alert when errorMessage changes
+  // Show error message when errorMessage changes
   useEffect(() => {
     if (errorMessage) {
-      showAlertModal('error', 'Error', errorMessage);
+      message.error(errorMessage);
     }
-  }, [errorMessage, showAlertModal]);
+  }, [errorMessage]);
 
   const handleImageUpload = useCallback(
     async (file: File) => {
@@ -566,6 +556,111 @@ const LandingPage: React.FC = () => {
     dispatch(setSelectedUpdatedImageIds(new Set()));
   }, [dispatch]);
 
+  const handleBulkCopy = useCallback(
+    (imageType: 'original' | 'updated') => {
+      const selectedImageIds =
+        imageType === 'original' ? selectedOriginalImageIds : selectedUpdatedImageIds;
+
+      if (selectedImageIds.size === 0) return;
+
+      setImageTypeToCopy(imageType);
+      setShowCopyModal(true);
+    },
+    [selectedOriginalImageIds, selectedUpdatedImageIds]
+  );
+
+  const handleCopyConfirm = useCallback(
+    async (copyMode: 'duplicate-as-original' | 'keep-history') => {
+      if (!user) {
+        setErrorMessage('Please log in to copy images.');
+        return;
+      }
+
+      if (!activeProjectId || !activeSpaceId || !imageTypeToCopy) {
+        setErrorMessage('No project and space selected. Please try again.');
+        return;
+      }
+
+      const selectedImageIds =
+        imageTypeToCopy === 'original' ? selectedOriginalImageIds : selectedUpdatedImageIds;
+      const imagesToCopy = imageTypeToCopy === 'original' ? originalImages : updatedImages;
+
+      if (selectedImageIds.size === 0) return;
+
+      setIsCopyingImages(true);
+      try {
+        // Copy each selected image
+        const imagesToCopyArray = imagesToCopy.filter((img) => selectedImageIds.has(img.id));
+
+        for (const sourceImage of imagesToCopyArray) {
+          // Generate name by appending " Copy" to the original image name
+          const finalName = `${sourceImage.name} Copy`;
+
+          const newImage = await duplicateImage(
+            user.uid,
+            activeProjectId,
+            activeSpaceId,
+            sourceImage.id,
+            finalName,
+            copyMode
+          );
+
+          // Optimistic update - add the new image immediately to UI
+          dispatch(
+            addImageOptimistic({
+              projectId: activeProjectId,
+              spaceId: activeSpaceId,
+              image: newImage,
+            })
+          );
+        }
+
+        // Fetch updated space images to sync with server
+        const images = await fetchSpaceImages(user.uid, activeProjectId, activeSpaceId);
+        dispatch(setSpaceImages({ projectId: activeProjectId, spaceId: activeSpaceId, images }));
+
+        // Clear selection and close modal
+        if (imageTypeToCopy === 'original') {
+          dispatch(setSelectedOriginalImageIds(new Set()));
+        } else {
+          dispatch(setSelectedUpdatedImageIds(new Set()));
+        }
+
+        setShowCopyModal(false);
+        setImageTypeToCopy(null);
+        setErrorMessage(null);
+
+        message.success(`${imagesToCopyArray.length} image(s) copied successfully!`);
+      } catch (error) {
+        console.error('Failed to copy images:', error);
+
+        // Rollback - refresh from server
+        try {
+          const images = await fetchSpaceImages(user.uid, activeProjectId, activeSpaceId);
+          dispatch(setSpaceImages({ projectId: activeProjectId, spaceId: activeSpaceId, images }));
+        } catch (refreshError) {
+          console.error('Failed to refresh images:', refreshError);
+        }
+
+        setErrorMessage('Failed to copy images. Please try again.');
+      } finally {
+        setIsCopyingImages(false);
+      }
+    },
+    [
+      user,
+      activeProjectId,
+      activeSpaceId,
+      imageTypeToCopy,
+      selectedOriginalImageIds,
+      selectedUpdatedImageIds,
+      originalImages,
+      updatedImages,
+      dispatch,
+      setErrorMessage,
+    ]
+  );
+
   const getEmptyStateComponent = useMemo(() => {
     const hasNoProject = projects.length === 0 || !activeProjectId;
     const hasNoSpace = !activeSpaceId;
@@ -635,6 +730,7 @@ const LandingPage: React.FC = () => {
                       onBulkDownload={() => handleBulkDownload('original')}
                       onUploadError={setErrorMessage}
                       onBulkDelete={() => handleBulkDelete('original')}
+                      onBulkCopy={() => handleBulkCopy('original')}
                       onClearSelection={handleClearOriginalSelection}
                       onGenerateMoreSuccess={handleGenerateMoreSuccess}
                       onGenerateMoreClick={handleOpenGenerateMore}
@@ -649,6 +745,7 @@ const LandingPage: React.FC = () => {
                       onRenameImage={handleRenameImage}
                       emptyMessage="Satisfied recolored photos will appear here."
                       onBulkDelete={() => handleBulkDelete('updated')}
+                      onBulkCopy={() => handleBulkCopy('updated')}
                       onClearSelection={handleClearUpdatedSelection}
                       onBulkDownload={() => handleBulkDownload('updated')}
                       onGenerateMoreSuccess={handleGenerateMoreSuccess}
@@ -694,14 +791,22 @@ const LandingPage: React.FC = () => {
         />
       )}
 
-      {/* Alert Modal */}
-      {showAlert && (
-        <AlertModal
-          isOpen={showAlert}
-          type={alertType}
-          title={alertTitle}
-          message={alertMessage}
-          onClose={() => setShowAlert(false)}
+      {/* Copy Image Modal */}
+      {showCopyModal && imageTypeToCopy && (
+        <CopyImageModal
+          isOpen={showCopyModal}
+          numberOfImages={
+            imageTypeToCopy === 'original'
+              ? selectedOriginalImageIds.size
+              : selectedUpdatedImageIds.size
+          }
+          imageType={imageTypeToCopy}
+          onConfirm={handleCopyConfirm}
+          onCancel={() => {
+            setShowCopyModal(false);
+            setImageTypeToCopy(null);
+          }}
+          isLoading={isCopyingImages}
         />
       )}
 

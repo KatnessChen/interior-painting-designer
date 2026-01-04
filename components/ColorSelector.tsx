@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
-import { Select, Button, Alert, Space } from 'antd';
+import { Select, Typography, Button, Alert, Space } from 'antd';
 import { Color } from '@/types';
 import { BENJAMIN_MOORE_COLORS } from '@/constants';
-import { Box, Typography, Snackbar } from '@mui/material';
+import { Box, Snackbar } from '@mui/material';
 import AddColorModal from './AddColorModal';
 import { useCustomColors } from '@/hooks/useCustomColors';
 import { RootState } from '@/stores/store';
@@ -62,9 +62,9 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({
 
   return (
     <div>
-      <Typography variant="h6" gutterBottom fontWeight="medium">
+      <Typography.Title level={5} className="mb-2">
         {title}
-      </Typography>
+      </Typography.Title>
 
       {error && (
         <Alert
@@ -87,6 +87,7 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({
           {/* Color Select */}
           <Select
             placeholder="Select a color"
+            size="large"
             value={selectedColor?.id || undefined}
             onChange={(value) => {
               const color = availableColors.find((c) => c.id === value);
@@ -122,7 +123,7 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({
           />
 
           {/* Add Color Button */}
-          <Button type="dashed" block onClick={() => setIsAddColorModalOpen(true)}>
+          <Button type="dashed" size="large" block onClick={() => setIsAddColorModalOpen(true)}>
             Add Custom Color
           </Button>
 

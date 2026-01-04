@@ -699,6 +699,121 @@ export async function deleteImages(
   }
 }
 
+/**
+ * Duplicates an image in Firestore with optional processing.
+ * Can either keep the operation history or create a new image without history.
+ *
+ * @param userId The ID of the user.
+ * @param projectId The ID of the project.
+ * @param spaceId The ID of the space.
+ * @param sourceImageId The ID of the image to duplicate.
+ * @param newImageName The name for the duplicated image.
+ * @param mode 'keep-history' to preserve evolution chain, 'duplicate-as-original' to start fresh.
+ * @returns The newly created ImageData.
+ */
+export async function duplicateImage(
+  userId: string,
+  projectId: string,
+  spaceId: string,
+  sourceImageId: string,
+  newImageName: string,
+  mode: 'keep-history' | 'duplicate-as-original'
+): Promise<ImageData> {
+  if (!userId || !projectId || !spaceId || !sourceImageId) {
+    throw new Error('User ID, Project ID, Space ID, and Source Image ID are required.');
+  }
+
+  if (!newImageName.trim()) {
+    throw new Error('New image name is required.');
+  }
+
+  try {
+    console.log(`Duplicating image ${sourceImageId} in mode: ${mode}`);
+
+    // Fetch the source image
+    const sourceDocRef = doc(
+      db,
+      'users',
+      userId,
+      'projects',
+      projectId,
+      'spaces',
+      spaceId,
+      'images',
+      sourceImageId
+    );
+
+    const sourceImageDoc = await getDoc(sourceDocRef);
+    if (!sourceImageDoc.exists()) {
+      throw new Error(`Source image not found: ${sourceImageId}`);
+    }
+
+    const sourceImageData = sourceImageDoc.data() as ImageData;
+
+    // Generate new image ID
+    const newImageId = crypto.randomUUID();
+    const now = Timestamp.fromDate(new Date());
+
+    // Determine the new image's evolution chain
+    const buildEvolutionChain = (): ImageOperation[] => {
+      if (mode === 'duplicate-as-original') {
+        // Start fresh without history
+        return [];
+      } else {
+        // Keep the entire evolution chain from the source image
+        return sourceImageData.evolutionChain || [];
+      }
+    };
+
+    // Create the new image document
+    const newImageData: ImageData = {
+      id: newImageId,
+      name: newImageName.trim(),
+      spaceId,
+      evolutionChain: buildEvolutionChain(),
+      parentImageId: mode === 'duplicate-as-original' ? null : sourceImageData.parentImageId,
+      imageDownloadUrl: sourceImageData.imageDownloadUrl,
+      storageFilePath: sourceImageData.storageFilePath,
+      mimeType: sourceImageData.mimeType,
+      isDeleted: false,
+      deletedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    // Write to Firestore
+    const newDocRef = doc(
+      db,
+      'users',
+      userId,
+      'projects',
+      projectId,
+      'spaces',
+      spaceId,
+      'images',
+      newImageId
+    );
+
+    const batch = writeBatch(db);
+    const { parentImageId, ...firestoreData } = newImageData;
+    batch.set(newDocRef, {
+      ...firestoreData,
+      parentImageId,
+    });
+
+    await batch.commit();
+    console.log(`Image duplicated successfully: ${newImageId}`);
+
+    return newImageData;
+  } catch (error) {
+    console.error('Failed to duplicate image:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to duplicate image: ${error.message}`);
+    }
+    throw new Error('Failed to duplicate image in Firebase.');
+  }
+}
+
 // ============================================================================
 // Custom Colors Management
 // ============================================================================

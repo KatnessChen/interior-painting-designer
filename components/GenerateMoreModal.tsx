@@ -343,10 +343,10 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
         <Spin spinning={processingImage} tip="Generating new image..." size="large">
           {/* Error Messages */}
           {errorMessage && (
-            <Alert message={errorMessage} type="error" showIcon style={{ marginBottom: 16 }} />
+            <Alert title={errorMessage} type="error" showIcon style={{ marginBottom: 16 }} />
           )}
           {validationError && (
-            <Alert message={validationError} type="warning" showIcon style={{ marginBottom: 16 }} />
+            <Alert title={validationError} type="warning" showIcon style={{ marginBottom: 16 }} />
           )}
 
           <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>

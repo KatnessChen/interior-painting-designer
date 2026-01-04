@@ -47,4 +47,4 @@ export const BENJAMIN_MOORE_COLORS: Color[] = [
   { id: 'OC-4', name: 'Ivory White', hex: '#FFFFF0' },
 ];
 
-export const MAX_FILE_SIZE_MB = 5;
+export const MAX_FILE_SIZE_MB = 10;
