@@ -25,7 +25,7 @@ const getBase64FromImageData = async (userId: string | undefined, imageData: Ima
   return await blobToBase64(blob);
 };
 
-export const recolorWalls = async (
+export const generateRecoloredImage = async (
   userId: string,
   imageData: ImageData,
   colorName: string,
@@ -45,10 +45,11 @@ export const recolorWalls = async (
   });
 };
 
-export const addTexture = async (
+export const generateRetexturedImage = async (
   userId: string,
   imageData: ImageData,
-  textureImage: ImageData,
+  textureImageDownloadUrl: string,
+  textureMimeType: string,
   textureName: string,
   customPrompt?: string
 ): Promise<{ base64: string; mimeType: string }> => {
@@ -57,12 +58,33 @@ export const addTexture = async (
     mimeType: imageData.mimeType,
   };
 
+  // Fetch texture image from URL
+  const textureBase64 = await fetchImageAsBase64(textureImageDownloadUrl);
+
+  const textureImage = {
+    base64String: textureBase64,
+    mimeType: textureMimeType,
+  };
+
   return processImageWithTask(GEMINI_TASKS.ADD_TEXTURE, image, {
     textureName,
     customPrompt,
     userId,
+    textureImage,
   });
 };
+
+/**
+ * Fetch image from URL and convert to base64
+ */
+async function fetchImageAsBase64(url: string): Promise<string> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch image from URL: ${response.statusText}`);
+  }
+  const blob = await response.blob();
+  return await blobToBase64(blob);
+}
 
 /**
  * Generic image processing function with task-based prompt selection
@@ -84,6 +106,10 @@ export const processImageWithTask = async (
     colorHex?: string;
     textureName?: string;
     userId?: string;
+    textureImage?: {
+      base64String: string;
+      mimeType: string;
+    };
   } = {}
 ): Promise<{ base64: string; mimeType: string }> => {
   if (!process.env.API_KEY) {
@@ -96,16 +122,29 @@ export const processImageWithTask = async (
   const model = options.model ?? defaultModel;
 
   try {
-    // Build parts array with the image
-    const parts: any[] = [
-      {
+    // Build parts array
+    const parts: any[] = [];
+
+    // For ADD_TEXTURE task, texture image comes first
+    if (task.task_name === GEMINI_TASKS.ADD_TEXTURE.task_name && options.textureImage) {
+      parts.push({
         inlineData: {
-          data: image.base64String,
-          mimeType: image.mimeType,
+          data: options.textureImage.base64String,
+          mimeType: options.textureImage.mimeType,
         },
+      });
+    }
+
+    // Add the main image
+    parts.push({
+      inlineData: {
+        data: image.base64String,
+        mimeType: image.mimeType,
       },
-      { text: prompt },
-    ];
+    });
+
+    // Add the prompt text
+    parts.push({ text: prompt });
 
     const response: GenerateContentResponse = await ai.models.generateContent({
       model,

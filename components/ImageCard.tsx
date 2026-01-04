@@ -86,9 +86,9 @@ const ImageCard: React.FC<ImageCardProps> = ({
 
   return (
     <div
-      className={`relative group rounded-lg overflow-hidden shadow-md bg-white transition-all duration-200
+      className={`relative group rounded-xl overflow-hidden shadow-md bg-white transition-all duration-200
                   ${onSelect ? 'cursor-pointer hover:shadow-lg' : ''}
-                  ${isSelected ? 'ring-4 ring-indigo-500 ring-offset-2' : ''}`}
+                  ${isSelected ? 'ring-2 ring-indigo-500 ring-offset-2' : ''}`}
       onClick={onSelect ? handleCardClick : undefined} // Only add onClick if selectable
     >
       {/* Image container with overlay buttons */}

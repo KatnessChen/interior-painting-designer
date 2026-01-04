@@ -3,19 +3,19 @@ import { Timestamp } from 'firebase/firestore';
 import projectReducer from './projectStore';
 import imageReducer from './imageStore';
 import customAssetsReducer from './customAssetsStore';
+import taskReducer from './taskStore';
 
 export const store = configureStore({
   reducer: {
     project: projectReducer,
     image: imageReducer,
     customAssets: customAssetsReducer,
+    task: taskReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
         // Ignore Firestore Timestamp in Redux state
-        ignoredActions: [],
-        ignoredPaths: [],
         isSerializable: (value: any) => {
           // Allow Firestore Timestamp objects in Redux state
           if (value instanceof Timestamp) {

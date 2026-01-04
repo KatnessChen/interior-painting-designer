@@ -82,7 +82,7 @@ const UploadCard: React.FC<UploadCardProps> = ({ onImageUpload, onError }) => {
         <p className="mt-2 text-sm text-gray-600 group-hover:text-blue-600 transition-colors font-semibold">
           Click or Drop
         </p>
-        <p className="text-xs text-gray-500 mt-1">{MAX_FILE_SIZE_MB}MB max</p>
+        <p className="text-xs text-gray-500 mt-1">{MAX_FILE_SIZE_MB} MB max</p>
       </div>
 
       {/* Info section matching ImageCard layout */}

@@ -175,3 +175,14 @@ export interface Color {
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }
+
+export interface Texture {
+  id: string;
+  name: string;
+  textureImageDownloadUrl: string;
+  notes?: string;
+  base64?: string;
+  mimeType?: string;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
+}

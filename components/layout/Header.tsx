@@ -32,10 +32,10 @@ const Header: React.FC = () => {
     <>
       {/* Header Bar */}
       <nav className="fixed top-0 left-0 w-full z-50 bg-gradient-to-r from-indigo-400 to-purple-600 shadow-lg">
-        <div className="flex items-center justify-between px-6 py-4">
+        <div className="flex items-center justify-between px-6 py-2">
           {/* Brand Section */}
           <div className="flex items-center">
-            <div className="text-2xl text-white/85">Vizion</div>
+            <div className="text-xl text-white/85">Vizion</div>
             <div className="text-white/70 font-light mt-1 ml-2">Your AI Interior Designer</div>
           </div>
           {/* Right Section - Profile */}
@@ -48,7 +48,11 @@ const Header: React.FC = () => {
                 '&:hover': { border: '2px solid rgba(255,255,255,0.5)' },
               }}
             >
-              <Avatar alt={user?.displayName || 'User'} src={user?.photoURL || undefined} />
+              <Avatar
+                alt={user?.displayName || 'User'}
+                src={user?.photoURL || undefined}
+                sx={{ width: 32, height: 32 }}
+              />
             </IconButton>
           </div>
         </div>
@@ -60,7 +64,7 @@ const Header: React.FC = () => {
         <div
           ref={authPanelRef}
           className="absolute right-6 bg-white rounded-lg shadow-xl border border-gray-200"
-          style={{ top: 70, width: 400, maxWidth: '90vw', zIndex: 1000 }}
+          style={{ top: 48, width: 400, maxWidth: '90vw', zIndex: 1000 }}
         >
           <AuthPanel />
         </div>
