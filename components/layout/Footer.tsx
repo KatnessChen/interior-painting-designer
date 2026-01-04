@@ -5,7 +5,7 @@ const Footer: React.FC = () => {
 
   return (
     <footer className="bg-white border-t border-gray-200">
-      <div className="container mx-auto py-4 px-6">
+      <div className="mx-auto py-4 px-6">
         <div className="flex items-center justify-between text-sm text-gray-600">
           <p>© {currentYear} Vizion Studio. All rights reserved.</p>
           <p className="font-semibold">v.0.4.0</p>

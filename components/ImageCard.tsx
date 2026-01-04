@@ -172,7 +172,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
             {!isEditing && onRename && (
               <button
                 onClick={startEdit}
-                className="p-1 rounded text-gray-600 hover:text-gray-800 focus:outline-none"
+                className="p-1 rounded text-gray-600 hover:text-gray-800 focus:outline-none opacity-0 group-hover:opacity-100 transition-opacity duration-200"
                 title="Rename image"
                 aria-label={`Rename ${image.name}`}
               >

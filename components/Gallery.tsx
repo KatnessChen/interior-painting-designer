@@ -116,7 +116,7 @@ const Gallery: React.FC<GalleryProps> = ({
                   onClick={onBulkDownload}
                   disabled={!hasSelection}
                   variant="outlined"
-                  color="secondary"
+                  color="info"
                   startIcon={<DownloadIcon />}
                   size="small"
                 >
@@ -129,7 +129,7 @@ const Gallery: React.FC<GalleryProps> = ({
                     onClick={onBulkCopy}
                     disabled={!hasSelection}
                     variant="outlined"
-                    color="secondary"
+                    color="info"
                     startIcon={<CopyIcon />}
                     size="small"
                   >

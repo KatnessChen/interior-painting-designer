@@ -691,7 +691,7 @@ const LandingPage: React.FC = () => {
           style={{ minHeight: 'calc(100vh - var(--header-height) - var(--footer-height))' }}
         >
           <MyBreadcrumb />
-          <div className="container p-6">
+          <div className="p-6">
             {!isAppInitiated ? (
               <div className="flex items-center justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
