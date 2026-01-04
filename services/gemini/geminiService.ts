@@ -14,18 +14,27 @@ const defaultModel = 'gemini-2.5-flash-image';
 
 const getBase64FromImageData = async (userId: string | undefined, imageData: ImageData) => {
   // Fetch the image from Firebase Storage using SDK
-  const extension = imageData.mimeType.split('/')[1] || 'jpg';
-  const storageFilePath = userId
-    ? `users/${userId}/images/${imageData.id}.${extension}`
-    : imageData.storageFilePath;
-  const storageRef = ref(storage, storageFilePath);
-  const bytes = await getBytes(storageRef);
-  const blob = new Blob([bytes], { type: imageData.mimeType });
+  const storageFilePath = imageData.storageFilePath;
 
-  return await blobToBase64(blob);
+  if (!storageFilePath) {
+    throw new Error(`Image storageFilePath is missing for image ${imageData.id}`);
+  }
+
+  try {
+    const storageRef = ref(storage, storageFilePath);
+    const bytes = await getBytes(storageRef);
+    const blob = new Blob([bytes], { type: imageData.mimeType });
+
+    return await blobToBase64(blob);
+  } catch (error) {
+    console.error(`Failed to fetch image from Storage path: ${storageFilePath}`, error);
+    throw new Error(
+      `Failed to fetch image: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
 };
 
-export const recolorWalls = async (
+export const generateRecoloredImage = async (
   userId: string,
   imageData: ImageData,
   colorName: string,
@@ -45,10 +54,11 @@ export const recolorWalls = async (
   });
 };
 
-export const addTexture = async (
+export const generateRetexturedImage = async (
   userId: string,
   imageData: ImageData,
-  textureImage: ImageData,
+  textureImageDownloadUrl: string,
+  textureMimeType: string,
   textureName: string,
   customPrompt?: string
 ): Promise<{ base64: string; mimeType: string }> => {
@@ -57,12 +67,33 @@ export const addTexture = async (
     mimeType: imageData.mimeType,
   };
 
+  // Fetch texture image from URL
+  const textureBase64 = await fetchImageAsBase64(textureImageDownloadUrl);
+
+  const textureImage = {
+    base64String: textureBase64,
+    mimeType: textureMimeType,
+  };
+
   return processImageWithTask(GEMINI_TASKS.ADD_TEXTURE, image, {
     textureName,
     customPrompt,
     userId,
+    textureImage,
   });
 };
+
+/**
+ * Fetch image from URL and convert to base64
+ */
+async function fetchImageAsBase64(url: string): Promise<string> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch image from URL: ${response.statusText}`);
+  }
+  const blob = await response.blob();
+  return await blobToBase64(blob);
+}
 
 /**
  * Generic image processing function with task-based prompt selection
@@ -84,6 +115,10 @@ export const processImageWithTask = async (
     colorHex?: string;
     textureName?: string;
     userId?: string;
+    textureImage?: {
+      base64String: string;
+      mimeType: string;
+    };
   } = {}
 ): Promise<{ base64: string; mimeType: string }> => {
   if (!process.env.API_KEY) {
@@ -96,16 +131,29 @@ export const processImageWithTask = async (
   const model = options.model ?? defaultModel;
 
   try {
-    // Build parts array with the image
-    const parts: any[] = [
-      {
+    // Build parts array
+    const parts: any[] = [];
+
+    // For ADD_TEXTURE task, texture image comes first
+    if (task.task_name === GEMINI_TASKS.ADD_TEXTURE.task_name && options.textureImage) {
+      parts.push({
         inlineData: {
-          data: image.base64String,
-          mimeType: image.mimeType,
+          data: options.textureImage.base64String,
+          mimeType: options.textureImage.mimeType,
         },
+      });
+    }
+
+    // Add the main image
+    parts.push({
+      inlineData: {
+        data: image.base64String,
+        mimeType: image.mimeType,
       },
-      { text: prompt },
-    ];
+    });
+
+    // Add the prompt text
+    parts.push({ text: prompt });
 
     const response: GenerateContentResponse = await ai.models.generateContent({
       model,

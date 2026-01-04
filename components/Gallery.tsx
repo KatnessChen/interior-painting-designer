@@ -5,11 +5,12 @@ import UploadCard from './UploadCard';
 import ImageDisplayModal from './ImageDisplayModal';
 import ViewMoreDisplayModal from './ViewMoreDisplayModal';
 import GenerationGuideCard from './GenerationGuideCard';
-import { Button } from '@mui/material';
+import { Button, Tooltip } from '@mui/material';
 import {
   Delete as DeleteIcon,
   Download as DownloadIcon,
   Clear as ClearIcon,
+  ContentCopy as CopyIcon,
 } from '@mui/icons-material';
 
 interface GalleryProps {
@@ -29,6 +30,7 @@ interface GalleryProps {
   onUploadError?: (message: string) => void;
   onBulkDelete?: () => void;
   onBulkDownload?: () => void;
+  onBulkCopy?: () => void;
   onClearSelection?: () => void;
   onGenerateMoreSuccess?: () => void;
   onGenerateMoreClick?: (image: ImageData) => void;
@@ -47,8 +49,8 @@ const Gallery: React.FC<GalleryProps> = ({
   onUploadError,
   onBulkDelete,
   onBulkDownload,
+  onBulkCopy,
   onClearSelection,
-  onGenerateMoreSuccess,
   onGenerateMoreClick,
   userId,
 }) => {
@@ -114,12 +116,26 @@ const Gallery: React.FC<GalleryProps> = ({
                   onClick={onBulkDownload}
                   disabled={!hasSelection}
                   variant="outlined"
-                  color="secondary"
+                  color="info"
                   startIcon={<DownloadIcon />}
                   size="small"
                 >
                   Download
                 </Button>
+              )}
+              {onBulkCopy && (
+                <Tooltip title="Copy the selected photos">
+                  <Button
+                    onClick={onBulkCopy}
+                    disabled={!hasSelection}
+                    variant="outlined"
+                    color="info"
+                    startIcon={<CopyIcon />}
+                    size="small"
+                  >
+                    Copy
+                  </Button>
+                </Tooltip>
               )}
               {onBulkDelete && (
                 <Button
@@ -142,7 +158,7 @@ const Gallery: React.FC<GalleryProps> = ({
                   startIcon={<ClearIcon />}
                   size="small"
                 >
-                  Clear
+                  Deselect
                 </Button>
               )}
             </>

@@ -10,8 +10,8 @@ import { GeminiTask, GEMINI_TASKS } from './geminiTasks';
 // ═══════════════════════════════════════════════════════════
 
 export const wallRecolorPrompts = (
-  colorName: string,
-  colorHex: string,
+  colorName: string | undefined,
+  colorHex: string | undefined,
   customPrompt: string | undefined
 ) => `
   You are an expert interior designer and professional image editor specializing in photorealistic wall recoloring.
@@ -19,7 +19,7 @@ export const wallRecolorPrompts = (
   Your task is to transform the walls in this interior photo to ${colorName} (HEX: ${colorHex}) with maximum visual impact and realism.
 
   CRITICAL INSTRUCTIONS:
-  1. Change ALL wall surfaces to ${colorName} (HEX: ${colorHex})
+  1. Change ALL wall surfaces to ${colorName || 'YOUR COLOR'} (HEX: ${colorHex || 'COLOR HEX'})
   2. Apply UNIFORM color transformation across 100% of wall areas
   3. Preserve authentic lighting, shadows, and 3D depth on walls
   4. Maintain original lighting direction and intensity

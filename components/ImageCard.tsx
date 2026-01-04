@@ -86,9 +86,9 @@ const ImageCard: React.FC<ImageCardProps> = ({
 
   return (
     <div
-      className={`relative group rounded-lg overflow-hidden shadow-md bg-white transition-all duration-200
+      className={`relative group rounded-xl overflow-hidden shadow-md bg-white transition-all duration-200
                   ${onSelect ? 'cursor-pointer hover:shadow-lg' : ''}
-                  ${isSelected ? 'ring-4 ring-indigo-500 ring-offset-2' : ''}`}
+                  ${isSelected ? 'ring-2 ring-indigo-500 ring-offset-2' : ''}`}
       onClick={onSelect ? handleCardClick : undefined} // Only add onClick if selectable
     >
       {/* Image container with overlay buttons */}
@@ -172,7 +172,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
             {!isEditing && onRename && (
               <button
                 onClick={startEdit}
-                className="p-1 rounded text-gray-600 hover:text-gray-800 focus:outline-none"
+                className="p-1 rounded text-gray-600 hover:text-gray-800 focus:outline-none opacity-0 group-hover:opacity-100 transition-opacity duration-200"
                 title="Rename image"
                 aria-label={`Rename ${image.name}`}
               >

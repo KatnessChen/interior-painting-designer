@@ -1,30 +1,36 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Timestamp } from 'firebase/firestore';
+import { message } from 'antd';
 import ConfirmImageUpdateModal from '@/components/ConfirmImageUpdateModal';
-import CustomPromptModal from '@/components/CustomPromptModal';
 import GenerateMoreModal from '@/components/GenerateMoreModal';
 import Gallery from '@/components/Gallery';
-import TaskSelector from '@/components/TaskSelector';
-import ImagesComparingModal from '@/components/ImagesComparingModal';
-import ImagesComparingButton from '@/components/ImagesComparingButton';
-import AlertModal from '@/components/AlertModal';
 import EmptyState from '@/components/EmptyState';
 import GenericConfirmModal from '@/components/GenericConfirmModal';
+import CopyImageModal from '@/components/CopyImageModal';
+import MyBreadcrumb from '@/components/MyBreadcrumb';
 import Footer from '@/components/layout/Footer';
-import { GEMINI_TASKS, GeminiTaskName } from '@/services/gemini/geminiTasks';
-import { Color, ImageData, ImageOperation } from '@/types';
+import { GEMINI_TASKS } from '@/services/gemini/geminiTasks';
+import { ImageData, ImageOperation } from '@/types';
 import {
   createImage,
   deleteImages,
   fetchSpaceImages,
   updateImageName,
+  duplicateImage,
 } from '@/services/firestoreService';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppInit } from '@/hooks/useAppInit';
 import { useImageProcessing } from '@/hooks/useImageProcessing';
 import { formatImageOperationData, downloadFile, buildDownloadFilename } from '@/utils';
-import { selectOriginalImages, selectUpdatedImages } from '@/stores/imageStore';
+import {
+  selectOriginalImages,
+  selectUpdatedImages,
+  selectSelectedOriginalImageIds,
+  selectSelectedUpdatedImageIds,
+  setSelectedOriginalImageIds,
+  setSelectedUpdatedImageIds,
+} from '@/stores/imageStore';
 import {
   setSpaceImages,
   selectProjects,
@@ -37,11 +43,11 @@ import {
   removeImagesOptimistic,
   updateImageOptimistic,
 } from '@/stores/projectStore';
-
-interface Texture {
-  name: string;
-  description?: string;
-}
+import {
+  selectSelectedTaskNames,
+  selectSelectedColor,
+  selectSelectedTexture,
+} from '@/stores/taskStore';
 
 const LandingPage: React.FC = () => {
   // Get authenticated user
@@ -60,29 +66,20 @@ const LandingPage: React.FC = () => {
   const originalImages = useSelector(selectOriginalImages);
   const updatedImages = useSelector(selectUpdatedImages);
 
-  // Task selection
-  const [selectedTaskName, setSelectedTaskName] = useState<GeminiTaskName>(
-    GEMINI_TASKS.RECOLOR_WALL.task_name
-  );
+  // Get task-related state from taskStore
+  const selectedTaskNames = useSelector(selectSelectedTaskNames);
+  const selectedColor = useSelector(selectSelectedColor);
+  const selectedTexture = useSelector(selectSelectedTexture);
 
-  // Recolor task state
-  const [selectedColor, setSelectedColor] = useState<Color | null>(null);
-
-  // Add texture task state
-  const [selectedTexture, setSelectedTexture] = useState<Texture | null>(null);
-
-  const [selectedOriginalImageIds, setSelectedOriginalImageIds] = useState<Set<string>>(new Set());
+  // Get selected image IDs from Redux
+  const selectedOriginalImageIds = useSelector(selectSelectedOriginalImageIds);
+  const selectedUpdatedImageIds = useSelector(selectSelectedUpdatedImageIds);
 
   const [generatedImage, setGeneratedImage] = useState<{ base64: string; mimeType: string } | null>(
     null
   );
 
-  const [selectedUpdatedImageIds, setSelectedUpdatedImageIds] = useState<Set<string>>(new Set());
-
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
-
-  // State for custom prompt modal
-  const [showCustomPromptModal, setShowCustomPromptModal] = useState<boolean>(false);
 
   // State for processing context (to track source image and custom prompt)
   const [processingContext, setProcessingContext] = useState<{
@@ -93,20 +90,11 @@ const LandingPage: React.FC = () => {
     customPrompt: undefined,
   });
 
-  // State for compare photos modal
-  const [showCompareModal, setShowCompareModal] = useState<boolean>(false);
-
   // State for Generate More Modal
   const [showGenerateMoreModal, setShowGenerateMoreModal] = useState<boolean>(false);
   const [selectedImageForGeneration, setSelectedImageForGeneration] = useState<ImageData | null>(
     null
   );
-
-  // State for alert modal
-  const [showAlert, setShowAlert] = useState<boolean>(false);
-  const [alertType, setAlertType] = useState<'error' | 'success' | 'info' | 'warning'>('error');
-  const [alertTitle, setAlertTitle] = useState<string>('');
-  const [alertMessage, setAlertMessage] = useState<string>('');
 
   // State for generic confirm modal (for delete operations)
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState<boolean>(false);
@@ -117,52 +105,30 @@ const LandingPage: React.FC = () => {
   } | null>(null);
   const [isDeletingImages, setIsDeletingImages] = useState<boolean>(false);
 
+  // State for copy modal
+  const [showCopyModal, setShowCopyModal] = useState<boolean>(false);
+  const [imageTypeToCopy, setImageTypeToCopy] = useState<'original' | 'updated' | null>(null);
+  const [isCopyingImages, setIsCopyingImages] = useState<boolean>(false);
+
   // Initialize app on mount
   useAppInit();
 
-  // Helper function to show alert
-  const showAlertModal = useCallback(
-    (type: 'error' | 'success' | 'info' | 'warning', title: string, message: string) => {
-      setAlertType(type);
-      setAlertTitle(title);
-      setAlertMessage(message);
-      setShowAlert(true);
-    },
-    []
-  );
-
   // Use image processing hook
-  const { processImage, errorMessage, setErrorMessage } = useImageProcessing({
+  const { errorMessage, setErrorMessage } = useImageProcessing({
     userId: user?.uid,
-    selectedTaskName,
+    selectedTaskName: selectedTaskNames[0] || GEMINI_TASKS.RECOLOR_WALL.task_name,
     options: {
       selectedColor,
       selectedTexture,
     },
   });
 
-  // Show alert when errorMessage changes
+  // Show error message when errorMessage changes
   useEffect(() => {
     if (errorMessage) {
-      showAlertModal('error', 'Error', errorMessage);
+      message.error(errorMessage);
     }
-  }, [errorMessage, showAlertModal]);
-
-  const handleSelectTask = useCallback(
-    (taskName: GeminiTaskName) => {
-      setSelectedTaskName(taskName);
-
-      // Reset UI state when switching tasks
-      setSelectedColor(null);
-      setSelectedTexture(null);
-      setSelectedOriginalImageIds(new Set());
-      setSelectedUpdatedImageIds(new Set());
-      setGeneratedImage(null);
-      setShowConfirmationModal(false);
-      setErrorMessage(null);
-    },
-    [setErrorMessage]
-  );
+  }, [errorMessage]);
 
   const handleImageUpload = useCallback(
     async (file: File) => {
@@ -287,31 +253,6 @@ const LandingPage: React.FC = () => {
     [user, activeProjectId, activeSpaceId, dispatch, setErrorMessage]
   );
 
-  const handleProcessImage = useCallback(
-    async (customPrompt: string | undefined) => {
-      // Get the first (and only) selected image
-      const selectedImageId = Array.from(selectedOriginalImageIds)[0];
-      const selectedImage = originalImages.find((img) => img.id === selectedImageId);
-      if (!selectedImage) {
-        setErrorMessage('Please select an original photo.');
-        return;
-      }
-
-      setShowCustomPromptModal(false);
-
-      // Save context for later use in handleImageSatisfied
-      setProcessingContext({ selectedImage, customPrompt });
-
-      const generatedImage = await processImage(selectedImage, customPrompt);
-
-      if (generatedImage) {
-        setGeneratedImage(generatedImage);
-        setShowConfirmationModal(true);
-      }
-    },
-    [selectedOriginalImageIds, originalImages, processImage, setErrorMessage]
-  );
-
   const handleImageSatisfied = useCallback(
     async (processedImageResult: { base64: string; mimeType: string }, customFileName: string) => {
       setShowGenerateMoreModal(false);
@@ -340,7 +281,7 @@ const LandingPage: React.FC = () => {
       // Create ImageOperation for evolution chain using utility function
       const operation: ImageOperation = formatImageOperationData(
         processingContext.selectedImage,
-        selectedTaskName,
+        selectedTaskNames[0] || GEMINI_TASKS.RECOLOR_WALL.task_name,
         processingContext.customPrompt,
         selectedColor,
         selectedTexture
@@ -416,7 +357,7 @@ const LandingPage: React.FC = () => {
       user,
       selectedColor,
       selectedTexture,
-      selectedTaskName,
+      selectedTaskNames,
       processingContext,
       activeProjectId,
       activeSpaceId,
@@ -453,10 +394,10 @@ const LandingPage: React.FC = () => {
     setSelectedImageForGeneration(null);
   }, []);
 
-  const handleSelectOriginalImage = useCallback((imageId: string) => {
-    // Single-select mode: toggle selection, max 1 image
-    setSelectedOriginalImageIds((prev) => {
-      const newSet = new Set(prev);
+  const handleSelectOriginalImage = useCallback(
+    (imageId: string) => {
+      // Single-select mode: toggle selection, max 1 image
+      const newSet = new Set(selectedOriginalImageIds);
       if (newSet.has(imageId)) {
         newSet.delete(imageId);
       } else {
@@ -464,21 +405,23 @@ const LandingPage: React.FC = () => {
         newSet.clear();
         newSet.add(imageId);
       }
-      return newSet;
-    });
-  }, []);
+      dispatch(setSelectedOriginalImageIds(newSet));
+    },
+    [selectedOriginalImageIds, dispatch]
+  );
 
-  const handleSelectMultipleOriginal = useCallback((imageId: string) => {
-    setSelectedOriginalImageIds((prev) => {
-      const newSet = new Set(prev);
+  const handleSelectMultipleOriginal = useCallback(
+    (imageId: string) => {
+      const newSet = new Set(selectedOriginalImageIds);
       if (newSet.has(imageId)) {
         newSet.delete(imageId);
       } else {
         newSet.add(imageId);
       }
-      return newSet;
-    });
-  }, []);
+      dispatch(setSelectedOriginalImageIds(newSet));
+    },
+    [selectedOriginalImageIds, dispatch]
+  );
 
   const handleBulkDelete = useCallback(
     async (imageType: 'original' | 'updated') => {
@@ -515,7 +458,7 @@ const LandingPage: React.FC = () => {
               })
             );
 
-            setSelectedImageIds(new Set());
+            dispatch(setSelectedImageIds(new Set()));
 
             // Delete images from Firestore and Firebase Storage
             await deleteImages(
@@ -564,21 +507,22 @@ const LandingPage: React.FC = () => {
   );
 
   const handleClearOriginalSelection = useCallback(() => {
-    setSelectedOriginalImageIds(new Set());
-  }, []);
+    dispatch(setSelectedOriginalImageIds(new Set()));
+  }, [dispatch]);
 
   // Multi-select handlers for updated photos
-  const handleSelectUpdatedImage = useCallback((imageId: string) => {
-    setSelectedUpdatedImageIds((prev) => {
-      const newSet = new Set(prev);
+  const handleSelectUpdatedImage = useCallback(
+    (imageId: string) => {
+      const newSet = new Set(selectedUpdatedImageIds);
       if (newSet.has(imageId)) {
         newSet.delete(imageId);
       } else {
         newSet.add(imageId);
       }
-      return newSet;
-    });
-  }, []);
+      dispatch(setSelectedUpdatedImageIds(newSet));
+    },
+    [selectedUpdatedImageIds, dispatch]
+  );
 
   const handleBulkDownload = useCallback(
     (imageType: 'original' | 'updated') => {
@@ -609,8 +553,113 @@ const LandingPage: React.FC = () => {
   );
 
   const handleClearUpdatedSelection = useCallback(() => {
-    setSelectedUpdatedImageIds(new Set());
-  }, []);
+    dispatch(setSelectedUpdatedImageIds(new Set()));
+  }, [dispatch]);
+
+  const handleBulkCopy = useCallback(
+    (imageType: 'original' | 'updated') => {
+      const selectedImageIds =
+        imageType === 'original' ? selectedOriginalImageIds : selectedUpdatedImageIds;
+
+      if (selectedImageIds.size === 0) return;
+
+      setImageTypeToCopy(imageType);
+      setShowCopyModal(true);
+    },
+    [selectedOriginalImageIds, selectedUpdatedImageIds]
+  );
+
+  const handleCopyConfirm = useCallback(
+    async (copyMode: 'duplicate-as-original' | 'keep-history') => {
+      if (!user) {
+        setErrorMessage('Please log in to copy images.');
+        return;
+      }
+
+      if (!activeProjectId || !activeSpaceId || !imageTypeToCopy) {
+        setErrorMessage('No project and space selected. Please try again.');
+        return;
+      }
+
+      const selectedImageIds =
+        imageTypeToCopy === 'original' ? selectedOriginalImageIds : selectedUpdatedImageIds;
+      const imagesToCopy = imageTypeToCopy === 'original' ? originalImages : updatedImages;
+
+      if (selectedImageIds.size === 0) return;
+
+      setIsCopyingImages(true);
+      try {
+        // Copy each selected image
+        const imagesToCopyArray = imagesToCopy.filter((img) => selectedImageIds.has(img.id));
+
+        for (const sourceImage of imagesToCopyArray) {
+          // Generate name by appending " Copy" to the original image name
+          const finalName = `${sourceImage.name} Copy`;
+
+          const newImage = await duplicateImage(
+            user.uid,
+            activeProjectId,
+            activeSpaceId,
+            sourceImage.id,
+            finalName,
+            copyMode
+          );
+
+          // Optimistic update - add the new image immediately to UI
+          dispatch(
+            addImageOptimistic({
+              projectId: activeProjectId,
+              spaceId: activeSpaceId,
+              image: newImage,
+            })
+          );
+        }
+
+        // Fetch updated space images to sync with server
+        const images = await fetchSpaceImages(user.uid, activeProjectId, activeSpaceId);
+        dispatch(setSpaceImages({ projectId: activeProjectId, spaceId: activeSpaceId, images }));
+
+        // Clear selection and close modal
+        if (imageTypeToCopy === 'original') {
+          dispatch(setSelectedOriginalImageIds(new Set()));
+        } else {
+          dispatch(setSelectedUpdatedImageIds(new Set()));
+        }
+
+        setShowCopyModal(false);
+        setImageTypeToCopy(null);
+        setErrorMessage(null);
+
+        message.success(`${imagesToCopyArray.length} image(s) copied successfully!`);
+      } catch (error) {
+        console.error('Failed to copy images:', error);
+
+        // Rollback - refresh from server
+        try {
+          const images = await fetchSpaceImages(user.uid, activeProjectId, activeSpaceId);
+          dispatch(setSpaceImages({ projectId: activeProjectId, spaceId: activeSpaceId, images }));
+        } catch (refreshError) {
+          console.error('Failed to refresh images:', refreshError);
+        }
+
+        setErrorMessage('Failed to copy images. Please try again.');
+      } finally {
+        setIsCopyingImages(false);
+      }
+    },
+    [
+      user,
+      activeProjectId,
+      activeSpaceId,
+      imageTypeToCopy,
+      selectedOriginalImageIds,
+      selectedUpdatedImageIds,
+      originalImages,
+      updatedImages,
+      dispatch,
+      setErrorMessage,
+    ]
+  );
 
   const getEmptyStateComponent = useMemo(() => {
     const hasNoProject = projects.length === 0 || !activeProjectId;
@@ -634,102 +683,83 @@ const LandingPage: React.FC = () => {
   const selectedOriginalImage =
     originalImages.find((img) => img.id === selectedOriginalImageId) || null;
 
-  const getSelectedPhotosForComparison = useCallback(() => {
-    const selectedPhotos: ImageData[] = [];
-
-    // Add selected original images
-    selectedOriginalImageIds.forEach((id) => {
-      const img = originalImages.find((img) => img.id === id);
-      if (img) selectedPhotos.push(img);
-    });
-
-    // Add selected updated images
-    selectedUpdatedImageIds.forEach((id) => {
-      const img = updatedImages.find((img) => img.id === id);
-      if (img) selectedPhotos.push(img);
-    });
-
-    return selectedPhotos;
-  }, [selectedOriginalImageIds, selectedUpdatedImageIds, originalImages, updatedImages]);
-
   return (
-    <div className="bg-gray-100">
-      <div className="min-h-screen container p-6">
-        {!isAppInitiated ? (
-          <div className="min-h-screen flex items-center justify-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          </div>
-        ) : initError ? (
-          <div className="min-h-screen flex items-center justify-center">
-            <div className="text-center max-w-md p-6">
-              <div className="text-red-600 text-5xl mb-4">🤯</div>
-              <h2 className="text-xl text-gray-600 mb-2">Sorry, something went wrong.</h2>
-              <p className="text-gray-600 mb-4">{initError}</p>
-              <button
-                onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-indigo-500 text-white rounded-md hover:bg-blue-700 transition"
-              >
-                Retry
-              </button>
-            </div>
-          </div>
-        ) : (
-          <>
-            {getEmptyStateComponent}
-
-            {activeSpaceId && (
-              <div className="flex flex-col gap-6">
-                <TaskSelector selectedTaskName={selectedTaskName} onSelectTask={handleSelectTask} />
-
-                <Gallery
-                  title="Original Photos"
-                  images={originalImages}
-                  selectedImageIds={selectedOriginalImageIds}
-                  onSelectImage={handleSelectOriginalImage}
-                  onSelectMultiple={handleSelectMultipleOriginal}
-                  onRenameImage={handleRenameImage}
-                  showRemoveButtons={selectedOriginalImageIds.size === 0}
-                  emptyMessage="No photos uploaded yet."
-                  onUploadImage={handleImageUpload}
-                  showUploadCard={true}
-                  onBulkDownload={() => handleBulkDownload('original')}
-                  onUploadError={setErrorMessage}
-                  onBulkDelete={() => handleBulkDelete('original')}
-                  onClearSelection={handleClearOriginalSelection}
-                  onGenerateMoreSuccess={handleGenerateMoreSuccess}
-                  onGenerateMoreClick={handleOpenGenerateMore}
-                  userId={user?.uid}
-                />
-
-                <Gallery
-                  title="Generated Photos"
-                  images={updatedImages}
-                  selectedImageIds={selectedUpdatedImageIds}
-                  onSelectMultiple={handleSelectUpdatedImage}
-                  onRenameImage={handleRenameImage}
-                  emptyMessage="Satisfied recolored photos will appear here."
-                  onBulkDelete={() => handleBulkDelete('updated')}
-                  onClearSelection={handleClearUpdatedSelection}
-                  onBulkDownload={() => handleBulkDownload('updated')}
-                  onGenerateMoreSuccess={handleGenerateMoreSuccess}
-                  onGenerateMoreClick={handleOpenGenerateMore}
-                  userId={user?.uid}
-                />
+    <div className="flex bg-gray-50">
+      <main className="flex-1 flex flex-col">
+        <div
+          className="bg-gray-100"
+          style={{ minHeight: 'calc(100vh - var(--header-height) - var(--footer-height))' }}
+        >
+          <MyBreadcrumb />
+          <div className="p-6">
+            {!isAppInitiated ? (
+              <div className="flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
               </div>
+            ) : initError ? (
+              <div className="flex items-center justify-center">
+                <div className="text-center max-w-md p-6">
+                  <div className="text-red-600 text-5xl mb-4">🤯</div>
+                  <h2 className="text-xl text-gray-600 mb-2">Sorry, something went wrong.</h2>
+                  <p className="text-gray-600 mb-4">{initError}</p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="px-4 py-2 bg-indigo-500 text-white rounded-md hover:bg-blue-700 transition"
+                  >
+                    Retry
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {getEmptyStateComponent}
+
+                {activeSpaceId && (
+                  <div className="flex flex-col gap-6">
+                    <Gallery
+                      title="Original Photos"
+                      images={originalImages}
+                      selectedImageIds={selectedOriginalImageIds}
+                      onSelectImage={handleSelectOriginalImage}
+                      onSelectMultiple={handleSelectMultipleOriginal}
+                      onRenameImage={handleRenameImage}
+                      showRemoveButtons={selectedOriginalImageIds.size === 0}
+                      emptyMessage="No photos uploaded yet."
+                      onUploadImage={handleImageUpload}
+                      showUploadCard={true}
+                      onBulkDownload={() => handleBulkDownload('original')}
+                      onUploadError={setErrorMessage}
+                      onBulkDelete={() => handleBulkDelete('original')}
+                      onBulkCopy={() => handleBulkCopy('original')}
+                      onClearSelection={handleClearOriginalSelection}
+                      onGenerateMoreSuccess={handleGenerateMoreSuccess}
+                      onGenerateMoreClick={handleOpenGenerateMore}
+                      userId={user?.uid}
+                    />
+
+                    <Gallery
+                      title="Generated Photos"
+                      images={updatedImages}
+                      selectedImageIds={selectedUpdatedImageIds}
+                      onSelectMultiple={handleSelectUpdatedImage}
+                      onRenameImage={handleRenameImage}
+                      emptyMessage="Satisfied recolored photos will appear here."
+                      onBulkDelete={() => handleBulkDelete('updated')}
+                      onBulkCopy={() => handleBulkCopy('updated')}
+                      onClearSelection={handleClearUpdatedSelection}
+                      onBulkDownload={() => handleBulkDownload('updated')}
+                      onGenerateMoreSuccess={handleGenerateMoreSuccess}
+                      onGenerateMoreClick={handleOpenGenerateMore}
+                      userId={user?.uid}
+                    />
+                  </div>
+                )}
+              </>
             )}
-          </>
-        )}
-      </div>
-      <div className="bg-white px-6 py-2 border-t border-gray-200">
-        <div className="flex justify-end">
-          <ImagesComparingButton
-            totalSelectedPhotos={selectedOriginalImageIds.size + selectedUpdatedImageIds.size}
-            isEnabled={selectedOriginalImageIds.size + selectedUpdatedImageIds.size >= 2}
-            onClick={() => setShowCompareModal(true)}
-          />
+          </div>
         </div>
-      </div>
-      <Footer />
+        <Footer />
+      </main>
 
       {showConfirmationModal && selectedOriginalImage && (
         <ConfirmImageUpdateModal
@@ -739,34 +769,7 @@ const LandingPage: React.FC = () => {
           onConfirm={handleImageSatisfied}
           onCancel={handleCancelRecolor}
           colorName={selectedColor?.name || 'N/A'}
-        />
-      )}
-
-      {/* Custom Prompt Modal */}
-      {showCustomPromptModal && (
-        <CustomPromptModal
-          isOpen={showCustomPromptModal}
-          onConfirm={handleProcessImage}
-          onCancel={() => setShowCustomPromptModal(false)}
-          task={
-            GEMINI_TASKS[
-              selectedTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name
-                ? 'RECOLOR_WALL'
-                : 'ADD_TEXTURE'
-            ]
-          }
-          colorName={selectedColor?.name}
-          colorHex={selectedColor?.hex}
-          textureName={selectedTexture?.name}
-        />
-      )}
-
-      {/* Compare Photos Modal */}
-      {showCompareModal && (
-        <ImagesComparingModal
-          isOpen={showCompareModal}
-          images={getSelectedPhotosForComparison()}
-          onClose={() => setShowCompareModal(false)}
+          taskName={selectedTaskNames[0] || GEMINI_TASKS.RECOLOR_WALL.task_name}
         />
       )}
 
@@ -788,14 +791,22 @@ const LandingPage: React.FC = () => {
         />
       )}
 
-      {/* Alert Modal */}
-      {showAlert && (
-        <AlertModal
-          isOpen={showAlert}
-          type={alertType}
-          title={alertTitle}
-          message={alertMessage}
-          onClose={() => setShowAlert(false)}
+      {/* Copy Image Modal */}
+      {showCopyModal && imageTypeToCopy && (
+        <CopyImageModal
+          isOpen={showCopyModal}
+          numberOfImages={
+            imageTypeToCopy === 'original'
+              ? selectedOriginalImageIds.size
+              : selectedUpdatedImageIds.size
+          }
+          imageType={imageTypeToCopy}
+          onConfirm={handleCopyConfirm}
+          onCancel={() => {
+            setShowCopyModal(false);
+            setImageTypeToCopy(null);
+          }}
+          isLoading={isCopyingImages}
         />
       )}
 

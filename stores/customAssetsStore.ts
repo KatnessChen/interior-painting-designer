@@ -1,10 +1,13 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { Color } from '@/types';
+import { Color, Texture } from '@/types';
 
 interface ProjectCustomAssets {
   customColors: Color[];
   isLoadingColors: boolean;
   loadColorsError: string | null;
+  customTextures: Texture[];
+  isLoadingTextures: boolean;
+  loadTexturesError: string | null;
 }
 
 interface CustomAssetsState {
@@ -28,6 +31,9 @@ const getOrCreateProjectAssets = (
       customColors: [],
       isLoadingColors: false,
       loadColorsError: null,
+      customTextures: [],
+      isLoadingTextures: false,
+      loadTexturesError: null,
     };
   }
   return state.projects[projectId];
@@ -75,7 +81,53 @@ export const customAssetsStore = createSlice({
       );
     },
 
-    // Loading states
+    // Custom Textures
+    setCustomTextures: (
+      state,
+      action: PayloadAction<{ projectId: string; textures: Texture[] }>
+    ) => {
+      const projectAssets = getOrCreateProjectAssets(state, action.payload.projectId);
+      projectAssets.customTextures = action.payload.textures;
+      projectAssets.isLoadingTextures = false;
+      projectAssets.loadTexturesError = null;
+    },
+
+    addCustomTexture: (state, action: PayloadAction<{ projectId: string; texture: Texture }>) => {
+      const projectAssets = getOrCreateProjectAssets(state, action.payload.projectId);
+      projectAssets.customTextures.unshift(action.payload.texture);
+    },
+
+    updateCustomTexture: (
+      state,
+      action: PayloadAction<{
+        projectId: string;
+        textureId: string;
+        updates: Partial<Texture>;
+      }>
+    ) => {
+      const projectAssets = getOrCreateProjectAssets(state, action.payload.projectId);
+      const index = projectAssets.customTextures.findIndex(
+        (t) => t.id === action.payload.textureId
+      );
+      if (index !== -1) {
+        projectAssets.customTextures[index] = {
+          ...projectAssets.customTextures[index],
+          ...action.payload.updates,
+        };
+      }
+    },
+
+    removeCustomTexture: (
+      state,
+      action: PayloadAction<{ projectId: string; textureId: string }>
+    ) => {
+      const projectAssets = getOrCreateProjectAssets(state, action.payload.projectId);
+      projectAssets.customTextures = projectAssets.customTextures.filter(
+        (t) => t.id !== action.payload.textureId
+      );
+    },
+
+    // Loading states - Colors
     setLoadingColors: (
       state,
       action: PayloadAction<{ projectId: string; isLoadingColors: boolean }>
@@ -91,6 +143,24 @@ export const customAssetsStore = createSlice({
       const projectAssets = getOrCreateProjectAssets(state, action.payload.projectId);
       projectAssets.loadColorsError = action.payload.error;
       projectAssets.isLoadingColors = false;
+    },
+
+    // Loading states - Textures
+    setLoadingTextures: (
+      state,
+      action: PayloadAction<{ projectId: string; isLoadingTextures: boolean }>
+    ) => {
+      const projectAssets = getOrCreateProjectAssets(state, action.payload.projectId);
+      projectAssets.isLoadingTextures = action.payload.isLoadingTextures;
+    },
+
+    setLoadTexturesError: (
+      state,
+      action: PayloadAction<{ projectId: string; error: string | null }>
+    ) => {
+      const projectAssets = getOrCreateProjectAssets(state, action.payload.projectId);
+      projectAssets.loadTexturesError = action.payload.error;
+      projectAssets.isLoadingTextures = false;
     },
 
     // Clear state for a specific project
@@ -112,6 +182,12 @@ export const {
   removeCustomColor,
   setLoadingColors,
   setLoadColorsError,
+  setCustomTextures,
+  addCustomTexture,
+  updateCustomTexture,
+  removeCustomTexture,
+  setLoadingTextures,
+  setLoadTexturesError,
   clearProjectAssets,
   clearAllAssets,
 } = customAssetsStore.actions;

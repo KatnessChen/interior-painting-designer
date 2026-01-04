@@ -24,8 +24,15 @@ import {
   ProjectDocument,
   SpaceDocument,
   Color,
+  Texture,
 } from '@/types';
-import { base64ToFile, FirestoreDataHandler, cacheImageBase64s } from '@/utils';
+import {
+  base64ToFile,
+  FirestoreDataHandler,
+  cacheImageBase64s,
+  imageCache,
+  imageDownloadUrlToBase64,
+} from '@/utils';
 
 // Initialize Firestore and Storage with the shared Firebase app instance
 export const db = getFirestore(app);
@@ -692,6 +699,121 @@ export async function deleteImages(
   }
 }
 
+/**
+ * Duplicates an image in Firestore with optional processing.
+ * Can either keep the operation history or create a new image without history.
+ *
+ * @param userId The ID of the user.
+ * @param projectId The ID of the project.
+ * @param spaceId The ID of the space.
+ * @param sourceImageId The ID of the image to duplicate.
+ * @param newImageName The name for the duplicated image.
+ * @param mode 'keep-history' to preserve evolution chain, 'duplicate-as-original' to start fresh.
+ * @returns The newly created ImageData.
+ */
+export async function duplicateImage(
+  userId: string,
+  projectId: string,
+  spaceId: string,
+  sourceImageId: string,
+  newImageName: string,
+  mode: 'keep-history' | 'duplicate-as-original'
+): Promise<ImageData> {
+  if (!userId || !projectId || !spaceId || !sourceImageId) {
+    throw new Error('User ID, Project ID, Space ID, and Source Image ID are required.');
+  }
+
+  if (!newImageName.trim()) {
+    throw new Error('New image name is required.');
+  }
+
+  try {
+    console.log(`Duplicating image ${sourceImageId} in mode: ${mode}`);
+
+    // Fetch the source image
+    const sourceDocRef = doc(
+      db,
+      'users',
+      userId,
+      'projects',
+      projectId,
+      'spaces',
+      spaceId,
+      'images',
+      sourceImageId
+    );
+
+    const sourceImageDoc = await getDoc(sourceDocRef);
+    if (!sourceImageDoc.exists()) {
+      throw new Error(`Source image not found: ${sourceImageId}`);
+    }
+
+    const sourceImageData = sourceImageDoc.data() as ImageData;
+
+    // Generate new image ID
+    const newImageId = crypto.randomUUID();
+    const now = Timestamp.fromDate(new Date());
+
+    // Determine the new image's evolution chain
+    const buildEvolutionChain = (): ImageOperation[] => {
+      if (mode === 'duplicate-as-original') {
+        // Start fresh without history
+        return [];
+      } else {
+        // Keep the entire evolution chain from the source image
+        return sourceImageData.evolutionChain || [];
+      }
+    };
+
+    // Create the new image document
+    const newImageData: ImageData = {
+      id: newImageId,
+      name: newImageName.trim(),
+      spaceId,
+      evolutionChain: buildEvolutionChain(),
+      parentImageId: mode === 'duplicate-as-original' ? null : sourceImageData.parentImageId,
+      imageDownloadUrl: sourceImageData.imageDownloadUrl,
+      storageFilePath: sourceImageData.storageFilePath,
+      mimeType: sourceImageData.mimeType,
+      isDeleted: false,
+      deletedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    // Write to Firestore
+    const newDocRef = doc(
+      db,
+      'users',
+      userId,
+      'projects',
+      projectId,
+      'spaces',
+      spaceId,
+      'images',
+      newImageId
+    );
+
+    const batch = writeBatch(db);
+    const { parentImageId, ...firestoreData } = newImageData;
+    batch.set(newDocRef, {
+      ...firestoreData,
+      parentImageId,
+    });
+
+    await batch.commit();
+    console.log(`Image duplicated successfully: ${newImageId}`);
+
+    return newImageData;
+  } catch (error) {
+    console.error('Failed to duplicate image:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to duplicate image: ${error.message}`);
+    }
+    throw new Error('Failed to duplicate image in Firebase.');
+  }
+}
+
 // ============================================================================
 // Custom Colors Management
 // ============================================================================
@@ -851,4 +973,245 @@ export async function deleteColor(
     }
     throw new Error('Failed to delete color from Firestore.');
   }
+}
+
+/**
+ * ============================
+ * Custom Textures Operations
+ * ============================
+ */
+
+/**
+ * Adds a custom texture to a project.
+ * Uploads the texture image to Firebase Storage and stores metadata in Firestore.
+ *
+ * @param userId The ID of the user.
+ * @param projectId The ID of the project.
+ * @param textureData The texture data (name, file).
+ * @returns The newly created Texture object.
+ */
+export async function addTexture(
+  userId: string,
+  projectId: string,
+  textureData: { name: string; file: File; notes?: string }
+): Promise<Texture> {
+  if (!userId || !projectId) {
+    throw new Error('User ID and Project ID are required');
+  }
+
+  try {
+    const textureId = crypto.randomUUID();
+    const now = Timestamp.now();
+
+    // Get and validate file extension
+    const allowedExtensions = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp']);
+    const extension = textureData.file.name.split('.').pop()?.toLowerCase();
+    if (!extension || !allowedExtensions.has(extension)) {
+      throw new Error(
+        'Invalid texture file type. Allowed types are: jpg, jpeg, png, gif, webp, bmp.'
+      );
+    }
+
+    // Upload texture image to Firebase Storage
+    const storagePath = `users/${userId}/projects/${projectId}/custom_textures/${textureId}.${extension}`;
+    const storageRef = ref(storage, storagePath);
+
+    await uploadBytes(storageRef, textureData.file);
+    const textureImageDownloadUrl = await getDownloadURL(storageRef);
+
+    const textureDoc: Texture = {
+      id: textureId,
+      name: textureData.name.trim(),
+      textureImageDownloadUrl,
+      notes: textureData.notes?.trim() || '',
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const docRef = doc(db, 'users', userId, 'projects', projectId, 'custom_textures', textureId);
+
+    await setDoc(docRef, textureDoc);
+
+    console.log('Custom texture added to Firestore:', textureId);
+
+    return {
+      id: textureDoc.id,
+      name: textureDoc.name,
+      textureImageDownloadUrl: textureDoc.textureImageDownloadUrl,
+      notes: textureDoc.notes,
+    };
+  } catch (error) {
+    console.error('Failed to add texture:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to add texture: ${error.message}`);
+    }
+    throw new Error('Failed to add texture to Firestore.');
+  }
+}
+
+/**
+ * Fetches all custom textures for a project.
+ *
+ * @param userId The ID of the user.
+ * @param projectId The ID of the project.
+ * @returns An array of Texture objects.
+ */
+export async function fetchTextures(userId: string, projectId: string): Promise<Texture[]> {
+  if (!userId || !projectId) {
+    throw new Error('User ID and Project ID are required');
+  }
+
+  try {
+    const texturesRef = collection(db, 'users', userId, 'projects', projectId, 'custom_textures');
+
+    const texturesQuery = query(texturesRef, orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(texturesQuery);
+
+    const textures = snapshot.docs.map((doc) => {
+      const data = doc.data() as Texture;
+      return {
+        id: data.id,
+        name: data.name,
+        textureImageDownloadUrl: data.textureImageDownloadUrl,
+        notes: data.notes,
+      };
+    });
+
+    // Cache texture images in background (using download URL as cache key)
+    void cacheTextureImages(textures);
+
+    return textures;
+  } catch (error) {
+    console.error('Failed to fetch textures:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to fetch textures: ${error.message}`);
+    }
+    throw new Error('Failed to fetch textures from Firestore.');
+  }
+}
+
+/**
+ * Updates a custom texture.
+ *
+ * @param userId The ID of the user.
+ * @param projectId The ID of the project.
+ * @param textureId The ID of the texture.
+ * @param updates The fields to update.
+ */
+export async function updateTexture(
+  userId: string,
+  projectId: string,
+  textureId: string,
+  updates: { name?: string; notes?: string }
+): Promise<void> {
+  if (!userId || !projectId || !textureId) {
+    throw new Error('User ID, Project ID, and Texture ID are required');
+  }
+
+  try {
+    const docRef = doc(db, 'users', userId, 'projects', projectId, 'custom_textures', textureId);
+
+    const updateData: any = {
+      updatedAt: Timestamp.now(),
+    };
+
+    if (updates.name !== undefined) updateData.name = updates.name.trim();
+    if (updates.notes !== undefined) updateData.notes = updates.notes.trim();
+
+    await updateDoc(docRef, updateData);
+    console.log('Custom texture updated:', textureId);
+  } catch (error) {
+    console.error('Failed to update texture:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to update texture: ${error.message}`);
+    }
+    throw new Error('Failed to update texture in Firestore.');
+  }
+}
+
+/**
+ * Deletes a custom texture.
+ *
+ * @param userId The ID of the user.
+ * @param projectId The ID of the project.
+ * @param textureId The ID of the texture.
+ */
+export async function deleteTexture(
+  userId: string,
+  projectId: string,
+  textureId: string
+): Promise<void> {
+  if (!userId || !projectId || !textureId) {
+    throw new Error('User ID, Project ID, and Texture ID are required');
+  }
+
+  try {
+    const docRef = doc(db, 'users', userId, 'projects', projectId, 'custom_textures', textureId);
+
+    await deleteDoc(docRef);
+    console.log('Custom texture deleted:', textureId);
+  } catch (error) {
+    console.error('Failed to delete texture:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to delete texture: ${error.message}`);
+    }
+    throw new Error('Failed to delete texture from Firestore.');
+  }
+}
+
+/**
+ * Cache texture images in the background by converting download URLs to base64
+ * This runs asynchronously without blocking the main flow
+ */
+async function cacheTextureImages(textures: Texture[]): Promise<void> {
+  if (textures.length === 0) {
+    console.log('[Texture Cache] No textures to cache');
+    return;
+  }
+
+  let cachedCount = 0;
+  let skippedCount = 0;
+
+  for (const texture of textures) {
+    if (!texture.textureImageDownloadUrl) {
+      skippedCount++;
+      continue;
+    }
+
+    try {
+      // Check if already cached (using download URL as cache key)
+
+      const existingCache = await imageCache.get(texture.textureImageDownloadUrl);
+
+      if (existingCache) {
+        skippedCount++;
+        console.log(`[Texture Cache] Skipped (already cached): ${texture.name}`);
+        continue;
+      }
+
+      // Fire and forget - cache in background
+      imageDownloadUrlToBase64(texture.textureImageDownloadUrl)
+        .then(() => {
+          cachedCount++;
+          if (cachedCount % 5 === 0 || cachedCount === textures.length - skippedCount) {
+            console.log(
+              `[Texture Cache] Progress: ${cachedCount}/${
+                textures.length - skippedCount
+              } textures cached (${skippedCount} skipped)`
+            );
+          }
+        })
+        .catch((error) => {
+          console.warn(`[Texture Cache] Failed to cache texture ${texture.name}:`, error);
+        });
+    } catch (error) {
+      console.warn(`[Texture Cache] Error caching texture ${texture.name}:`, error);
+    }
+  }
+
+  console.log(
+    `[Texture Cache] Queued ${
+      textures.length - skippedCount
+    } textures for caching (${skippedCount} already cached)`
+  );
 }
