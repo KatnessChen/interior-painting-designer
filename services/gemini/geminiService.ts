@@ -14,15 +14,24 @@ const defaultModel = 'gemini-2.5-flash-image';
 
 const getBase64FromImageData = async (userId: string | undefined, imageData: ImageData) => {
   // Fetch the image from Firebase Storage using SDK
-  const extension = imageData.mimeType.split('/')[1] || 'jpg';
-  const storageFilePath = userId
-    ? `users/${userId}/images/${imageData.id}.${extension}`
-    : imageData.storageFilePath;
-  const storageRef = ref(storage, storageFilePath);
-  const bytes = await getBytes(storageRef);
-  const blob = new Blob([bytes], { type: imageData.mimeType });
+  const storageFilePath = imageData.storageFilePath;
 
-  return await blobToBase64(blob);
+  if (!storageFilePath) {
+    throw new Error(`Image storageFilePath is missing for image ${imageData.id}`);
+  }
+
+  try {
+    const storageRef = ref(storage, storageFilePath);
+    const bytes = await getBytes(storageRef);
+    const blob = new Blob([bytes], { type: imageData.mimeType });
+
+    return await blobToBase64(blob);
+  } catch (error) {
+    console.error(`Failed to fetch image from Storage path: ${storageFilePath}`, error);
+    throw new Error(
+      `Failed to fetch image: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
 };
 
 export const generateRecoloredImage = async (

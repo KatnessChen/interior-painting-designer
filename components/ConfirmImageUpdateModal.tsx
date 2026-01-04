@@ -181,32 +181,6 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
     >
       {/* Image Comparison Section */}
       <div style={{ display: 'flex', gap: 24, marginBottom: 24, flexWrap: 'wrap' }}>
-        {/* Original Photo */}
-        <div
-          style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', minHeight: 400 }}
-        >
-          <Typography.Title level={5} style={{ marginBottom: 12 }}>
-            Original Photo
-          </Typography.Title>
-          <div
-            style={{
-              flex: 1,
-              backgroundColor: '#f0f0f0',
-              borderRadius: 8,
-              overflow: 'hidden',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <img
-              src={cachedImageSrc || originalImage.imageDownloadUrl}
-              alt="Original"
-              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-            />
-          </div>
-        </div>
-
         {/* Recolored Photo */}
         <div
           style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', minHeight: 400 }}
@@ -228,6 +202,32 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
             <img
               src={`data:${generatedImage.mimeType};base64,${generatedImage.base64}`}
               alt="Processed Photo"
+              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+            />
+          </div>
+        </div>
+
+        {/* Original Photo */}
+        <div
+          style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', minHeight: 400 }}
+        >
+          <Typography.Title level={5} style={{ marginBottom: 12 }}>
+            Original Photo
+          </Typography.Title>
+          <div
+            style={{
+              flex: 1,
+              backgroundColor: '#f0f0f0',
+              borderRadius: 8,
+              overflow: 'hidden',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <img
+              src={cachedImageSrc || originalImage.imageDownloadUrl}
+              alt="Original"
               style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
             />
           </div>

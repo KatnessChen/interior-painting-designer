@@ -502,7 +502,7 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
         placement="right"
         open={isDefaultPromptExpanded}
         onClose={() => setIsDefaultPromptExpanded(false)}
-        width={400}
+        size="default"
         closeIcon={<CloseOutlined />}
       >
         <div

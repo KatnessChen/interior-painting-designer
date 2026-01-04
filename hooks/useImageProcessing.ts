@@ -112,9 +112,9 @@ export const useImageProcessing = ({
           const usageLink = 'https://ai.dev/usage?tab=rate-limit';
           displayMessage = `Processing failed due to quota limits. You've exceeded your current usage limit for the Gemini API. Please check your plan and billing details. For more information, visit: ${rateLimitDocsLink} or monitor your usage at: ${usageLink}`;
         } else if (msg.includes('Requested entity was not found.')) {
-          displayMessage = `Processing failed: ${msg}. This might indicate an invalid API key or an issue with model availability. Please try again.`;
+          displayMessage = `Processing failed. This might indicate an invalid API key or an issue with model availability. Please try again.`;
         } else {
-          displayMessage = `Processing failed: ${msg}. If this error persists, try again or contact support.`;
+          displayMessage = `Processing failed. If this error persists, try again or contact support.`;
         }
 
         setErrorMessage(displayMessage);
