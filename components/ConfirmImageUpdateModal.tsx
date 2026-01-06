@@ -162,7 +162,6 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
       onCancel={onCancel}
       width="90vw"
       style={{ top: 20, maxWidth: 1600 }}
-      styles={{ body: { maxHeight: 'calc(90vh - 200px)', overflowY: 'auto' } }}
       zIndex={1500}
       footer={[
         <Button key="cancel" onClick={onCancel} size="large">
@@ -181,32 +180,6 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
     >
       {/* Image Comparison Section */}
       <div style={{ display: 'flex', gap: 24, marginBottom: 24, flexWrap: 'wrap' }}>
-        {/* Recolored Photo */}
-        <div
-          style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', minHeight: 400 }}
-        >
-          <Typography.Title level={5} style={{ marginBottom: 12 }}>
-            Processed Photo
-          </Typography.Title>
-          <div
-            style={{
-              flex: 1,
-              backgroundColor: '#f0f0f0',
-              borderRadius: 8,
-              overflow: 'hidden',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <img
-              src={`data:${generatedImage.mimeType};base64,${generatedImage.base64}`}
-              alt="Processed Photo"
-              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-            />
-          </div>
-        </div>
-
         {/* Original Photo */}
         <div
           style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', minHeight: 400 }}
@@ -228,6 +201,32 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
             <img
               src={cachedImageSrc || originalImage.imageDownloadUrl}
               alt="Original"
+              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+            />
+          </div>
+        </div>
+
+        {/* Recolored Photo */}
+        <div
+          style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', minHeight: 400 }}
+        >
+          <Typography.Title level={5} style={{ marginBottom: 12 }}>
+            Processed Photo
+          </Typography.Title>
+          <div
+            style={{
+              flex: 1,
+              backgroundColor: '#f0f0f0',
+              borderRadius: 8,
+              overflow: 'hidden',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <img
+              src={`data:${generatedImage.mimeType};base64,${generatedImage.base64}`}
+              alt="Processed Photo"
               style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
             />
           </div>
@@ -267,14 +266,14 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
           >
             Prefix with timestamp
           </Checkbox>
-          <Checkbox checked={suffixMimeType} onChange={(e) => setSuffixMimeType(e.target.checked)}>
-            Suffix with file extension
-          </Checkbox>
           <Checkbox
             checked={suffixTimestamp}
             onChange={(e) => setSuffixTimestamp(e.target.checked)}
           >
             Suffix with timestamp
+          </Checkbox>
+          <Checkbox checked={suffixMimeType} onChange={(e) => setSuffixMimeType(e.target.checked)}>
+            Suffix with file extension
           </Checkbox>
           {taskName === GEMINI_TASKS.RECOLOR_WALL.task_name && colorName && (
             <Checkbox

@@ -4,7 +4,6 @@ import { Checkbox } from 'antd';
 import type { CheckboxChangeEvent } from 'antd/es/checkbox';
 import { GEMINI_TASKS, GeminiTaskName } from '@/services/gemini/geminiTasks';
 import { selectSelectedTaskNames, setSelectedTaskNames } from '@/stores/taskStore';
-import { useAuth } from '@/contexts/AuthContext';
 
 interface TaskSelectorProps {
   multiSelect?: boolean;
@@ -21,8 +20,6 @@ const TaskSelector: React.FC<TaskSelectorProps> = ({
 }) => {
   const dispatch = useDispatch();
   const selectedTaskNames = useSelector(selectSelectedTaskNames);
-
-  const { user } = useAuth();
 
   useEffect(() => {
     dispatch(setSelectedTaskNames([GEMINI_TASKS.RECOLOR_WALL.task_name]));
@@ -84,20 +81,16 @@ const TaskSelector: React.FC<TaskSelectorProps> = ({
     onTaskChange?.(newSelectedTasks);
   };
 
-  const firstName = user?.displayName?.split(' ')[0] || '';
-
   return (
     <div className="space-y-4 p-6">
-      <h2 className="text-lg text-gray-800">
-        👋 Hi {firstName || ''}! Select your tasks to get started.
-      </h2>
+      <h2 className="text-lg text-gray-800">👋 Hi! Select your tasks to get started.</h2>
 
       <div className="flex flex-wrap justify-center gap-3 max-w-2xl mx-auto">
         {tasks.map((task) => (
           <div
             key={task.value}
             className={`
-              relative flex items-center gap-3 p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer
+              relative flex items-center gap-3 px-4 py-2 rounded-xl border-2 transition-all duration-200 cursor-pointer
               min-w-[200px] flex-shrink-0
               ${
                 selectedTaskNames.includes(task.value as GeminiTaskName)

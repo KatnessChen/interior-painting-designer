@@ -133,7 +133,7 @@ const Gallery: React.FC<GalleryProps> = ({
                     startIcon={<CopyIcon />}
                     size="small"
                   >
-                    Copy
+                    Duplicate
                   </Button>
                 </Tooltip>
               )}
@@ -158,7 +158,7 @@ const Gallery: React.FC<GalleryProps> = ({
                   startIcon={<ClearIcon />}
                   size="small"
                 >
-                  Deselect
+                  Deselect All
                 </Button>
               )}
             </>
