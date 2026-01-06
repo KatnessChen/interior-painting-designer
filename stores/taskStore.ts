@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { GeminiTaskName } from '@/services/gemini/geminiTasks';
-import { Color, Texture } from '@/types';
+import { Color, Texture, Item } from '@/types';
 
 interface TaskState {
   // Task selection
@@ -9,12 +9,14 @@ interface TaskState {
   // Task-specific options
   selectedColor: Color | null;
   selectedTexture: Texture | null;
+  selectedItem: Item | null;
 }
 
 const initialState: TaskState = {
   selectedTaskNames: [],
   selectedColor: null,
   selectedTexture: null,
+  selectedItem: null,
 };
 
 const taskSlice = createSlice({
@@ -35,21 +37,32 @@ const taskSlice = createSlice({
       state.selectedTexture = action.payload;
     },
 
+    setSelectedItem: (state, action: PayloadAction<Item | null>) => {
+      state.selectedItem = action.payload;
+    },
+
     // Reset all task-related state
     resetTaskState: (state) => {
       state.selectedTaskNames = [];
       state.selectedColor = null;
       state.selectedTexture = null;
+      state.selectedItem = null;
     },
   },
 });
 
-export const { setSelectedTaskNames, setSelectedColor, setSelectedTexture, resetTaskState } =
-  taskSlice.actions;
+export const {
+  setSelectedTaskNames,
+  setSelectedColor,
+  setSelectedTexture,
+  setSelectedItem,
+  resetTaskState,
+} = taskSlice.actions;
 
 // Selectors
 export const selectSelectedTaskNames = (state: { task: TaskState }) => state.task.selectedTaskNames;
 export const selectSelectedColor = (state: { task: TaskState }) => state.task.selectedColor;
 export const selectSelectedTexture = (state: { task: TaskState }) => state.task.selectedTexture;
+export const selectSelectedItem = (state: { task: TaskState }) => state.task.selectedItem;
 
 export default taskSlice.reducer;

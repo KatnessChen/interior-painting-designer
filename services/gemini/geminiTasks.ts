@@ -14,7 +14,11 @@ export const GEMINI_TASKS = {
     label_name: 'Add Texture',
     customPromptRequired: true,
   },
-  // Add more tasks as needed
+  ADD_HOME_ITEM: {
+    task_name: 'add_home_item',
+    label_name: 'Add Item',
+    customPromptRequired: true,
+  },
 } as const;
 
 export type GeminiTask = (typeof GEMINI_TASKS)[keyof typeof GEMINI_TASKS];
@@ -26,5 +30,5 @@ export type GeminiTaskName = GeminiTask['task_name'];
  * @returns The task entry [key, task] or undefined if not found
  */
 export const getTaskEntry = (taskName: GeminiTaskName) => {
-  return Object.entries(GEMINI_TASKS).find(([_, task]) => task.task_name === taskName);
+  return Object.entries(GEMINI_TASKS).find(([, task]) => task.task_name === taskName);
 };

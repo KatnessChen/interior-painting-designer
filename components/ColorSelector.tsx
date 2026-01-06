@@ -62,7 +62,7 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({
 
   return (
     <div>
-      <Typography.Title level={5} className="mb-2">
+      <Typography.Title level={5} className="mb-2 mt-0" style={{ margin: 0 }}>
         {title}
       </Typography.Title>
 

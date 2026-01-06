@@ -108,23 +108,30 @@ export const getPromptByTask = (
     colorName?: string;
     colorHex?: string;
     textureName?: string;
+    itemName?: string;
     customPrompt?: string;
   }
 ): string => {
-  const { colorName, colorHex, textureName, customPrompt } = options;
+  const { colorName, colorHex, textureName, itemName, customPrompt } = options;
 
   switch (task.task_name) {
     case GEMINI_TASKS.RECOLOR_WALL.task_name:
       if (!colorName || !colorHex) {
         throw new Error('colorName and colorHex are required for RECOLOR_WALL task');
       }
-      return wallRecolorPrompts(colorName, colorHex, customPrompt);
+      return getWallRecolorPrompt(colorName, colorHex, customPrompt);
 
     case GEMINI_TASKS.ADD_TEXTURE.task_name:
       if (!textureName) {
         throw new Error('textureName is required for ADD_TEXTURE task');
       }
-      return texturePrompts(textureName, customPrompt);
+      return getAddTexturePrompt(textureName, customPrompt);
+
+    case GEMINI_TASKS.ADD_HOME_ITEM.task_name:
+      if (!itemName) {
+        throw new Error('itemName is required for ADD_HOME_ITEM task');
+      }
+      return getItemPrompt(itemName, customPrompt);
 
     default:
       throw new Error(`Unknown task: ${(task as any).task_name}`);

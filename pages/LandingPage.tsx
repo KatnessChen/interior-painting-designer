@@ -47,6 +47,7 @@ import {
   selectSelectedTaskNames,
   selectSelectedColor,
   selectSelectedTexture,
+  selectSelectedItem,
 } from '@/stores/taskStore';
 
 const LandingPage: React.FC = () => {
@@ -70,6 +71,7 @@ const LandingPage: React.FC = () => {
   const selectedTaskNames = useSelector(selectSelectedTaskNames);
   const selectedColor = useSelector(selectSelectedColor);
   const selectedTexture = useSelector(selectSelectedTexture);
+  const selectedItem = useSelector(selectSelectedItem);
 
   // Get selected image IDs from Redux
   const selectedOriginalImageIds = useSelector(selectSelectedOriginalImageIds);
@@ -120,6 +122,7 @@ const LandingPage: React.FC = () => {
     options: {
       selectedColor,
       selectedTexture,
+      selectedItem,
     },
   });
 
@@ -284,7 +287,8 @@ const LandingPage: React.FC = () => {
         selectedTaskNames[0] || GEMINI_TASKS.RECOLOR_WALL.task_name,
         processingContext.customPrompt,
         selectedColor,
-        selectedTexture
+        selectedTexture,
+        selectedItem
       );
 
       // Optimistic update - show processed image immediately
