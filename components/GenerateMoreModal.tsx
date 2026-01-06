@@ -302,13 +302,69 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
     return 'Transform this image';
   };
 
+  // Dynamic prompt placeholder based on task
+  const getPromptPlaceholder = () => {
+    if (activeTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name) {
+      return "Enter specific color instructions... (e.g., 'Make it a matte finish', 'Apply to the accent wall only')";
+    } else if (activeTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name) {
+      return "Describe how to apply the texture... (e.g., 'Apply to the upper half only', 'Make the pattern smaller')";
+    } else if (activeTaskName === GEMINI_TASKS.ADD_HOME_ITEM.task_name) {
+      return "Describe what you want to add... (e.g., 'A person reading on the sofa', 'A cat sleeping near the window', 'A modern floor lamp')";
+    }
+    return "Enter any specific instructions for the AI... (e.g., 'Make the walls lighter', 'Add more warmth to the color')";
+  };
+
+  const getPromptWritingGuide = () => {
+    if (activeTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name) {
+      return {
+        tips: [
+          {
+            text: 'The default prompt handles lighting, shadows, and texture preservation. Just focus on:',
+            hasButton: true,
+          },
+          {
+            text: "Which wall(s) to recolor? (e.g., 'only the accent wall', 'all walls except the ceiling')",
+            hasButton: false,
+          },
+        ],
+      };
+    } else if (activeTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name) {
+      return {
+        tips: [
+          {
+            text: 'The default prompt handles blending, lighting, and perspective. Just focus on:',
+            hasButton: true,
+          },
+          {
+            text: "Which wall(s) to apply it to? (e.g., 'the lower half only', 'behind the sofa')",
+            hasButton: false,
+          },
+        ],
+      };
+    } else if (activeTaskName === GEMINI_TASKS.ADD_HOME_ITEM.task_name) {
+      return {
+        tips: [
+          {
+            text: 'The default prompt handles lighting, shadows, and perspective. Just focus on:',
+            hasButton: true,
+          },
+          {
+            text: "Where to place the item and what angle? (e.g., 'corner by the window', 'center of the room facing left')",
+            hasButton: false,
+          },
+        ],
+      };
+    }
+    return { tips: [] };
+  };
+
   if (!sourceImage) return null;
 
   return (
     <>
       <Modal
         title={
-          <div>
+          <div className="mb-4">
             <Typography.Title level={4} style={{ margin: 0 }}>
               {getModalTitle()}
             </Typography.Title>
@@ -456,24 +512,16 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
                   <Typography.Title level={5} style={{ margin: 0 }}>
                     Custom Prompt (Optional)
                   </Typography.Title>
-                  <Button
-                    type="link"
-                    onClick={() => setIsDefaultPromptExpanded(true)}
-                    icon={<InfoCircleOutlined />}
-                    style={{ padding: 0 }}
-                  >
-                    View Default Prompt
-                  </Button>
                 </div>
 
                 {/* Custom Prompt Input */}
                 <Input.TextArea
                   rows={6}
-                  placeholder="Enter any specific instructions for the AI... (e.g., 'Make the walls lighter', 'Add more warmth to the color')"
+                  placeholder={getPromptPlaceholder()}
                   value={customPrompt}
                   onChange={(e) => setCustomPrompt(e.target.value.slice(0, 200))}
                   disabled={processingImage}
-                  maxLength={200}
+                  maxLength={500}
                   showCount
                 />
               </div>
