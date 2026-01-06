@@ -68,7 +68,7 @@ export const useCustomTextures = (projectId: string | null) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid, projectId, dispatch]);
 
-  const addTexture = async (textureData: { name: string; file: File; notes?: string }) => {
+  const addTexture = async (textureData: { name: string; file: File; description?: string }) => {
     if (!user?.uid || !projectId) {
       throw new Error('User or project not available');
     }

@@ -37,7 +37,7 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({
       const newColor = await addColor({
         name: color.name,
         hex: color.hex,
-        notes: color.notes,
+        description: color.description,
       });
 
       onSelectColor(newColor);
@@ -112,7 +112,7 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({
                     </div>
                     <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
                       {color.hex}
-                      {color.notes && ` • ${color.notes}`}
+                      {color.description && ` • ${color.description}`}
                     </div>
                   </Box>
                 </Box>

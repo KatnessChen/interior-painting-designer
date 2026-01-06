@@ -9,6 +9,7 @@ import {
   Box,
 } from '@mui/material';
 import { Color } from '@/types';
+import { MAX_CUSTOM_ASSET_NAME_LENGTH, MAX_CUSTOM_ASSET_DESCRIPTION_LENGTH } from '@/constants';
 
 interface AddColorModalProps {
   open: boolean;
@@ -58,24 +59,22 @@ const normalizeColorInput = (input: string): string | null => {
 };
 
 const DEFAULT_COLOR_PICKER_VALUE = '#FFFFF0';
-const MAX_COLOR_NAME_LENGTH = 15;
-const MAX_NOTES_LENGTH = 50;
 
 const AddColorModal: React.FC<AddColorModalProps> = ({ open, onClose, onAdd, existingColors }) => {
   const [colorName, setColorName] = useState('');
   const [colorHex, setColorHex] = useState('');
-  const [notes, setNotes] = useState('');
+  const [description, setDescription] = useState('');
   const [errors, setErrors] = useState<{
     name?: string;
     hex?: string;
-    notes?: string;
+    description?: string;
   }>({});
 
   const handleClose = () => {
     // Reset form
     setColorName('');
     setColorHex('');
-    setNotes('');
+    setDescription('');
     setErrors({});
     onClose();
   };
@@ -83,7 +82,7 @@ const AddColorModal: React.FC<AddColorModalProps> = ({ open, onClose, onAdd, exi
   const handleReset = () => {
     setColorName('');
     setColorHex('');
-    setNotes('');
+    setDescription('');
     setErrors({});
   };
 
@@ -92,22 +91,22 @@ const AddColorModal: React.FC<AddColorModalProps> = ({ open, onClose, onAdd, exi
     setColorName(value);
   };
 
-  // Handle notes input; rely on validateForm for length enforcement
-  const handleNotesChange = (value: string) => {
-    setNotes(value);
+  // Handle description input; rely on validateForm for length enforcement
+  const handleDescriptionChange = (value: string) => {
+    setDescription(value);
   };
 
   // ...
   // (rest of the component remains unchanged)
   // ...
   const validateForm = (): boolean => {
-    const newErrors: { name?: string; hex?: string; notes?: string } = {};
+    const newErrors: { name?: string; hex?: string; description?: string } = {};
 
     // Validate Color Name (required, max 15 characters)
     if (!colorName.trim()) {
       newErrors.name = 'Color name is required';
-    } else if (colorName.trim().length > MAX_COLOR_NAME_LENGTH) {
-      newErrors.name = `Color name must be ${MAX_COLOR_NAME_LENGTH} characters or less`;
+    } else if (colorName.trim().length > MAX_CUSTOM_ASSET_NAME_LENGTH) {
+      newErrors.name = `Color name must be ${MAX_CUSTOM_ASSET_NAME_LENGTH} characters or less`;
     } else if (
       existingColors.some((c) => c.name.toLowerCase() === colorName.trim().toLowerCase())
     ) {
@@ -125,9 +124,9 @@ const AddColorModal: React.FC<AddColorModalProps> = ({ open, onClose, onAdd, exi
       }
     }
 
-    // Validate Notes (optional, max 50 characters)
-    if (notes.length > MAX_NOTES_LENGTH) {
-      newErrors.notes = `Notes must be ${MAX_NOTES_LENGTH} characters or less`;
+    // Validate Description (optional, max 50 characters)
+    if (description.length > MAX_CUSTOM_ASSET_DESCRIPTION_LENGTH) {
+      newErrors.description = `Description must be ${MAX_CUSTOM_ASSET_DESCRIPTION_LENGTH} characters or less`;
     }
 
     setErrors(newErrors);
@@ -146,7 +145,7 @@ const AddColorModal: React.FC<AddColorModalProps> = ({ open, onClose, onAdd, exi
       id: crypto.randomUUID(),
       name: colorName.trim(),
       hex: normalizedHex,
-      notes: notes.trim() || '',
+      description: description.trim() || '',
     };
 
     // Check for duplicates by hex
@@ -169,7 +168,9 @@ const AddColorModal: React.FC<AddColorModalProps> = ({ open, onClose, onAdd, exi
             value={colorName}
             onChange={(e) => handleColorNameChange(e.target.value)}
             error={!!errors.name}
-            helperText={errors.name || `${colorName.length}/${MAX_COLOR_NAME_LENGTH} characters`}
+            helperText={
+              errors.name || `${colorName.length}/${MAX_CUSTOM_ASSET_NAME_LENGTH} characters`
+            }
             required
             fullWidth
             placeholder="e.g., Sky Blue"
@@ -207,14 +208,17 @@ const AddColorModal: React.FC<AddColorModalProps> = ({ open, onClose, onAdd, exi
 
           <TextField
             label="Notes"
-            value={notes}
-            onChange={(e) => handleNotesChange(e.target.value)}
-            error={!!errors.notes}
-            helperText={errors.notes || `${notes.length}/${MAX_NOTES_LENGTH} characters`}
+            value={description}
+            onChange={(e) => handleDescriptionChange(e.target.value)}
+            error={!!errors.description}
+            helperText={
+              errors.description ||
+              `${description.length}/${MAX_CUSTOM_ASSET_DESCRIPTION_LENGTH} characters`
+            }
             fullWidth
             multiline
             rows={2}
-            placeholder="Optional notes (max 50 characters)"
+            placeholder="Optional description (max 50 characters)"
           />
         </Box>
       </DialogContent>

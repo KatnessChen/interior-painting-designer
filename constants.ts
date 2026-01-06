@@ -48,3 +48,6 @@ export const BENJAMIN_MOORE_COLORS: Color[] = [
 ];
 
 export const MAX_FILE_SIZE_MB = 10;
+
+export const MAX_CUSTOM_ASSET_NAME_LENGTH = 50;
+export const MAX_CUSTOM_ASSET_DESCRIPTION_LENGTH = 100;

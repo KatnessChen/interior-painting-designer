@@ -165,7 +165,7 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
       zIndex={1500}
       footer={[
         <Button key="cancel" onClick={onCancel} size="large">
-          No, Discard
+          No, Try again
         </Button>,
         <Button
           key="confirm"

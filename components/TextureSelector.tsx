@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Select, Space, Upload, Button, Modal, Input } from 'antd';
+import { Select, Typography, Space, Upload, Button, Modal, Input } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
-import { Box, Typography, Snackbar, Alert } from '@mui/material';
+import { Box, Snackbar, Alert } from '@mui/material';
 import { Texture } from '@/types';
 import { useCustomTextures } from '@/hooks/useCustomTextures';
 import { useSelector } from 'react-redux';
@@ -9,6 +9,7 @@ import { RootState } from '@/stores/store';
 import { imageCache } from '@/utils/imageCache';
 import { imageDownloadUrlToBase64 } from '@/utils';
 import { selectSelectedTexture } from '@/stores/taskStore';
+import { MAX_CUSTOM_ASSET_NAME_LENGTH, MAX_CUSTOM_ASSET_DESCRIPTION_LENGTH } from '@/constants';
 interface TextureSelectorProps {
   title?: string;
   onTextureSelect: (texture: Texture) => void;
@@ -74,9 +75,9 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({
 
   // Handle texture upload to Firestore
   const handleTextureUpload = useCallback(
-    async (file: File, name: string, notes: string) => {
+    async (file: File, name: string, description: string) => {
       try {
-        const newTexture = await addTexture({ name, file, notes });
+        const newTexture = await addTexture({ name, file, description });
 
         setUploadError(null);
         setToast({
@@ -107,8 +108,8 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({
     if (!name.trim()) {
       return 'Texture name cannot be empty';
     }
-    if (name.length > 20) {
-      return 'Texture name must be 20 characters or less';
+    if (name.length > MAX_CUSTOM_ASSET_NAME_LENGTH) {
+      return `Texture name must be ${MAX_CUSTOM_ASSET_NAME_LENGTH} characters or less`;
     }
     if (existingNames.has(name.toLowerCase())) {
       return 'This texture name already exists';
@@ -127,7 +128,7 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({
 
     // Set default name from file name
     const defaultName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
-    setTextureName(defaultName.substring(0, 20)); // Limit initial name to 20 chars
+    setTextureName(defaultName.substring(0, MAX_CUSTOM_ASSET_NAME_LENGTH));
     setPendingFile(file);
     setShowNameModal(true);
 
@@ -171,9 +172,9 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({
 
   return (
     <>
-      <Typography variant="h6" gutterBottom fontWeight="medium">
+      <Typography.Title level={5} style={{ margin: 0 }}>
         {title}
-      </Typography>
+      </Typography.Title>
 
       {(uploadError || loadTexturesError) && (
         <Alert
@@ -232,8 +233,10 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({
                   <div style={{ fontSize: '0.875rem', fontWeight: 500, color: '#111827' }}>
                     {texture.name}
                   </div>
-                  {texture.notes && (
-                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{texture.notes}</div>
+                  {texture.description && (
+                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                      {texture.description}
+                    </div>
                   )}
                 </Box>
               </Box>
@@ -305,14 +308,16 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({
           >
             Texture Name
             <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: 8 }}>
-              {textureName.length}/20
+              {textureName.length}/{MAX_CUSTOM_ASSET_NAME_LENGTH}
             </span>
           </label>
           <Input
             value={textureName}
-            onChange={(e) => setTextureName(e.target.value.substring(0, 20))}
+            onChange={(e) =>
+              setTextureName(e.target.value.substring(0, MAX_CUSTOM_ASSET_NAME_LENGTH))
+            }
             placeholder="Enter texture name (e.g., Faux Brick)"
-            maxLength={20}
+            maxLength={MAX_CUSTOM_ASSET_NAME_LENGTH}
             autoFocus
           />
         </div>
@@ -321,16 +326,18 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({
           <label
             style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: 8 }}
           >
-            Notes (Optional)
+            Description (Optional)
             <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: 8 }}>
-              {textureNotes.length}/100
+              {textureNotes.length}/{MAX_CUSTOM_ASSET_DESCRIPTION_LENGTH}
             </span>
           </label>
           <Input.TextArea
             value={textureNotes}
-            onChange={(e) => setTextureNotes(e.target.value.substring(0, 100))}
-            placeholder="Add notes about this texture (e.g., For accent walls)"
-            maxLength={100}
+            onChange={(e) =>
+              setTextureNotes(e.target.value.substring(0, MAX_CUSTOM_ASSET_DESCRIPTION_LENGTH))
+            }
+            placeholder="Add description about this texture (e.g., For accent walls)"
+            maxLength={MAX_CUSTOM_ASSET_DESCRIPTION_LENGTH}
             rows={2}
           />
         </div>

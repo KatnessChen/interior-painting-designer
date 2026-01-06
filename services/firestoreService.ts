@@ -823,13 +823,13 @@ export async function duplicateImage(
  *
  * @param userId The ID of the user.
  * @param projectId The ID of the project.
- * @param colorData The color data (name, hex, notes).
+ * @param colorData The color data (name, hex, description).
  * @returns The newly created Color object.
  */
 export async function addColor(
   userId: string,
   projectId: string,
-  colorData: { name: string; hex: string; notes?: string }
+  colorData: { name: string; hex: string; description?: string }
 ): Promise<Color> {
   if (!userId || !projectId) {
     throw new Error('User ID and Project ID are required');
@@ -843,7 +843,7 @@ export async function addColor(
       id: colorId,
       name: colorData.name.trim(),
       hex: colorData.hex.toUpperCase(),
-      notes: colorData.notes?.trim() || '',
+      description: colorData.description?.trim() || '',
       createdAt: now,
       updatedAt: now,
     };
@@ -858,7 +858,7 @@ export async function addColor(
       id: colorDoc.id,
       name: colorDoc.name,
       hex: colorDoc.hex,
-      notes: colorDoc.notes,
+      description: colorDoc.description,
     };
   } catch (error) {
     console.error('Failed to add color:', error);
@@ -893,7 +893,7 @@ export async function fetchColors(userId: string, projectId: string): Promise<Co
         id: data.id,
         name: data.name,
         hex: data.hex,
-        notes: data.notes,
+        description: data.description,
       };
     });
   } catch (error) {
@@ -917,7 +917,7 @@ export async function updateColor(
   userId: string,
   projectId: string,
   colorId: string,
-  updates: { name?: string; hex?: string; notes?: string }
+  updates: { name?: string; hex?: string; description?: string }
 ): Promise<void> {
   if (!userId || !projectId || !colorId) {
     throw new Error('User ID, Project ID, and Color ID are required');
@@ -932,7 +932,7 @@ export async function updateColor(
 
     if (updates.name !== undefined) updateData.name = updates.name.trim();
     if (updates.hex !== undefined) updateData.hex = updates.hex.toUpperCase();
-    if (updates.notes !== undefined) updateData.notes = updates.notes.trim();
+    if (updates.description !== undefined) updateData.description = updates.description.trim();
 
     await updateDoc(docRef, updateData);
     console.log('Custom color updated:', colorId);
@@ -993,7 +993,7 @@ export async function deleteColor(
 export async function addTexture(
   userId: string,
   projectId: string,
-  textureData: { name: string; file: File; notes?: string }
+  textureData: { name: string; file: File; description?: string }
 ): Promise<Texture> {
   if (!userId || !projectId) {
     throw new Error('User ID and Project ID are required');
@@ -1023,7 +1023,7 @@ export async function addTexture(
       id: textureId,
       name: textureData.name.trim(),
       textureImageDownloadUrl,
-      notes: textureData.notes?.trim() || '',
+      description: textureData.description?.trim() || '',
       createdAt: now,
       updatedAt: now,
     };
@@ -1038,7 +1038,7 @@ export async function addTexture(
       id: textureDoc.id,
       name: textureDoc.name,
       textureImageDownloadUrl: textureDoc.textureImageDownloadUrl,
-      notes: textureDoc.notes,
+      description: textureDoc.description,
     };
   } catch (error) {
     console.error('Failed to add texture:', error);
@@ -1073,7 +1073,7 @@ export async function fetchTextures(userId: string, projectId: string): Promise<
         id: data.id,
         name: data.name,
         textureImageDownloadUrl: data.textureImageDownloadUrl,
-        notes: data.notes,
+        description: data.description,
       };
     });
 
@@ -1102,7 +1102,7 @@ export async function updateTexture(
   userId: string,
   projectId: string,
   textureId: string,
-  updates: { name?: string; notes?: string }
+  updates: { name?: string; description?: string }
 ): Promise<void> {
   if (!userId || !projectId || !textureId) {
     throw new Error('User ID, Project ID, and Texture ID are required');
@@ -1116,7 +1116,7 @@ export async function updateTexture(
     };
 
     if (updates.name !== undefined) updateData.name = updates.name.trim();
-    if (updates.notes !== undefined) updateData.notes = updates.notes.trim();
+    if (updates.description !== undefined) updateData.description = updates.description.trim();
 
     await updateDoc(docRef, updateData);
     console.log('Custom texture updated:', textureId);
