@@ -51,3 +51,11 @@ export const MAX_FILE_SIZE_MB = 10;
 
 export const MAX_CUSTOM_ASSET_NAME_LENGTH = 50;
 export const MAX_CUSTOM_ASSET_DESCRIPTION_LENGTH = 100;
+
+// ============================================================================
+// User Limitation Constants
+// ============================================================================
+export const MAX_PROJECTS_PER_USER = 10;
+export const MAX_SPACES_PER_PROJECT = 10;
+export const MAX_IMAGES_PER_SPACE = 50;
+export const MAX_OPERATIONS_PER_IMAGE = 20;

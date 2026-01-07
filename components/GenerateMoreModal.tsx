@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { Modal, Button, Input, Spin, Alert, Tooltip, Drawer, Typography, message } from 'antd';
-import { InfoCircleOutlined, CloseOutlined } from '@ant-design/icons';
+import { InfoCircleOutlined, BulbOutlined, CloseOutlined } from '@ant-design/icons';
 import { ImageData, Color, Texture, Item, ImageOperation } from '@/types';
 import { imageCache } from '@/utils/imageCache';
 import {
@@ -12,6 +12,7 @@ import {
 import { GEMINI_TASKS } from '@/services/gemini/geminiTasks';
 import { createImage } from '@/services/firestoreService';
 import { formatImageOperationData, formatTaskName } from '@/utils';
+import { checkOperationLimit, getLimitExceededMessage } from '@/utils/limitationUtils';
 import { selectActiveProjectId, selectActiveSpaceId } from '@/stores/projectStore';
 import { useImageProcessing } from '@/hooks/useImageProcessing';
 import {
@@ -24,6 +25,7 @@ import ColorSelector from './ColorSelector';
 import TextureSelector from './TextureSelector';
 import ItemSelector from './ItemSelector';
 import ConfirmImageUpdateModal from './ConfirmImageUpdateModal';
+import { MAX_OPERATIONS_PER_IMAGE } from '@/constants';
 
 interface GenerateMoreModalProps {
   isOpen: boolean;
@@ -122,6 +124,13 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
   }, [selectedColor]);
 
   const handleGenerate = async () => {
+    // Check operation limit first
+    const operationLimitCheck = checkOperationLimit(sourceImage);
+    if (!operationLimitCheck.canAdd) {
+      setErrorMessage(getLimitExceededMessage('operations', MAX_OPERATIONS_PER_IMAGE));
+      return;
+    }
+
     // Check if a task is selected
     if (!activeTaskName) {
       setValidationError('Please select a task first.');
@@ -245,6 +254,15 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
     setShowConfirmationModal(false);
 
     try {
+      // Check operation limit on source image
+      const operationLimitCheck = checkOperationLimit(sourceImage);
+      if (!operationLimitCheck.canAdd) {
+        setErrorMessage(getLimitExceededMessage('operations', MAX_OPERATIONS_PER_IMAGE));
+        setSavingImage(false);
+        setShowConfirmationModal(true);
+        return;
+      }
+
       const tempImageId = crypto.randomUUID();
       const imageName = customName;
 
@@ -340,16 +358,17 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
     return "Enter any specific instructions for the AI... (e.g., 'Make the walls lighter', 'Add more warmth to the color')";
   };
 
+  const sharedTip =
+    'The more specific your description is, the better the AI can generate an image that matches what you’re looking for. Try to clearly specify: ';
+
   const getPromptWritingGuide = () => {
     if (activeTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name) {
       return {
         tips: [
           {
-            text: 'The default prompt handles lighting, shadows, and texture preservation. Just focus on:',
-            hasButton: true,
-          },
-          {
-            text: "Which wall(s) to recolor? (e.g., 'only the accent wall', 'all walls except the ceiling')",
+            text:
+              sharedTip +
+              "which wall(s) to recolor? (e.g., 'only the accent wall', 'all walls except the ceiling').",
             hasButton: false,
           },
         ],
@@ -358,11 +377,9 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
       return {
         tips: [
           {
-            text: 'The default prompt handles blending, lighting, and perspective. Just focus on:',
-            hasButton: true,
-          },
-          {
-            text: "Which wall(s) to apply it to? (e.g., 'the lower half only', 'behind the sofa')",
+            text:
+              sharedTip +
+              "which wall(s) to apply it to? (e.g., 'the lower half only', 'behind the sofa')",
             hasButton: false,
           },
         ],
@@ -371,11 +388,9 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
       return {
         tips: [
           {
-            text: 'The default prompt handles lighting, shadows, and perspective. Just focus on:',
-            hasButton: true,
-          },
-          {
-            text: "Where to place the item and what angle? (e.g., 'corner by the window', 'center of the room facing left')",
+            text:
+              sharedTip +
+              "where to place the item and what angle? (e.g., 'corner by the window', 'center of the room facing left')",
             hasButton: false,
           },
         ],
@@ -385,6 +400,10 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
   };
 
   if (!sourceImage) return null;
+
+  // Check operation limit to show warning and disable button
+  const operationLimitCheck = checkOperationLimit(sourceImage);
+  const hasReachedOperationLimit = !operationLimitCheck.canAdd;
 
   return (
     <>
@@ -415,7 +434,9 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
             key="generate"
             type="primary"
             onClick={handleGenerate}
-            disabled={!activeTaskName || processingImage || savingImage}
+            disabled={
+              !activeTaskName || processingImage || savingImage || !operationLimitCheck.canAdd
+            }
             size="large"
           >
             Generate
@@ -512,7 +533,15 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
             </div>
 
             {/* Right Column: Color Selector & Custom Prompt */}
-            <div style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div
+              style={{
+                flex: '1 1 400px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 16,
+                minWidth: 0,
+              }}
+            >
               {selectedTaskNames.includes('recolor_wall') && (
                 <div>
                   <ColorSelector selectedColor={selectedColor} onSelectColor={setSelectedColor} />
@@ -532,13 +561,12 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
               )}
 
               {/* Custom Prompt */}
-              <div>
+              <div className="flex flex-col gap-2">
                 <div
                   style={{
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    marginBottom: 8,
                   }}
                 >
                   <Typography.Title level={5} style={{ margin: 0 }}>
@@ -563,45 +591,53 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
                     style={{
                       marginTop: 24,
                       padding: 12,
-                      backgroundColor: '#fffef0',
+                      backgroundColor: '#e6f7ff',
                       borderRadius: 6,
-                      border: '1px solid #ffd666',
+                      border: '1px solid #91d5ff',
                     }}
                   >
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                       {getPromptWritingGuide().tips.map((tip, index) => (
                         <div
                           key={index}
                           style={{
                             fontSize: '0.85rem',
-                            color: tip.hasButton ? '#b87803' : '#595959',
                           }}
                         >
-                          {tip.hasButton ? (
-                            <span style={{ fontWeight: 600 }}>
-                              💡 The{' '}
-                              <Button
-                                type="link"
-                                onClick={() => setIsDefaultPromptExpanded(true)}
-                                style={{
-                                  padding: 0,
-                                  margin: '0 2px',
-                                  height: 'auto',
-                                  fontWeight: 600,
-                                }}
-                              >
-                                default prompt
-                                <InfoCircleOutlined />
-                              </Button>{' '}
-                              handles most of the details. Just focus on:
-                            </span>
-                          ) : (
-                            <span>• {tip.text}</span>
-                          )}
+                          <h6>
+                            <BulbOutlined className="mr-2" style={{ color: '#1890ff' }} />
+                            Tips to write custom prompt:
+                          </h6>
+                          <span>{tip.text}.</span>
+                          <br />
+                          <span>
+                            You can also review the{' '}
+                            <Button
+                              type="link"
+                              onClick={() => setIsDefaultPromptExpanded(true)}
+                              style={{
+                                padding: '0',
+                                margin: '0 6px',
+                                height: 'auto',
+                              }}
+                            >
+                              default prompt
+                              <InfoCircleOutlined />
+                            </Button>{' '}
+                          </span>{' '}
+                          to understand what’s applied behind the scenes.
                         </div>
                       ))}
                     </div>
                   </div>
+                )}
+                {hasReachedOperationLimit && (
+                  <Alert
+                    title={getLimitExceededMessage('operations', MAX_OPERATIONS_PER_IMAGE)}
+                    type="warning"
+                    showIcon
+                    style={{ margin: 0 }}
+                  />
                 )}
               </div>
             </div>

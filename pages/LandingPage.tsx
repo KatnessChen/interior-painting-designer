@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Timestamp } from 'firebase/firestore';
-import { message } from 'antd';
+import { message, Tag } from 'antd';
 import ConfirmImageUpdateModal from '@/components/ConfirmImageUpdateModal';
 import GenerateMoreModal from '@/components/GenerateMoreModal';
 import Gallery from '@/components/Gallery';
@@ -23,6 +23,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAppInit } from '@/hooks/useAppInit';
 import { useImageProcessing } from '@/hooks/useImageProcessing';
 import { formatImageOperationData, downloadFile, buildDownloadFilename } from '@/utils';
+import { checkImageLimit, getLimitExceededMessage } from '@/utils/limitationUtils';
 import {
   selectOriginalImages,
   selectUpdatedImages,
@@ -133,6 +134,26 @@ const LandingPage: React.FC = () => {
     }
   }, [errorMessage]);
 
+  // Get current active space
+  const activeSpace = useMemo(() => {
+    if (!activeProjectId || !activeSpaceId) return null;
+    const project = projects.find((p) => p.id === activeProjectId);
+    if (!project) return null;
+    return project.spaces.find((s) => s.id === activeSpaceId) || null;
+  }, [projects, activeProjectId, activeSpaceId]);
+
+  // Check image limit in current space
+  const imageLimitCheck = useMemo(() => checkImageLimit(activeSpace), [activeSpace]);
+
+  // Format image limit info for breadcrumb display
+  const imageLimitInfo = useMemo(
+    () =>
+      activeSpace && imageLimitCheck
+        ? { current: imageLimitCheck.current, max: imageLimitCheck.max }
+        : null,
+    [activeSpace, imageLimitCheck]
+  );
+
   const handleImageUpload = useCallback(
     async (file: File) => {
       if (!user) {
@@ -143,6 +164,11 @@ const LandingPage: React.FC = () => {
 
       if (!activeProjectId || !activeSpaceId) {
         setErrorMessage('Please select project/space to upload image.');
+        return;
+      }
+
+      if (!imageLimitCheck.canAdd) {
+        setErrorMessage(getLimitExceededMessage('images', 50));
         return;
       }
 
@@ -204,7 +230,7 @@ const LandingPage: React.FC = () => {
         );
       }
     },
-    [user, activeProjectId, activeSpaceId, dispatch, setErrorMessage]
+    [user, activeProjectId, activeSpaceId, dispatch, setErrorMessage, imageLimitCheck]
   );
 
   const handleRenameImage = useCallback(
@@ -361,6 +387,7 @@ const LandingPage: React.FC = () => {
       user,
       selectedColor,
       selectedTexture,
+      selectedItem,
       selectedTaskNames,
       processingContext,
       activeProjectId,
@@ -694,7 +721,14 @@ const LandingPage: React.FC = () => {
           className="bg-gray-100"
           style={{ minHeight: 'calc(100vh - var(--header-height) - var(--footer-height))' }}
         >
-          <MyBreadcrumb />
+          <div className="flex items-end justify-between pr-6">
+            <MyBreadcrumb />
+            {imageLimitInfo && (
+              <Tag variant="outlined" color="purple">
+                {imageLimitInfo.current} / {imageLimitInfo.max} images in total
+              </Tag>
+            )}
+          </div>
           <div className="p-6">
             {!isAppInitiated ? (
               <div className="flex items-center justify-center">
@@ -739,6 +773,7 @@ const LandingPage: React.FC = () => {
                       onGenerateMoreSuccess={handleGenerateMoreSuccess}
                       onGenerateMoreClick={handleOpenGenerateMore}
                       userId={user?.uid}
+                      isImageLimitReached={!imageLimitCheck.canAdd}
                     />
 
                     <Gallery
@@ -755,6 +790,7 @@ const LandingPage: React.FC = () => {
                       onGenerateMoreSuccess={handleGenerateMoreSuccess}
                       onGenerateMoreClick={handleOpenGenerateMore}
                       userId={user?.uid}
+                      isImageLimitReached={!imageLimitCheck.canAdd}
                     />
                   </div>
                 )}

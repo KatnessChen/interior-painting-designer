@@ -1,12 +1,18 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Breadcrumb, Dropdown, Space, Tooltip, Button } from 'antd';
+import { Breadcrumb, Dropdown, Space, Tooltip, Button, Modal, Alert } from 'antd';
 import type { MenuProps } from 'antd';
 import { EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { Home as HomeIcon, Category as CategoryIcon } from '@mui/icons-material';
-import { Box, Modal, Skeleton, Typography } from '@mui/material';
+import { Box, Skeleton } from '@mui/material';
 import GenericConfirmModal from './GenericConfirmModal';
 import { useAuth } from '@/contexts/AuthContext';
+import {
+  checkProjectLimit,
+  checkSpaceLimit,
+  formatLimitMessage,
+  getLimitExceededMessage,
+} from '@/utils/limitationUtils';
 import { AppDispatch } from '@/stores/store';
 import {
   addProject,
@@ -81,6 +87,10 @@ const MyBreadcrumb: React.FC<BreadcrumbProps> = ({ onProjectSelected, onSpaceSel
     message: '',
     onConfirm: () => {},
   });
+  const [limitWarning, setLimitWarning] = useState<{
+    type: 'project' | 'space';
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     const autoFetchSpaceImages = async () => {
@@ -196,6 +206,7 @@ const MyBreadcrumb: React.FC<BreadcrumbProps> = ({ onProjectSelected, onSpaceSel
 
   const handleModalSubmit = useCallback(async () => {
     setModalProcessing(true);
+    setLimitWarning(null);
     try {
       const userInputValue = modalInput.trim();
       if (!user) throw new Error('Please log in');
@@ -203,6 +214,15 @@ const MyBreadcrumb: React.FC<BreadcrumbProps> = ({ onProjectSelected, onSpaceSel
 
       switch (modalMode) {
         case ModalMode.ADD_PROJECT: {
+          const projectLimitCheck = checkProjectLimit(projects);
+          if (!projectLimitCheck.canAdd) {
+            setLimitWarning({
+              type: 'project',
+              message: getLimitExceededMessage('projects', 10),
+            });
+            setModalProcessing(false);
+            return;
+          }
           const newProject = await createProject(user.uid, userInputValue);
           dispatch(addProject(newProject));
           dispatch(setActiveProjectId(newProject.id));
@@ -210,6 +230,15 @@ const MyBreadcrumb: React.FC<BreadcrumbProps> = ({ onProjectSelected, onSpaceSel
         }
         case ModalMode.ADD_SPACE: {
           if (!activeProjectId) throw Error('Project Id not exist');
+          const spaceLimitCheck = checkSpaceLimit(activeProject);
+          if (!spaceLimitCheck.canAdd) {
+            setLimitWarning({
+              type: 'space',
+              message: getLimitExceededMessage('spaces', 10),
+            });
+            setModalProcessing(false);
+            return;
+          }
           const newSpace = await createSpace(user.uid, activeProjectId, userInputValue);
           dispatch(addSpace({ projectId: activeProjectId, space: newSpace }));
           dispatch(setActiveSpaceId(newSpace.id));
@@ -250,7 +279,16 @@ const MyBreadcrumb: React.FC<BreadcrumbProps> = ({ onProjectSelected, onSpaceSel
       setModalProcessing(false);
       setEditingEntityIds({ projectId: null, spaceId: null });
     }
-  }, [user, modalInput, modalMode, dispatch, activeProjectId, editingEntityIds]);
+  }, [
+    user,
+    modalInput,
+    modalMode,
+    dispatch,
+    activeProjectId,
+    activeProject,
+    editingEntityIds,
+    projects,
+  ]);
 
   const handleCloseModal = useCallback(() => {
     setModalInput('');
@@ -273,6 +311,9 @@ const MyBreadcrumb: React.FC<BreadcrumbProps> = ({ onProjectSelected, onSpaceSel
         return '';
     }
   }, [modalMode]);
+
+  const projectLimitCheck = useMemo(() => checkProjectLimit(projects), [projects]);
+  const spaceLimitCheck = useMemo(() => checkSpaceLimit(activeProject), [activeProject]);
 
   const projectMenuItems: MenuProps['items'] = useMemo(() => {
     const projectItems = projects.map((project) => ({
@@ -327,18 +368,31 @@ const MyBreadcrumb: React.FC<BreadcrumbProps> = ({ onProjectSelected, onSpaceSel
     const addProjectItem = {
       key: 'add-project',
       label: (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <PlusOutlined style={{ fontSize: 16 }} />
-          <span>Add New Project</span>
-        </div>
+        <Tooltip title={projectLimitCheck.canAdd ? '' : getLimitExceededMessage('projects', 10)}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              opacity: projectLimitCheck.canAdd ? 1 : 0.5,
+            }}
+          >
+            <PlusOutlined style={{ fontSize: 16 }} />
+            <span>Add New Project</span>
+            <span style={{ fontSize: 12, color: '#999', marginLeft: 4 }}>
+              {formatLimitMessage('Projects', projects.length, 10)}
+            </span>
+          </div>
+        </Tooltip>
       ),
       onClick: () => setModalMode(ModalMode.ADD_PROJECT),
+      disabled: !projectLimitCheck.canAdd,
     };
 
     return projectItems.length > 0
       ? [...projectItems, { type: 'divider' }, addProjectItem]
       : [addProjectItem];
-  }, [projects, handleSelectProject, handleDeleteProject]);
+  }, [projects, handleSelectProject, handleDeleteProject, projectLimitCheck]);
 
   const spaceMenuItems: MenuProps['items'] = useMemo(() => {
     if (!activeProject) return [];
@@ -386,19 +440,31 @@ const MyBreadcrumb: React.FC<BreadcrumbProps> = ({ onProjectSelected, onSpaceSel
     const addSpaceItem = {
       key: 'add-space',
       label: (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <PlusOutlined style={{ fontSize: 16 }} />
-          <span>Add New Space</span>
-        </div>
+        <Tooltip title={spaceLimitCheck.canAdd ? '' : getLimitExceededMessage('spaces', 10)}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              opacity: spaceLimitCheck.canAdd ? 1 : 0.5,
+            }}
+          >
+            <PlusOutlined style={{ fontSize: 16 }} />
+            <span>Add New Space</span>
+            <span style={{ fontSize: 12, color: '#999', marginLeft: 4 }}>
+              {activeProject ? formatLimitMessage('Spaces', activeProject.spaces.length, 10) : ''}
+            </span>
+          </div>
+        </Tooltip>
       ),
       onClick: () => setModalMode(ModalMode.ADD_SPACE),
-      disabled: !activeProjectId,
+      disabled: !activeProjectId || !spaceLimitCheck.canAdd,
     };
 
     return spaceItems.length > 0
       ? [...spaceItems, { type: 'divider' }, addSpaceItem]
       : [addSpaceItem];
-  }, [activeProject, handleSelectSpace, handleDeleteSpace, activeProjectId]);
+  }, [activeProject, handleSelectSpace, handleDeleteSpace, activeProjectId, spaceLimitCheck]);
 
   const breadcrumbItems = useMemo(() => {
     if (projects.length === 0) {
@@ -517,44 +583,44 @@ const MyBreadcrumb: React.FC<BreadcrumbProps> = ({ onProjectSelected, onSpaceSel
 
         <Box flexGrow={1} />
 
-        <Modal open={!!modalMode} onClose={handleCloseModal}>
-          <Box
-            sx={{
-              width: 400,
-              bgcolor: 'background.paper',
-              boxShadow: 24,
-              p: 4,
-              borderRadius: 2,
-              margin: 'auto',
-              mt: 8,
-            }}
-          >
-            <Typography variant="h6" component="h2" sx={{ mb: 2 }}>
-              {getModalTitle}
-            </Typography>
-            <input
-              value={modalInput}
-              type="text"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm shadow-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition"
-              placeholder={modalMode === ModalMode.ADD_PROJECT ? 'Project Name' : 'Space Name'}
-              onChange={(e) => setModalInput(e.target.value)}
-              autoFocus
+        <Modal
+          title={getModalTitle}
+          open={!!modalMode}
+          onCancel={handleCloseModal}
+          footer={[
+            <Button key="cancel" onClick={handleCloseModal}>
+              Cancel
+            </Button>,
+            <Button
+              key="submit"
+              type="primary"
+              loading={modalProcessing}
+              disabled={!modalInput.trim()}
+              onClick={handleModalSubmit}
+            >
+              Confirm
+            </Button>,
+          ]}
+        >
+          {limitWarning && (
+            <Alert
+              message="Limit Reached"
+              description={limitWarning.message}
+              type="warning"
+              showIcon
+              closable
+              onClose={() => setLimitWarning(null)}
+              style={{ marginBottom: 16 }}
             />
-            <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
-              <Button
-                type="primary"
-                style={{ flex: 1 }}
-                onClick={handleModalSubmit}
-                loading={modalProcessing}
-                disabled={!modalInput.trim()}
-              >
-                Confirm
-              </Button>
-              <Button style={{ flex: 1 }} onClick={handleCloseModal}>
-                Cancel
-              </Button>
-            </Box>
-          </Box>
+          )}
+          <input
+            value={modalInput}
+            type="text"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm shadow-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition"
+            placeholder={modalMode === ModalMode.ADD_PROJECT ? 'Project Name' : 'Space Name'}
+            onChange={(e) => setModalInput(e.target.value)}
+            autoFocus
+          />
         </Modal>
 
         <GenericConfirmModal

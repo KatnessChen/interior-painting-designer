@@ -35,6 +35,7 @@ interface GalleryProps {
   onGenerateMoreSuccess?: () => void;
   onGenerateMoreClick?: (image: ImageData) => void;
   userId?: string | undefined;
+  isImageLimitReached?: boolean;
 }
 
 const Gallery: React.FC<GalleryProps> = ({
@@ -53,6 +54,7 @@ const Gallery: React.FC<GalleryProps> = ({
   onClearSelection,
   onGenerateMoreClick,
   userId,
+  isImageLimitReached = false,
 }) => {
   // State for ImageDisplayModal
   const [showImageDisplayModal, setShowImageDisplayModal] = useState<boolean>(false);
@@ -172,7 +174,11 @@ const Gallery: React.FC<GalleryProps> = ({
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {showUploadCard && onUploadImage && onUploadError && (
-              <UploadCard onImageUpload={onUploadImage} onError={onUploadError} />
+              <UploadCard
+                onImageUpload={onUploadImage}
+                onError={onUploadError}
+                isLimitReached={isImageLimitReached}
+              />
             )}
             {images.map((image) => (
               <ImageCard
