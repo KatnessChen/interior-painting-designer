@@ -37,7 +37,6 @@ const Gallery: React.FC<GalleryProps> = ({
   images,
   selectedImageIds = new Set(),
   onSelectMultiple,
-  onRenameImage,
   emptyMessage,
   onUploadImage,
   showUploadCard = false,
@@ -184,7 +183,6 @@ const Gallery: React.FC<GalleryProps> = ({
               onSelect={onSelectMultiple}
               onViewPhotoButtonClick={handleViewPhotoImage}
               onViewMoreButtonClick={onViewMoreButtonClick}
-              onRename={onRenameImage}
               onGenerateMoreClick={onGenerateMoreClick}
               userId={userId}
             />

@@ -87,7 +87,7 @@ const TaskSelector: React.FC<TaskSelectorProps> = ({
   };
 
   return (
-    <div className="space-y-2 p-6">
+    <div className="space-y-2 px-6 pt-6">
       <h2 className="text-lg text-gray-800">Select task</h2>
 
       <div className="flex flex-col justify-center gap-2 max-w-2xl mx-auto">

@@ -15,16 +15,15 @@ import { formatImageOperationData, formatTaskName } from '@/utils';
 import { checkOperationLimit, getLimitExceededMessage } from '@/utils/limitationUtils';
 import { selectActiveProjectId, selectActiveSpaceId } from '@/stores/projectStore';
 import { useImageProcessing } from '@/hooks/useImageProcessing';
+import { useGenerateButtonState } from '@/hooks/useGenerateButtonState';
 import {
   selectSelectedColor,
   selectSelectedTexture,
   selectSelectedItem,
   selectSelectedTaskNames,
 } from '@/stores/taskStore';
-import ColorSelector from './ColorSelector';
-import TextureSelector from './TextureSelector';
-import ItemSelector from './ItemSelector';
 import ConfirmImageUpdateModal from './ConfirmImageUpdateModal';
+import SelectedAssets from '@/components/SelectedAssets';
 import { MAX_OPERATIONS_PER_IMAGE } from '@/constants';
 
 interface GenerateMoreModalProps {
@@ -405,6 +404,17 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
   const operationLimitCheck = checkOperationLimit(sourceImage);
   const hasReachedOperationLimit = !operationLimitCheck.canAdd;
 
+  // Get generate button state
+  const { isDisabled: isGenerateDisabled, disableReason } = useGenerateButtonState({
+    activeTaskName,
+    processingImage,
+    savingImage,
+    canAddOperation: operationLimitCheck.canAdd,
+    selectedColor,
+    selectedTexture,
+    selectedItem,
+  });
+
   return (
     <>
       <Modal
@@ -430,17 +440,17 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
           >
             Cancel
           </Button>,
-          <Button
-            key="generate"
-            type="primary"
-            onClick={handleGenerate}
-            disabled={
-              !activeTaskName || processingImage || savingImage || !operationLimitCheck.canAdd
-            }
-            size="large"
-          >
-            Generate
-          </Button>,
+          <Tooltip title={isGenerateDisabled ? disableReason : ''} key="generate-tooltip">
+            <Button
+              key="generate"
+              type="primary"
+              onClick={handleGenerate}
+              disabled={isGenerateDisabled}
+              size="large"
+            >
+              Generate
+            </Button>
+          </Tooltip>,
         ]}
       >
         <Spin spinning={processingImage} tip="Generating new image..." size="large">
@@ -542,37 +552,13 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
                 minWidth: 0,
               }}
             >
-              {selectedTaskNames.includes('recolor_wall') && (
-                <div>
-                  <ColorSelector selectedColor={selectedColor} onSelectColor={setSelectedColor} />
-                </div>
-              )}
-
-              {selectedTaskNames.includes('add_texture') && (
-                <div>
-                  <TextureSelector onTextureSelect={setSelectedTexture} />
-                </div>
-              )}
-
-              {selectedTaskNames.includes('add_home_item') && (
-                <div>
-                  <ItemSelector onItemSelect={setSelectedItem} />
-                </div>
-              )}
+              <SelectedAssets />
 
               {/* Custom Prompt */}
-              <div className="flex flex-col gap-2">
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}
-                >
-                  <Typography.Title level={5} style={{ margin: 0 }}>
-                    Custom Prompt (Optional)
-                  </Typography.Title>
-                </div>
+              <div>
+                <Typography.Title level={5} style={{ margin: 0, marginBottom: '8px' }}>
+                  Custom Prompt (Optional)
+                </Typography.Title>
 
                 {/* Custom Prompt Input */}
                 <Input.TextArea
@@ -584,62 +570,62 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
                   maxLength={500}
                   showCount
                 />
-
-                {/* Prompt Writing Guide */}
-                {activeTaskName && (
-                  <div
-                    style={{
-                      marginTop: 24,
-                      padding: 12,
-                      backgroundColor: '#e6f7ff',
-                      borderRadius: 6,
-                      border: '1px solid #91d5ff',
-                    }}
-                  >
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      {getPromptWritingGuide().tips.map((tip, index) => (
-                        <div
-                          key={index}
-                          style={{
-                            fontSize: '0.85rem',
-                          }}
-                        >
-                          <h6>
-                            <BulbOutlined className="mr-2" style={{ color: '#1890ff' }} />
-                            Tips to write custom prompt:
-                          </h6>
-                          <span>{tip.text}.</span>
-                          <br />
-                          <span>
-                            You can also review the{' '}
-                            <Button
-                              type="link"
-                              onClick={() => setIsDefaultPromptExpanded(true)}
-                              style={{
-                                padding: '0',
-                                margin: '0 6px',
-                                height: 'auto',
-                              }}
-                            >
-                              default prompt
-                              <InfoCircleOutlined />
-                            </Button>{' '}
-                          </span>{' '}
-                          to understand what’s applied behind the scenes.
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {hasReachedOperationLimit && (
-                  <Alert
-                    title={getLimitExceededMessage('operations', MAX_OPERATIONS_PER_IMAGE)}
-                    type="warning"
-                    showIcon
-                    style={{ margin: 0 }}
-                  />
-                )}
               </div>
+
+              {/* Prompt Writing Guide */}
+              {activeTaskName && (
+                <div
+                  style={{
+                    marginTop: 16,
+                    padding: 12,
+                    backgroundColor: '#e6f7ff',
+                    borderRadius: 6,
+                    border: '1px solid #91d5ff',
+                  }}
+                >
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {getPromptWritingGuide().tips.map((tip, index) => (
+                      <div
+                        key={index}
+                        style={{
+                          fontSize: '0.85rem',
+                        }}
+                      >
+                        <h6>
+                          <BulbOutlined className="mr-2" style={{ color: '#1890ff' }} />
+                          Tips to write custom prompt:
+                        </h6>
+                        <span>{tip.text}.</span>
+                        <br />
+                        <span>
+                          You can also review the{' '}
+                          <Button
+                            type="link"
+                            onClick={() => setIsDefaultPromptExpanded(true)}
+                            style={{
+                              padding: '0',
+                              margin: '0 6px',
+                              height: 'auto',
+                            }}
+                          >
+                            default prompt
+                            <InfoCircleOutlined />
+                          </Button>{' '}
+                        </span>{' '}
+                        to understand what’s applied behind the scenes.
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {hasReachedOperationLimit && (
+                <Alert
+                  title={getLimitExceededMessage('operations', MAX_OPERATIONS_PER_IMAGE)}
+                  type="warning"
+                  showIcon
+                  style={{ margin: 0 }}
+                />
+              )}
             </div>
           </div>
         </Spin>
@@ -656,6 +642,7 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
           taskName={activeTaskName}
           colorName={selectedColor?.name}
           textureName={selectedTexture?.name}
+          itemName={selectedItem?.name}
         />
       )}
 

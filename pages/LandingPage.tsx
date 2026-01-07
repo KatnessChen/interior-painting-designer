@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Timestamp } from 'firebase/firestore';
-import { message, Tag } from 'antd';
+import { message, Tag, Card } from 'antd';
 import ConfirmImageUpdateModal from '@/components/ConfirmImageUpdateModal';
 import GenerateMoreModal from '@/components/GenerateMoreModal';
 import Gallery from '@/components/Gallery';
@@ -10,6 +10,8 @@ import GenericConfirmModal from '@/components/GenericConfirmModal';
 import CopyImageModal from '@/components/CopyImageModal';
 import MyBreadcrumb from '@/components/MyBreadcrumb';
 import Footer from '@/components/layout/Footer';
+import ColorSelector from '@/components/ColorSelector';
+import TextureOrItemSelector from '@/components/TextureOrItemSelector';
 import { GEMINI_TASKS } from '@/services/gemini/geminiTasks';
 import { ImageData, ImageOperation } from '@/types';
 import {
@@ -775,6 +777,16 @@ const LandingPage: React.FC = () => {
                       userId={user?.uid}
                       isImageLimitReached={!imageLimitCheck.canAdd}
                     />
+
+                    {selectedTaskNames[0] === GEMINI_TASKS.RECOLOR_WALL.task_name && (
+                      <ColorSelector selectedColor={selectedColor} />
+                    )}
+                    {selectedTaskNames[0] === GEMINI_TASKS.ADD_TEXTURE.task_name && (
+                      <TextureOrItemSelector type="texture" onError={setErrorMessage} />
+                    )}
+                    {selectedTaskNames[0] === GEMINI_TASKS.ADD_HOME_ITEM.task_name && (
+                      <TextureOrItemSelector type="item" onError={setErrorMessage} />
+                    )}
 
                     <Gallery
                       title="Generated Photos"

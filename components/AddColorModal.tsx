@@ -1,13 +1,5 @@
 import React, { useState } from 'react';
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Button,
-  Box,
-} from '@mui/material';
+import { Modal, Input, Button } from 'antd';
 import { Color } from '@/types';
 import { MAX_CUSTOM_ASSET_NAME_LENGTH, MAX_CUSTOM_ASSET_DESCRIPTION_LENGTH } from '@/constants';
 
@@ -71,7 +63,6 @@ const AddColorModal: React.FC<AddColorModalProps> = ({ open, onClose, onAdd, exi
   }>({});
 
   const handleClose = () => {
-    // Reset form
     setColorName('');
     setColorHex('');
     setDescription('');
@@ -86,19 +77,6 @@ const AddColorModal: React.FC<AddColorModalProps> = ({ open, onClose, onAdd, exi
     setErrors({});
   };
 
-  // Handle color name input; rely on validateForm for length enforcement
-  const handleColorNameChange = (value: string) => {
-    setColorName(value);
-  };
-
-  // Handle description input; rely on validateForm for length enforcement
-  const handleDescriptionChange = (value: string) => {
-    setDescription(value);
-  };
-
-  // ...
-  // (rest of the component remains unchanged)
-  // ...
   const validateForm = (): boolean => {
     const newErrors: { name?: string; hex?: string; description?: string } = {};
 
@@ -124,7 +102,7 @@ const AddColorModal: React.FC<AddColorModalProps> = ({ open, onClose, onAdd, exi
       }
     }
 
-    // Validate Description (optional, max 50 characters)
+    // Validate Description
     if (description.length > MAX_CUSTOM_ASSET_DESCRIPTION_LENGTH) {
       newErrors.description = `Description must be ${MAX_CUSTOM_ASSET_DESCRIPTION_LENGTH} characters or less`;
     }
@@ -159,82 +137,108 @@ const AddColorModal: React.FC<AddColorModalProps> = ({ open, onClose, onAdd, exi
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Add Custom Color</DialogTitle>
-      <DialogContent>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <TextField
-            label="Color Name"
-            value={colorName}
-            onChange={(e) => handleColorNameChange(e.target.value)}
-            error={!!errors.name}
-            helperText={
-              errors.name || `${colorName.length}/${MAX_CUSTOM_ASSET_NAME_LENGTH} characters`
-            }
-            required
-            fullWidth
+    <Modal
+      title="Add Custom Color"
+      open={open}
+      onCancel={handleClose}
+      width={500}
+      footer={[
+        <Button key="reset" onClick={handleReset}>
+          Reset
+        </Button>,
+        <Button key="cancel" onClick={handleClose}>
+          Cancel
+        </Button>,
+        <Button key="add" type="primary" onClick={handleAdd}>
+          Add Color
+        </Button>,
+      ]}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '16px' }}>
+        {/* Color Name */}
+        <div>
+          <label style={{ display: 'block', marginBottom: '4px', fontWeight: 500 }}>
+            Color Name <span style={{ color: '#ff4d4f' }}>*</span>
+          </label>
+          <Input
             placeholder="e.g., Sky Blue"
+            maxLength={MAX_CUSTOM_ASSET_NAME_LENGTH}
+            value={colorName}
+            onChange={(e) => setColorName(e.target.value)}
+            status={errors.name ? 'error' : ''}
           />
+          <div
+            style={{
+              marginTop: '4px',
+              fontSize: '12px',
+              color: errors.name ? '#ff4d4f' : '#8c8c8c',
+            }}
+          >
+            {errors.name || `${colorName.length}/${MAX_CUSTOM_ASSET_NAME_LENGTH} characters`}
+          </div>
+        </div>
 
-          <Box>
-            <TextField
-              label="Color Value"
-              value={colorHex}
+        {/* Color Value */}
+        <div>
+          <label style={{ display: 'block', marginBottom: '4px', fontWeight: 500 }}>
+            Color Value <span style={{ color: '#ff4d4f' }}>*</span>
+          </label>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <input
+              type="color"
+              value={normalizeColorInput(colorHex) || DEFAULT_COLOR_PICKER_VALUE}
               onChange={(e) => setColorHex(e.target.value)}
-              error={!!errors.hex}
-              helperText={errors.hex || 'Accepts HEX (#RRGGBB) or RGB/RGBA format'}
-              required
-              fullWidth
-              placeholder="e.g., #87CEEB or rgba(135, 206, 235, 1)"
-              InputProps={{
-                startAdornment: (
-                  <input
-                    type="color"
-                    value={normalizeColorInput(colorHex) || DEFAULT_COLOR_PICKER_VALUE}
-                    onChange={(e) => setColorHex(e.target.value)}
-                    style={{
-                      width: '40px',
-                      height: '40px',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      marginRight: '8px',
-                    }}
-                  />
-                ),
+              style={{
+                width: '50px',
+                height: '40px',
+                border: '1px solid #d9d9d9',
+                borderRadius: '4px',
+                cursor: 'pointer',
               }}
             />
-          </Box>
+            <Input
+              placeholder="e.g., #87CEEB or rgba(135, 206, 235, 1)"
+              value={colorHex}
+              onChange={(e) => setColorHex(e.target.value)}
+              status={errors.hex ? 'error' : ''}
+              style={{ flex: 1 }}
+            />
+          </div>
+          <div
+            style={{
+              marginTop: '4px',
+              fontSize: '12px',
+              color: errors.hex ? '#ff4d4f' : '#8c8c8c',
+            }}
+          >
+            {errors.hex || 'Accepts HEX (#RRGGBB) or RGB/RGBA format'}
+          </div>
+        </div>
 
-          <TextField
-            label="Notes"
+        {/* Description */}
+        <div>
+          <label style={{ display: 'block', marginBottom: '4px', fontWeight: 500 }}>Notes</label>
+          <Input.TextArea
+            placeholder={`Optional description (max ${MAX_CUSTOM_ASSET_DESCRIPTION_LENGTH} characters)`}
+            maxLength={MAX_CUSTOM_ASSET_DESCRIPTION_LENGTH}
+            rows={5}
             value={description}
-            onChange={(e) => handleDescriptionChange(e.target.value)}
-            error={!!errors.description}
-            helperText={
-              errors.description ||
-              `${description.length}/${MAX_CUSTOM_ASSET_DESCRIPTION_LENGTH} characters`
-            }
-            fullWidth
-            multiline
-            rows={2}
-            placeholder="Optional description (max 50 characters)"
+            onChange={(e) => setDescription(e.target.value)}
+            status={errors.description ? 'error' : ''}
           />
-        </Box>
-      </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={handleReset} color="primary" variant="outlined">
-          Reset
-        </Button>
-        <Box sx={{ flex: 1 }} />
-        <Button onClick={handleClose} variant="outlined">
-          Cancel
-        </Button>
-        <Button onClick={handleAdd} variant="contained">
-          Add Color
-        </Button>
-      </DialogActions>
-    </Dialog>
+          <div
+            style={{
+              marginTop: '4px',
+              fontSize: '12px',
+              color: errors.description ? '#ff4d4f' : '#8c8c8c',
+            }}
+          >
+            {errors.description ||
+              `${description.length}/${MAX_CUSTOM_ASSET_DESCRIPTION_LENGTH} characters`}
+          </div>
+        </div>
+      </div>
+    </Modal>
   );
 };
 

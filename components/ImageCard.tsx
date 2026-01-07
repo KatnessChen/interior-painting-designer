@@ -68,7 +68,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
         <img
           src={cachedImageSrc || image.imageDownloadUrl}
           alt={image.name}
-          className="w-full h-48"
+          className="w-full h-48 object-cover"
         />
         {/* Loading indicator while fetching from cache */}
         {isLoadingCache && (
