@@ -27,7 +27,6 @@ interface GalleryProps {
   onBulkCopy?: () => void;
   onClearSelection?: () => void;
   onGenerateMoreSuccess?: () => void;
-  onGenerateMoreClick?: (image: ImageData) => void;
   userId?: string | undefined;
   isImageLimitReached?: boolean;
 }
@@ -45,7 +44,6 @@ const Gallery: React.FC<GalleryProps> = ({
   onBulkDownload,
   onBulkCopy,
   onClearSelection,
-  onGenerateMoreClick,
   userId,
   isImageLimitReached = false,
 }) => {
@@ -183,7 +181,6 @@ const Gallery: React.FC<GalleryProps> = ({
               onSelect={onSelectMultiple}
               onViewPhotoButtonClick={handleViewPhotoImage}
               onViewMoreButtonClick={onViewMoreButtonClick}
-              onGenerateMoreClick={onGenerateMoreClick}
               userId={userId}
             />
           ))}

@@ -47,14 +47,12 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
 
   const selectedTaskNames = useSelector(selectSelectedTaskNames);
   const preselectedColor = useSelector(selectSelectedColor);
-  const preselectTexture = useSelector(selectSelectedTexture);
-  const preselectItem = useSelector(selectSelectedItem);
+  const selectedTexture = useSelector(selectSelectedTexture);
+  const selectedItem = useSelector(selectSelectedItem);
 
   const [cachedImageSrc, setCachedImageSrc] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<Color | null>(preselectedColor);
-  const [selectedTexture, setSelectedTexture] = useState<Texture | null>(preselectTexture);
-  const [selectedItem, setSelectedItem] = useState<Item | null>(preselectItem);
   const [customPrompt, setCustomPrompt] = useState<string>('');
   const [generatedImage, setGeneratedImage] = useState<{ base64: string; mimeType: string } | null>(
     null
@@ -69,6 +67,9 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
     return selectedTaskNames[0];
   }, [selectedTaskNames]);
 
+  // Check operation limit
+  const operationLimitCheck = checkOperationLimit(sourceImage);
+
   // Use image processing hook
   const { processImage, processingImage, errorMessage, setErrorMessage } = useImageProcessing({
     userId,
@@ -78,6 +79,17 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
       selectedTexture,
       selectedItem,
     },
+  });
+
+  // Get generate button state
+  const { isDisabled: isGenerateDisabled, disableReason } = useGenerateButtonState({
+    activeTaskName,
+    processingImage,
+    savingImage,
+    canAddOperation: operationLimitCheck.canAdd,
+    selectedColor,
+    selectedTexture,
+    selectedItem,
   });
 
   // Calculate default prompt based on active task
@@ -138,17 +150,17 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
 
     // Validate based on task type
     if (activeTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name && !selectedColor) {
-      setValidationError('Please select a color for recoloring.');
+      setValidationError(disableReason);
       return;
     }
 
     if (activeTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name && !selectedTexture) {
-      setValidationError('Please select a texture.');
+      setValidationError(disableReason);
       return;
     }
 
     if (activeTaskName === GEMINI_TASKS.ADD_HOME_ITEM.task_name && !selectedItem) {
-      setValidationError('Please select a home item.');
+      setValidationError(disableReason);
       return;
     }
 
@@ -214,7 +226,7 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
   };
 
   const handleClose = () => {
-    if (!processingImage && !savingImage) {
+    if (!sourceImage && !savingImage) {
       setValidationError(null);
       setErrorMessage(null);
       setCustomPrompt('');
@@ -275,7 +287,20 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
         selectedItem
       );
 
-      // Save processed image to Firestore
+      // Reset state and close modal immediately for better UX
+      setCustomPrompt('');
+      setGeneratedImage(null);
+      setErrorMessage(null);
+      setValidationError(null);
+      setSavingImage(false);
+
+      // Show success message
+      message.success('Image saved successfully!');
+
+      // Close modal immediately
+      onSuccess();
+
+      // Save processed image to Firestore in background
       await createImage(
         userId,
         activeProjectId,
@@ -293,16 +318,6 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
           operation,
         }
       );
-
-      // Reset all state
-      setCustomPrompt('');
-      setGeneratedImage(null);
-      setErrorMessage(null);
-      setValidationError(null);
-      setSavingImage(false);
-
-      // Notify parent to refresh images
-      onSuccess();
     } catch (error) {
       console.error('Failed to save processed image:', error);
       setErrorMessage(error instanceof Error ? error.message : 'Failed to save processed image.');
@@ -400,20 +415,8 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
 
   if (!sourceImage) return null;
 
-  // Check operation limit to show warning and disable button
-  const operationLimitCheck = checkOperationLimit(sourceImage);
+  // Check if operation limit has been reached for warning display
   const hasReachedOperationLimit = !operationLimitCheck.canAdd;
-
-  // Get generate button state
-  const { isDisabled: isGenerateDisabled, disableReason } = useGenerateButtonState({
-    activeTaskName,
-    processingImage,
-    savingImage,
-    canAddOperation: operationLimitCheck.canAdd,
-    selectedColor,
-    selectedTexture,
-    selectedItem,
-  });
 
   return (
     <>
@@ -429,8 +432,8 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
         open={isOpen}
         onCancel={handleClose}
         width={1200}
-        maskClosable={!processingImage && !savingImage}
-        keyboard={!processingImage && !savingImage}
+        maskClosable={!sourceImage && !savingImage}
+        keyboard={!sourceImage && !savingImage}
         footer={[
           <Button
             key="cancel"

@@ -5,7 +5,6 @@ import {
   Visibility as EyeIcon,
   CheckCircle as CheckmarkBadgeIcon,
   Info as InfoIcon,
-  AutoAwesome as AutoAwesomeIcon,
 } from '@mui/icons-material';
 
 interface ImageCardProps {
@@ -14,7 +13,6 @@ interface ImageCardProps {
   onSelect?: (imageId: string) => void;
   onViewPhotoButtonClick?: (imageData: ImageData) => void;
   onViewMoreButtonClick?: (imageData: ImageData) => void;
-  onGenerateMoreClick?: (image: ImageData) => void;
   userId?: string | undefined;
 }
 
@@ -24,7 +22,6 @@ const ImageCard: React.FC<ImageCardProps> = ({
   onSelect,
   onViewPhotoButtonClick,
   onViewMoreButtonClick,
-  onGenerateMoreClick,
 }) => {
   // Cached image state
   const [cachedImageSrc, setCachedImageSrc] = useState<string | null>(null);
@@ -90,19 +87,6 @@ const ImageCard: React.FC<ImageCardProps> = ({
               >
                 <EyeIcon sx={{ fontSize: 20, marginRight: 1, color: 'inherit' }} />
                 View
-              </button>
-            )}
-            {onGenerateMoreClick && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onGenerateMoreClick(image);
-                }}
-                className="flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-purple-700 bg-purple-100 hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors w-40"
-                aria-label={`Generate more variations of ${image.name}`}
-              >
-                <AutoAwesomeIcon sx={{ fontSize: 20, marginRight: 1, color: 'inherit' }} />
-                Generate
               </button>
             )}
             {onViewMoreButtonClick && (

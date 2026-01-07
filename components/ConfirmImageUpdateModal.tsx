@@ -220,7 +220,7 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
           style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', minHeight: 400 }}
         >
           <Typography.Title level={5} style={{ marginBottom: 12 }}>
-            Processed Photo
+            Redesigned Photo
           </Typography.Title>
           <div
             style={{
@@ -235,7 +235,7 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
           >
             <img
               src={`data:${generatedImage.mimeType};base64,${generatedImage.base64}`}
-              alt="Processed Photo"
+              alt="Redesigned Photo"
               style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
             />
           </div>

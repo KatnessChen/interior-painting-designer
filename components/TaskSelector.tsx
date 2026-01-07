@@ -1,6 +1,6 @@
 import React, { useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { Checkbox } from 'antd';
+import { Checkbox, Typography } from 'antd';
 import type { CheckboxChangeEvent } from 'antd/es/checkbox';
 import { GEMINI_TASKS, GeminiTaskName } from '@/services/gemini/geminiTasks';
 import { selectSelectedTaskNames, setSelectedTaskNames } from '@/stores/taskStore';
@@ -88,7 +88,9 @@ const TaskSelector: React.FC<TaskSelectorProps> = ({
 
   return (
     <div className="space-y-2 px-6 pt-6">
-      <h2 className="text-lg text-gray-800">Select task</h2>
+      <Typography.Title level={5} style={{ margin: 0, marginBottom: '8px' }}>
+        Redesign task
+      </Typography.Title>
 
       <div className="flex flex-col justify-center gap-2 max-w-2xl mx-auto">
         {tasks.map((task) => (
