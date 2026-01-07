@@ -4,14 +4,8 @@ import ImageCard from './ImageCard';
 import UploadCard from './UploadCard';
 import ImageDisplayModal from './ImageDisplayModal';
 import ViewMoreDisplayModal from './ViewMoreDisplayModal';
-import GenerationGuideCard from './GenerationGuideCard';
-import { Button, Tooltip } from '@mui/material';
-import {
-  Delete as DeleteIcon,
-  Download as DownloadIcon,
-  Clear as ClearIcon,
-  ContentCopy as CopyIcon,
-} from '@mui/icons-material';
+import { Card, Button, Tooltip, Space } from 'antd';
+import { DeleteOutlined, DownloadOutlined, ClearOutlined, CopyOutlined } from '@ant-design/icons';
 
 interface GalleryProps {
   title: string;
@@ -103,102 +97,99 @@ const Gallery: React.FC<GalleryProps> = ({
 
   const hasSelection = selectedImageIds.size > 0;
 
-  return (
-    <div className="p-4 bg-white rounded-lg shadow-md">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-gray-800">{title}</h2>
-        <div className="flex items-center gap-2">
-          {hasSelection && (
-            <span className="text-sm text-gray-600">{selectedImageIds.size} selected</span>
-          )}
-          {images.length > 0 && (
-            <>
-              {onBulkDownload && (
-                <Button
-                  onClick={onBulkDownload}
-                  disabled={!hasSelection}
-                  variant="outlined"
-                  color="info"
-                  startIcon={<DownloadIcon />}
-                  size="small"
-                >
-                  Download
-                </Button>
-              )}
-              {onBulkCopy && (
-                <Tooltip title="Copy the selected photos">
-                  <Button
-                    onClick={onBulkCopy}
-                    disabled={!hasSelection}
-                    variant="outlined"
-                    color="info"
-                    startIcon={<CopyIcon />}
-                    size="small"
-                  >
-                    Duplicate
-                  </Button>
-                </Tooltip>
-              )}
-              {onBulkDelete && (
-                <Button
-                  onClick={onBulkDelete}
-                  disabled={!hasSelection}
-                  variant="outlined"
-                  color="error"
-                  startIcon={<DeleteIcon />}
-                  size="small"
-                >
-                  Delete
-                </Button>
-              )}
-              {onClearSelection && (
-                <Button
-                  onClick={onClearSelection}
-                  disabled={!hasSelection}
-                  variant="outlined"
-                  color="inherit"
-                  startIcon={<ClearIcon />}
-                  size="small"
-                >
-                  Deselect All
-                </Button>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-
-      {images.length === 0 && !showUploadCard ? (
-        <div className="text-center py-8 text-gray-500 italic">{emptyMessage}</div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {showUploadCard && onUploadImage && onUploadError && (
-              <UploadCard
-                onImageUpload={onUploadImage}
-                onError={onUploadError}
-                isLimitReached={isImageLimitReached}
-              />
+  const cardTitle = (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>{title}</h2>
+      <Space size="small">
+        {hasSelection && (
+          <span style={{ fontSize: '14px', color: '#666' }}>{selectedImageIds.size} selected</span>
+        )}
+        {images.length > 0 && (
+          <>
+            {onBulkDownload && (
+              <Button
+                onClick={onBulkDownload}
+                disabled={!hasSelection}
+                icon={<DownloadOutlined />}
+                size="small"
+              >
+                Download
+              </Button>
             )}
-            {images.map((image) => (
-              <ImageCard
-                key={image.id}
-                image={image}
-                isSelected={selectedImageIds.has(image.id)}
-                onSelect={onSelectMultiple}
-                onViewPhotoButtonClick={handleViewPhotoImage}
-                onViewMoreButtonClick={onViewMoreButtonClick}
-                onRename={onRenameImage}
-                onGenerateMoreClick={onGenerateMoreClick}
-                userId={userId}
-              />
-            ))}
-            <GenerationGuideCard
-              showGenerationTip={images.length > 0}
-              showUploadTip={showUploadCard && images.length === 0}
+            {onBulkCopy && (
+              <Tooltip title="Copy the selected photos">
+                <Button
+                  onClick={onBulkCopy}
+                  disabled={!hasSelection}
+                  icon={<CopyOutlined />}
+                  size="small"
+                >
+                  Duplicate
+                </Button>
+              </Tooltip>
+            )}
+            {onBulkDelete && (
+              <Button
+                onClick={onBulkDelete}
+                disabled={!hasSelection}
+                danger
+                icon={<DeleteOutlined />}
+                size="small"
+              >
+                Delete
+              </Button>
+            )}
+            {onClearSelection && (
+              <Button
+                onClick={onClearSelection}
+                disabled={!hasSelection}
+                icon={<ClearOutlined />}
+                size="small"
+              >
+                Deselect All
+              </Button>
+            )}
+          </>
+        )}
+      </Space>
+    </div>
+  );
+
+  return (
+    <Card title={cardTitle}>
+      {images.length === 0 && !showUploadCard ? (
+        <div style={{ textAlign: 'center', padding: '0 32px', color: '#999', fontStyle: 'italic' }}>
+          {emptyMessage}
+        </div>
+      ) : (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+            gap: '16px',
+          }}
+        >
+          {showUploadCard && onUploadImage && onUploadError && (
+            <UploadCard
+              onImageUpload={onUploadImage}
+              onError={onUploadError}
+              isLimitReached={isImageLimitReached}
             />
-          </div>
-        </>
+          )}
+          {images.map((image) => (
+            <ImageCard
+              key={image.id}
+              image={image}
+              isSelected={selectedImageIds.has(image.id)}
+              onSelect={onSelectMultiple}
+              onViewPhotoButtonClick={handleViewPhotoImage}
+              onViewMoreButtonClick={onViewMoreButtonClick}
+              onRename={onRenameImage}
+              onGenerateMoreClick={onGenerateMoreClick}
+              userId={userId}
+            />
+          ))}
+        </div>
       )}
 
       {/* Image Display Modal */}
@@ -222,7 +213,7 @@ const Gallery: React.FC<GalleryProps> = ({
           onClose={handleCloseViewMoreModal}
         />
       )}
-    </div>
+    </Card>
   );
 };
 
