@@ -530,6 +530,11 @@ const LandingPage: React.FC = () => {
     dispatch(setSelectedOriginalImageIds(new Set()));
   }, [dispatch]);
 
+  const handleSelectAllOriginal = useCallback(() => {
+    const allIds = new Set(originalImages.map((img) => img.id));
+    dispatch(setSelectedOriginalImageIds(allIds));
+  }, [originalImages, dispatch]);
+
   // Multi-select handlers for updated photos
   const handleSelectUpdatedImage = useCallback(
     (imageId: string) => {
@@ -543,6 +548,15 @@ const LandingPage: React.FC = () => {
     },
     [selectedUpdatedImageIds, dispatch]
   );
+
+  const handleClearUpdatedSelection = useCallback(() => {
+    dispatch(setSelectedUpdatedImageIds(new Set()));
+  }, [dispatch]);
+
+  const handleSelectAllUpdated = useCallback(() => {
+    const allIds = new Set(updatedImages.map((img) => img.id));
+    dispatch(setSelectedUpdatedImageIds(allIds));
+  }, [updatedImages, dispatch]);
 
   const handleBulkDownload = useCallback(
     (imageType: 'original' | 'updated') => {
@@ -571,10 +585,6 @@ const LandingPage: React.FC = () => {
       setErrorMessage,
     ]
   );
-
-  const handleClearUpdatedSelection = useCallback(() => {
-    dispatch(setSelectedUpdatedImageIds(new Set()));
-  }, [dispatch]);
 
   const handleBulkCopy = useCallback(
     (imageType: 'original' | 'updated') => {
@@ -759,6 +769,7 @@ const LandingPage: React.FC = () => {
                       onBulkDelete={() => handleBulkDelete('original')}
                       onBulkCopy={() => handleBulkCopy('original')}
                       onClearSelection={handleClearOriginalSelection}
+                      onSelectAll={handleSelectAllOriginal}
                       onGenerateMoreSuccess={handleGenerateMoreSuccess}
                       userId={user?.uid}
                       isImageLimitReached={!imageLimitCheck.canAdd}
@@ -784,6 +795,7 @@ const LandingPage: React.FC = () => {
                       onBulkDelete={() => handleBulkDelete('updated')}
                       onBulkCopy={() => handleBulkCopy('updated')}
                       onClearSelection={handleClearUpdatedSelection}
+                      onSelectAll={handleSelectAllUpdated}
                       onBulkDownload={() => handleBulkDownload('updated')}
                       onGenerateMoreSuccess={handleGenerateMoreSuccess}
                       userId={user?.uid}

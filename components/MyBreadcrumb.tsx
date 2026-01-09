@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Breadcrumb, Dropdown, Space, Tooltip, Button, Modal, Alert } from 'antd';
 import type { MenuProps } from 'antd';
-import { EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { EditOutlined, DeleteOutlined, PlusOutlined, DownOutlined } from '@ant-design/icons';
 import { Home as HomeIcon, Category as CategoryIcon } from '@mui/icons-material';
 import { Box, Skeleton } from '@mui/material';
 import GenericConfirmModal from './GenericConfirmModal';
@@ -500,6 +500,7 @@ const MyBreadcrumb: React.FC<BreadcrumbProps> = ({ onProjectSelected, onSpaceSel
             <span style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
               <HomeIcon />
               {activeProjectId && activeProject ? activeProject.name : 'Select Project'}
+              <DownOutlined style={{ fontSize: '12px' }} />
             </span>
           </Dropdown>
         ),
@@ -534,6 +535,7 @@ const MyBreadcrumb: React.FC<BreadcrumbProps> = ({ onProjectSelected, onSpaceSel
                 {activeSpaceId && activeProject.spaces.find((s) => s.id === activeSpaceId)
                   ? activeProject.spaces.find((s) => s.id === activeSpaceId)?.name
                   : 'Select Space'}
+                <DownOutlined style={{ fontSize: '12px' }} />
               </span>
             </Dropdown>
           ),
@@ -563,21 +565,15 @@ const MyBreadcrumb: React.FC<BreadcrumbProps> = ({ onProjectSelected, onSpaceSel
 
   return (
     <>
-      <style>{`
-        .ant-breadcrumb-item,
-        .ant-breadcrumb-separator {
-          display: flex !important;
-          align-items: center !important;
-        }
-      `}</style>
       <Box display="flex" alignItems="center" gap={2} pt={3} px={3} pb={0}>
         <Breadcrumb
           items={breadcrumbItems}
           style={{
             fontSize: '16px',
-            fontWeight: 500,
+            fontWeight: 600,
             display: 'flex',
             alignItems: 'center',
+            color: 'indigo',
           }}
         />
 
@@ -604,7 +600,7 @@ const MyBreadcrumb: React.FC<BreadcrumbProps> = ({ onProjectSelected, onSpaceSel
         >
           {limitWarning && (
             <Alert
-              message="Limit Reached"
+              title="Limit Reached"
               description={limitWarning.message}
               type="warning"
               showIcon

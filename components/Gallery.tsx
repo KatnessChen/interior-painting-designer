@@ -26,6 +26,7 @@ interface GalleryProps {
   onBulkDownload?: () => void;
   onBulkCopy?: () => void;
   onClearSelection?: () => void;
+  onSelectAll?: () => void;
   onGenerateMoreSuccess?: () => void;
   userId?: string | undefined;
   isImageLimitReached?: boolean;
@@ -44,6 +45,7 @@ const Gallery: React.FC<GalleryProps> = ({
   onBulkDownload,
   onBulkCopy,
   onClearSelection,
+  onSelectAll,
   userId,
   isImageLimitReached = false,
 }) => {
@@ -103,24 +105,22 @@ const Gallery: React.FC<GalleryProps> = ({
         )}
         {images.length > 0 && (
           <>
-            {onBulkDownload && (
+            {onSelectAll && (
               <Button
-                onClick={onBulkDownload}
-                disabled={!hasSelection}
-                icon={<DownloadOutlined />}
-                size="small"
+                onClick={onSelectAll}
+                icon={<ClearOutlined style={{ transform: 'scaleY(-1)' }} />}
               >
+                Select All
+              </Button>
+            )}
+            {onBulkDownload && (
+              <Button onClick={onBulkDownload} disabled={!hasSelection} icon={<DownloadOutlined />}>
                 Download
               </Button>
             )}
             {onBulkCopy && (
               <Tooltip title="Copy the selected photos">
-                <Button
-                  onClick={onBulkCopy}
-                  disabled={!hasSelection}
-                  icon={<CopyOutlined />}
-                  size="small"
-                >
+                <Button onClick={onBulkCopy} disabled={!hasSelection} icon={<CopyOutlined />}>
                   Duplicate
                 </Button>
               </Tooltip>
@@ -131,18 +131,12 @@ const Gallery: React.FC<GalleryProps> = ({
                 disabled={!hasSelection}
                 danger
                 icon={<DeleteOutlined />}
-                size="small"
               >
                 Delete
               </Button>
             )}
             {onClearSelection && (
-              <Button
-                onClick={onClearSelection}
-                disabled={!hasSelection}
-                icon={<ClearOutlined />}
-                size="small"
-              >
+              <Button onClick={onClearSelection} disabled={!hasSelection} icon={<ClearOutlined />}>
                 Deselect All
               </Button>
             )}

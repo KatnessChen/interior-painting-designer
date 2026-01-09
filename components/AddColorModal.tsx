@@ -217,7 +217,9 @@ const AddColorModal: React.FC<AddColorModalProps> = ({ open, onClose, onAdd, exi
 
         {/* Description */}
         <div>
-          <label style={{ display: 'block', marginBottom: '4px', fontWeight: 500 }}>Notes</label>
+          <label style={{ display: 'block', marginBottom: '4px', fontWeight: 500 }}>
+            Description
+          </label>
           <Input.TextArea
             placeholder={`Optional description (max ${MAX_CUSTOM_ASSET_DESCRIPTION_LENGTH} characters)`}
             maxLength={MAX_CUSTOM_ASSET_DESCRIPTION_LENGTH}

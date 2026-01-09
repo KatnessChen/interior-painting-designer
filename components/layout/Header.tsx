@@ -36,7 +36,7 @@ const Header: React.FC = () => {
           {/* Brand Section */}
           <div className="flex items-center">
             <div className="text-xl text-white/85">Vizion</div>
-            <div className="text-white/70 font-light mt-1 ml-2">Your AI Interior Designer</div>
+            <div className="text-white/70 font-light mt-1 ml-2">Your AI Image Designer</div>
           </div>
           {/* Right Section - Profile */}
           <div className="flex items-center gap-2">

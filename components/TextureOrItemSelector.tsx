@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Radio, Space, Upload, Button, Modal, Input, Card } from 'antd';
-import { UploadOutlined } from '@ant-design/icons';
+import { CloudUploadOutlined } from '@ant-design/icons';
 import { Alert } from '@mui/material';
 import { Snackbar } from '@mui/material';
 import { Texture, Item } from '@/types';
@@ -98,7 +98,7 @@ const TextureOrItemSelector: React.FC<TextureOrItemSelectorProps> = ({
     if (customAssets.length > 0) {
       loadAssetPreviews();
     }
-  }, [customAssets, isTexture]);
+  }, [customAssets, type, isTexture]);
 
   // Handle asset upload to Firestore
   const handleAssetUpload = useCallback(
@@ -202,7 +202,7 @@ const TextureOrItemSelector: React.FC<TextureOrItemSelectorProps> = ({
     }
   };
 
-  const defaultTitle = isTexture ? 'Texture' : 'Home Item';
+  const defaultTitle = isTexture ? 'Textures' : 'Items';
   const uploadButtonLabel = isTexture ? 'Upload Texture' : 'Upload Item';
   const modalTitle = isTexture ? 'Add Texture' : 'Add Home Item';
   const modalOkText = isTexture ? 'Upload Texture' : 'Upload Home Item';
@@ -226,9 +226,7 @@ const TextureOrItemSelector: React.FC<TextureOrItemSelectorProps> = ({
             maxCount={1}
             showUploadList={false}
           >
-            <Button size="small" icon={<UploadOutlined />}>
-              {uploadButtonLabel}
-            </Button>
+            <Button icon={<CloudUploadOutlined />}>{uploadButtonLabel}</Button>
           </Upload>
         </div>
       }

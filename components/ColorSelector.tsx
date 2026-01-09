@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { Button, Space, Card, Radio } from 'antd';
 import { CheckCircle as CheckmarkBadgeIcon } from '@mui/icons-material';
 import { Alert as AntAlert } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
 import { Color } from '@/types';
 import { PRESET_COLOR } from '@/constants';
 import { Snackbar, Alert } from '@mui/material';
@@ -19,7 +20,7 @@ interface ColorSelectorProps {
 }
 
 const ColorSelector: React.FC<ColorSelectorProps> = ({
-  title = 'Select New Wall Color',
+  title = 'Colors',
   selectedColor,
   onSelectColor,
 }) => {
@@ -74,8 +75,9 @@ const ColorSelector: React.FC<ColorSelectorProps> = ({
       title={
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>{title}</span>
-          <Button size="small" onClick={() => setIsAddColorModalOpen(true)}>
-            Add Custom Color
+          <Button onClick={() => setIsAddColorModalOpen(true)}>
+            <PlusOutlined />
+            Custom Color
           </Button>
         </div>
       }

@@ -6,7 +6,7 @@
 export const GEMINI_TASKS = {
   RECOLOR_WALL: {
     task_name: 'recolor_wall',
-    label_name: 'Recolor Walls',
+    label_name: 'Recolor',
     customPromptRequired: false,
   },
   ADD_TEXTURE: {
