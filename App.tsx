@@ -1,5 +1,6 @@
 import React from 'react';
 import { Provider } from 'react-redux';
+import '@/styles/main.css';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { SpeedInsights } from '@vercel/speed-insights/react';
