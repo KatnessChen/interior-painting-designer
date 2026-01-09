@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Timestamp } from 'firebase/firestore';
-import { message } from 'antd';
+import { message, Tag } from 'antd';
 import ConfirmImageUpdateModal from '@/components/ConfirmImageUpdateModal';
 import GenerateMoreModal from '@/components/GenerateMoreModal';
 import Gallery from '@/components/Gallery';
@@ -10,6 +10,8 @@ import GenericConfirmModal from '@/components/GenericConfirmModal';
 import CopyImageModal from '@/components/CopyImageModal';
 import MyBreadcrumb from '@/components/MyBreadcrumb';
 import Footer from '@/components/layout/Footer';
+import ColorSelector from '@/components/ColorSelector';
+import TextureOrItemSelector from '@/components/TextureOrItemSelector';
 import { GEMINI_TASKS } from '@/services/gemini/geminiTasks';
 import { ImageData, ImageOperation } from '@/types';
 import {
@@ -21,8 +23,8 @@ import {
 } from '@/services/firestoreService';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppInit } from '@/hooks/useAppInit';
-import { useImageProcessing } from '@/hooks/useImageProcessing';
 import { formatImageOperationData, downloadFile, buildDownloadFilename } from '@/utils';
+import { checkImageLimit, getLimitExceededMessage } from '@/utils/limitationUtils';
 import {
   selectOriginalImages,
   selectUpdatedImages,
@@ -47,6 +49,9 @@ import {
   selectSelectedTaskNames,
   selectSelectedColor,
   selectSelectedTexture,
+  selectSelectedItem,
+  selectSourceImage,
+  setSourceImage,
 } from '@/stores/taskStore';
 
 const LandingPage: React.FC = () => {
@@ -70,6 +75,8 @@ const LandingPage: React.FC = () => {
   const selectedTaskNames = useSelector(selectSelectedTaskNames);
   const selectedColor = useSelector(selectSelectedColor);
   const selectedTexture = useSelector(selectSelectedTexture);
+  const selectedItem = useSelector(selectSelectedItem);
+  const sourceImage = useSelector(selectSourceImage);
 
   // Get selected image IDs from Redux
   const selectedOriginalImageIds = useSelector(selectSelectedOriginalImageIds);
@@ -90,11 +97,10 @@ const LandingPage: React.FC = () => {
     customPrompt: undefined,
   });
 
-  // State for Generate More Modal
-  const [showGenerateMoreModal, setShowGenerateMoreModal] = useState<boolean>(false);
-  const [selectedImageForGeneration, setSelectedImageForGeneration] = useState<ImageData | null>(
-    null
-  );
+  // Derive modal visibility from Redux state
+  const showGenerateMoreModal = useCallback(() => {
+    return sourceImage !== null;
+  }, [sourceImage]);
 
   // State for generic confirm modal (for delete operations)
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState<boolean>(false);
@@ -113,15 +119,8 @@ const LandingPage: React.FC = () => {
   // Initialize app on mount
   useAppInit();
 
-  // Use image processing hook
-  const { errorMessage, setErrorMessage } = useImageProcessing({
-    userId: user?.uid,
-    selectedTaskName: selectedTaskNames[0] || GEMINI_TASKS.RECOLOR_WALL.task_name,
-    options: {
-      selectedColor,
-      selectedTexture,
-    },
-  });
+  // Error message state
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Show error message when errorMessage changes
   useEffect(() => {
@@ -129,6 +128,26 @@ const LandingPage: React.FC = () => {
       message.error(errorMessage);
     }
   }, [errorMessage]);
+
+  // Get current active space
+  const activeSpace = useMemo(() => {
+    if (!activeProjectId || !activeSpaceId) return null;
+    const project = projects.find((p) => p.id === activeProjectId);
+    if (!project) return null;
+    return project.spaces.find((s) => s.id === activeSpaceId) || null;
+  }, [projects, activeProjectId, activeSpaceId]);
+
+  // Check image limit in current space
+  const imageLimitCheck = useMemo(() => checkImageLimit(activeSpace), [activeSpace]);
+
+  // Format image limit info for breadcrumb display
+  const imageLimitInfo = useMemo(
+    () =>
+      activeSpace && imageLimitCheck
+        ? { current: imageLimitCheck.current, max: imageLimitCheck.max }
+        : null,
+    [activeSpace, imageLimitCheck]
+  );
 
   const handleImageUpload = useCallback(
     async (file: File) => {
@@ -140,6 +159,11 @@ const LandingPage: React.FC = () => {
 
       if (!activeProjectId || !activeSpaceId) {
         setErrorMessage('Please select project/space to upload image.');
+        return;
+      }
+
+      if (!imageLimitCheck.canAdd) {
+        setErrorMessage(getLimitExceededMessage('images', 50));
         return;
       }
 
@@ -201,7 +225,7 @@ const LandingPage: React.FC = () => {
         );
       }
     },
-    [user, activeProjectId, activeSpaceId, dispatch, setErrorMessage]
+    [user, activeProjectId, activeSpaceId, dispatch, setErrorMessage, imageLimitCheck]
   );
 
   const handleRenameImage = useCallback(
@@ -255,7 +279,7 @@ const LandingPage: React.FC = () => {
 
   const handleImageSatisfied = useCallback(
     async (processedImageResult: { base64: string; mimeType: string }, customFileName: string) => {
-      setShowGenerateMoreModal(false);
+      dispatch(setSourceImage(null));
 
       if (!user) {
         setErrorMessage('Please log in to save images.');
@@ -284,7 +308,8 @@ const LandingPage: React.FC = () => {
         selectedTaskNames[0] || GEMINI_TASKS.RECOLOR_WALL.task_name,
         processingContext.customPrompt,
         selectedColor,
-        selectedTexture
+        selectedTexture,
+        selectedItem
       );
 
       // Optimistic update - show processed image immediately
@@ -357,6 +382,7 @@ const LandingPage: React.FC = () => {
       user,
       selectedColor,
       selectedTexture,
+      selectedItem,
       selectedTaskNames,
       processingContext,
       activeProjectId,
@@ -384,15 +410,9 @@ const LandingPage: React.FC = () => {
     }
   }, [user, activeProjectId, activeSpaceId, dispatch, setErrorMessage]);
 
-  const handleOpenGenerateMore = useCallback((image: ImageData) => {
-    setSelectedImageForGeneration(image);
-    setShowGenerateMoreModal(true);
-  }, []);
-
   const handleGenerateMoreCancel = useCallback(() => {
-    setShowGenerateMoreModal(false);
-    setSelectedImageForGeneration(null);
-  }, []);
+    dispatch(setSourceImage(null));
+  }, [dispatch]);
 
   const handleSelectOriginalImage = useCallback(
     (imageId: string) => {
@@ -510,6 +530,11 @@ const LandingPage: React.FC = () => {
     dispatch(setSelectedOriginalImageIds(new Set()));
   }, [dispatch]);
 
+  const handleSelectAllOriginal = useCallback(() => {
+    const allIds = new Set(originalImages.map((img) => img.id));
+    dispatch(setSelectedOriginalImageIds(allIds));
+  }, [originalImages, dispatch]);
+
   // Multi-select handlers for updated photos
   const handleSelectUpdatedImage = useCallback(
     (imageId: string) => {
@@ -523,6 +548,15 @@ const LandingPage: React.FC = () => {
     },
     [selectedUpdatedImageIds, dispatch]
   );
+
+  const handleClearUpdatedSelection = useCallback(() => {
+    dispatch(setSelectedUpdatedImageIds(new Set()));
+  }, [dispatch]);
+
+  const handleSelectAllUpdated = useCallback(() => {
+    const allIds = new Set(updatedImages.map((img) => img.id));
+    dispatch(setSelectedUpdatedImageIds(allIds));
+  }, [updatedImages, dispatch]);
 
   const handleBulkDownload = useCallback(
     (imageType: 'original' | 'updated') => {
@@ -551,10 +585,6 @@ const LandingPage: React.FC = () => {
       setErrorMessage,
     ]
   );
-
-  const handleClearUpdatedSelection = useCallback(() => {
-    dispatch(setSelectedUpdatedImageIds(new Set()));
-  }, [dispatch]);
 
   const handleBulkCopy = useCallback(
     (imageType: 'original' | 'updated') => {
@@ -690,7 +720,14 @@ const LandingPage: React.FC = () => {
           className="bg-gray-100"
           style={{ minHeight: 'calc(100vh - var(--header-height) - var(--footer-height))' }}
         >
-          <MyBreadcrumb />
+          <div className="flex items-end justify-between pr-6">
+            <MyBreadcrumb />
+            {imageLimitInfo && (
+              <Tag variant="outlined" color="purple">
+                {imageLimitInfo.current} / {imageLimitInfo.max} images in total
+              </Tag>
+            )}
+          </div>
           <div className="p-6">
             {!isAppInitiated ? (
               <div className="flex items-center justify-center">
@@ -732,10 +769,21 @@ const LandingPage: React.FC = () => {
                       onBulkDelete={() => handleBulkDelete('original')}
                       onBulkCopy={() => handleBulkCopy('original')}
                       onClearSelection={handleClearOriginalSelection}
+                      onSelectAll={handleSelectAllOriginal}
                       onGenerateMoreSuccess={handleGenerateMoreSuccess}
-                      onGenerateMoreClick={handleOpenGenerateMore}
                       userId={user?.uid}
+                      isImageLimitReached={!imageLimitCheck.canAdd}
                     />
+
+                    {selectedTaskNames[0] === GEMINI_TASKS.RECOLOR_WALL.task_name && (
+                      <ColorSelector selectedColor={selectedColor} />
+                    )}
+                    {selectedTaskNames[0] === GEMINI_TASKS.ADD_TEXTURE.task_name && (
+                      <TextureOrItemSelector type="texture" onError={setErrorMessage} />
+                    )}
+                    {selectedTaskNames[0] === GEMINI_TASKS.ADD_HOME_ITEM.task_name && (
+                      <TextureOrItemSelector type="item" onError={setErrorMessage} />
+                    )}
 
                     <Gallery
                       title="Generated Photos"
@@ -747,10 +795,11 @@ const LandingPage: React.FC = () => {
                       onBulkDelete={() => handleBulkDelete('updated')}
                       onBulkCopy={() => handleBulkCopy('updated')}
                       onClearSelection={handleClearUpdatedSelection}
+                      onSelectAll={handleSelectAllUpdated}
                       onBulkDownload={() => handleBulkDownload('updated')}
                       onGenerateMoreSuccess={handleGenerateMoreSuccess}
-                      onGenerateMoreClick={handleOpenGenerateMore}
                       userId={user?.uid}
+                      isImageLimitReached={!imageLimitCheck.canAdd}
                     />
                   </div>
                 )}
@@ -811,14 +860,14 @@ const LandingPage: React.FC = () => {
       )}
 
       {/* Generate More Modal */}
-      {showGenerateMoreModal && selectedImageForGeneration && (
+      {showGenerateMoreModal && sourceImage && (
         <GenerateMoreModal
-          isOpen={showGenerateMoreModal}
-          sourceImage={selectedImageForGeneration}
+          isOpen={showGenerateMoreModal()}
+          sourceImage={sourceImage}
           userId={user?.uid}
           onSuccess={() => {
-            handleGenerateMoreSuccess();
             handleGenerateMoreCancel();
+            handleGenerateMoreSuccess();
           }}
           onCancel={handleGenerateMoreCancel}
         />

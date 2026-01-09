@@ -1,23 +1,54 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useSelector } from 'react-redux';
-import { Modal, Button, Input, Spin, Alert, Tooltip, Drawer, Typography, message } from 'antd';
-import { InfoCircleOutlined, CloseOutlined } from '@ant-design/icons';
-import { ImageData, Color, Texture, ImageOperation } from '@/types';
+import { useSelector, useDispatch } from 'react-redux';
+import {
+  Modal,
+  Button,
+  Input,
+  Spin,
+  Alert,
+  Tooltip,
+  Drawer,
+  Typography,
+  message,
+  Skeleton,
+  Empty,
+} from 'antd';
+import { InfoCircleOutlined, BulbOutlined, CloseOutlined } from '@ant-design/icons';
+import { List, ListItem, Box, Tooltip as MuiTooltip, IconButton } from '@mui/material';
+import { ContentCopy as CopyIcon } from '@mui/icons-material';
+import { Timestamp } from 'firebase/firestore';
+import { ImageData, ImageOperation, CustomPrompt } from '@/types';
 import { imageCache } from '@/utils/imageCache';
-import { wallRecolorPrompts, texturePrompts } from '@/services/gemini/prompts';
+import {
+  getWallRecolorPrompt,
+  getAddTexturePrompt,
+  getItemPrompt,
+} from '@/services/gemini/prompts';
 import { GEMINI_TASKS } from '@/services/gemini/geminiTasks';
-import { createImage } from '@/services/firestoreService';
+import { createImage, fetchSpaceImages, saveCustomPrompt } from '@/services/firestoreService';
 import { formatImageOperationData, formatTaskName } from '@/utils';
-import { selectActiveProjectId, selectActiveSpaceId } from '@/stores/projectStore';
+import { checkOperationLimit, getLimitExceededMessage } from '@/utils/limitationUtils';
+import {
+  selectActiveProjectId,
+  selectActiveSpaceId,
+  setSpaceImages,
+  addImageOptimistic,
+  removeImageOptimistic,
+} from '@/stores/projectStore';
 import { useImageProcessing } from '@/hooks/useImageProcessing';
+import { useGenerateButtonState } from '@/hooks/useGenerateButtonState';
 import {
   selectSelectedColor,
   selectSelectedTexture,
+  selectSelectedItem,
   selectSelectedTaskNames,
+  setCustomPrompt as setReduxCustomPrompt,
+  setSourceImage,
 } from '@/stores/taskStore';
-import ColorSelector from './ColorSelector';
-import TextureSelector from './TextureSelector';
+import { useCustomPrompts } from '@/hooks/useCustomPrompts';
 import ConfirmImageUpdateModal from './ConfirmImageUpdateModal';
+import SelectedAssets from '@/components/SelectedAssets';
+import { MAX_OPERATIONS_PER_IMAGE } from '@/constants';
 
 interface GenerateMoreModalProps {
   isOpen: boolean;
@@ -34,18 +65,19 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
   onSuccess,
   onCancel,
 }) => {
+  // Get dispatch from Redux
+  const dispatch = useDispatch();
   // Get active project and space from Redux store
   const activeProjectId = useSelector(selectActiveProjectId);
   const activeSpaceId = useSelector(selectActiveSpaceId);
 
   const selectedTaskNames = useSelector(selectSelectedTaskNames);
-  const preselectedColor = useSelector(selectSelectedColor);
-  const preselectTexture = useSelector(selectSelectedTexture);
+  const selectedColor = useSelector(selectSelectedColor);
+  const selectedTexture = useSelector(selectSelectedTexture);
+  const selectedItem = useSelector(selectSelectedItem);
 
   const [cachedImageSrc, setCachedImageSrc] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [selectedColor, setSelectedColor] = useState<Color | null>(preselectedColor);
-  const [selectedTexture, setSelectedTexture] = useState<Texture | null>(preselectTexture);
   const [customPrompt, setCustomPrompt] = useState<string>('');
   const [generatedImage, setGeneratedImage] = useState<{ base64: string; mimeType: string } | null>(
     null
@@ -53,12 +85,49 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [savingImage, setSavingImage] = useState(false);
   const [isDefaultPromptExpanded, setIsDefaultPromptExpanded] = useState(false);
+  const [searchPrompts, setSearchPrompts] = useState<string>('');
+
+  const { Text } = Typography;
+
+  // Use custom prompts hook
+  const {
+    prompts,
+    isLoading: isLoadingPrompts,
+    fetchPrompts,
+  } = useCustomPrompts({
+    userId,
+    projectId: activeProjectId || '',
+  });
+
+  // Fetch prompts when modal opens
+  useEffect(() => {
+    if (isOpen && userId && activeProjectId) {
+      void fetchPrompts();
+    }
+  }, [isOpen, userId, activeProjectId, fetchPrompts]);
+
+  // Filter prompts based on search keyword using %match% logic
+  const filteredPrompts = useMemo(() => {
+    if (!searchPrompts.trim()) {
+      return prompts;
+    }
+
+    const keyword = searchPrompts.toLowerCase();
+    return prompts.filter(
+      (prompt) =>
+        prompt.task_name.toLowerCase().includes(keyword) ||
+        prompt.content.toLowerCase().includes(keyword)
+    );
+  }, [prompts, searchPrompts]);
 
   // Determine the active task from selectedTaskNames (assuming single task)
   const activeTaskName = useMemo(() => {
     if (selectedTaskNames.length === 0) return null;
     return selectedTaskNames[0];
   }, [selectedTaskNames]);
+
+  // Check operation limit
+  const operationLimitCheck = checkOperationLimit(sourceImage);
 
   // Use image processing hook
   const { processImage, processingImage, errorMessage, setErrorMessage } = useImageProcessing({
@@ -67,7 +136,19 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
     options: {
       selectedColor,
       selectedTexture,
+      selectedItem,
     },
+  });
+
+  // Get generate button state
+  const { isDisabled: isGenerateDisabled, disableReason } = useGenerateButtonState({
+    activeTaskName,
+    processingImage,
+    savingImage,
+    canAddOperation: operationLimitCheck.canAdd,
+    selectedColor,
+    selectedTexture,
+    selectedItem,
   });
 
   // Calculate default prompt based on active task
@@ -75,12 +156,14 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
     if (!activeTaskName) return '';
 
     if (activeTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name) {
-      return wallRecolorPrompts(selectedColor?.name, selectedColor?.hex, undefined);
+      return getWallRecolorPrompt(selectedColor?.name, selectedColor?.hex, undefined);
     } else if (activeTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name) {
-      return texturePrompts(selectedTexture?.name || '', undefined);
+      return getAddTexturePrompt(selectedTexture?.name || '', undefined);
+    } else if (activeTaskName === GEMINI_TASKS.ADD_HOME_ITEM.task_name) {
+      return getItemPrompt(selectedItem?.name || '', undefined);
     }
     return '';
-  }, [activeTaskName, selectedColor, selectedTexture]);
+  }, [activeTaskName, selectedColor, selectedTexture, selectedItem]);
 
   // Load cached image
   useEffect(() => {
@@ -111,6 +194,21 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
   }, [selectedColor]);
 
   const handleGenerate = async () => {
+    // Check operation limit first
+    const operationLimitCheck = checkOperationLimit(sourceImage);
+    if (!operationLimitCheck.canAdd) {
+      setErrorMessage(getLimitExceededMessage('operations', MAX_OPERATIONS_PER_IMAGE));
+      return;
+    }
+
+    // Check custom prompt character limit
+    if (customPrompt.length > 500) {
+      setErrorMessage(
+        'Custom prompt exceeds the 500 character limit. Please reduce the prompt length.'
+      );
+      return;
+    }
+
     // Check if a task is selected
     if (!activeTaskName) {
       setValidationError('Please select a task first.');
@@ -119,12 +217,17 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
 
     // Validate based on task type
     if (activeTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name && !selectedColor) {
-      setValidationError('Please select a color for recoloring.');
+      setValidationError(disableReason);
       return;
     }
 
     if (activeTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name && !selectedTexture) {
-      setValidationError('Please select a texture.');
+      setValidationError(disableReason);
+      return;
+    }
+
+    if (activeTaskName === GEMINI_TASKS.ADD_HOME_ITEM.task_name && !selectedItem) {
+      setValidationError(disableReason);
       return;
     }
 
@@ -165,32 +268,8 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
     }
   };
 
-  const applyLastOperation = () => {
-    if (!sourceImage || sourceImage.evolutionChain.length === 0) {
-      return;
-    }
-
-    const lastOperation = sourceImage.evolutionChain[sourceImage.evolutionChain.length - 1];
-
-    // Apply color
-    if (lastOperation.options.colorSnapshot && lastOperation.options.colorId) {
-      setSelectedColor({
-        id: lastOperation.options.colorId,
-        name: lastOperation.options.colorSnapshot.name,
-        hex: lastOperation.options.colorSnapshot.hex,
-      });
-    }
-
-    // Apply custom prompt
-    if (lastOperation.customPrompt) {
-      setCustomPrompt(lastOperation.customPrompt);
-    }
-
-    message.success('Settings applied from last operation');
-  };
-
   const handleClose = () => {
-    if (!processingImage && !savingImage) {
+    if (!savingImage) {
       setValidationError(null);
       setErrorMessage(null);
       setCustomPrompt('');
@@ -220,12 +299,29 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
       return;
     }
 
+    if (activeTaskName === GEMINI_TASKS.ADD_HOME_ITEM.task_name && !selectedItem) {
+      setErrorMessage('Home item information is required.');
+      return;
+    }
+
     setSavingImage(true);
     setShowConfirmationModal(false);
 
+    let tempImageId = '';
+
     try {
-      const tempImageId = crypto.randomUUID();
+      // Check operation limit on source image
+      const operationLimitCheck = checkOperationLimit(sourceImage);
+      if (!operationLimitCheck.canAdd) {
+        setErrorMessage(getLimitExceededMessage('operations', MAX_OPERATIONS_PER_IMAGE));
+        setSavingImage(false);
+        setShowConfirmationModal(true);
+        return;
+      }
+
+      tempImageId = crypto.randomUUID();
       const imageName = customName;
+      const now = Timestamp.fromDate(new Date());
 
       // Create ImageOperation for evolution chain
       const operation: ImageOperation = formatImageOperationData(
@@ -233,10 +329,59 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
         activeTaskName,
         customPrompt.trim() || undefined,
         selectedColor,
-        selectedTexture
+        selectedTexture,
+        selectedItem
       );
 
-      // Save processed image to Firestore
+      // Create optimistic image object (matches LandingPage implementation)
+      const optimisticImage = {
+        id: tempImageId,
+        name: imageName,
+        mimeType: imageData.mimeType,
+        spaceId: activeSpaceId,
+        evolutionChain: [operation],
+        parentImageId: sourceImage.id,
+        imageDownloadUrl: `data:${imageData.mimeType};base64,${imageData.base64}`,
+        storageFilePath: '',
+        isDeleted: false,
+        deletedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      // Add optimistic image to Redux store immediately for better UX
+      dispatch(
+        addImageOptimistic({
+          projectId: activeProjectId!,
+          spaceId: activeSpaceId!,
+          image: optimisticImage,
+        })
+      );
+
+      // Reset state and close modal immediately for better UX
+      setCustomPrompt('');
+      setGeneratedImage(null);
+      setErrorMessage(null);
+      setValidationError(null);
+      setSavingImage(false);
+
+      // Reset sourceImage in Redux
+      dispatch(setSourceImage(null));
+
+      // Save customPrompt to Redux for later use
+      const promptToSave = customPrompt.trim() || undefined;
+
+      if (promptToSave) {
+        dispatch(setReduxCustomPrompt(promptToSave));
+      }
+
+      // Show success message
+      message.success('Image saved successfully!');
+
+      // Close modal immediately
+      onSuccess();
+
+      // Save processed image to Firestore in background
       await createImage(
         userId,
         activeProjectId,
@@ -255,17 +400,31 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
         }
       );
 
-      // Reset all state
-      setCustomPrompt('');
-      setGeneratedImage(null);
-      setErrorMessage(null);
-      setValidationError(null);
-      setSavingImage(false);
+      // Fetch updated space images to get real Firebase Storage URL
+      const images = await fetchSpaceImages(userId, activeProjectId, activeSpaceId);
+      dispatch(setSpaceImages({ projectId: activeProjectId, spaceId: activeSpaceId, images }));
 
-      // Notify parent to refresh images
-      onSuccess();
+      // Save custom prompt to Firestore if provided
+      if (customPrompt.trim()) {
+        try {
+          await saveCustomPrompt(userId, activeProjectId, activeTaskName, customPrompt.trim());
+        } catch (error) {
+          console.warn('Failed to save custom prompt to Firestore:', error);
+          // Don't throw - prompt saving is non-critical
+        }
+      }
     } catch (error) {
       console.error('Failed to save processed image:', error);
+
+      // Rollback optimistic update on error
+      dispatch(
+        removeImageOptimistic({
+          projectId: activeProjectId!,
+          spaceId: activeSpaceId!,
+          imageId: tempImageId,
+        })
+      );
+
       setErrorMessage(error instanceof Error ? error.message : 'Failed to save processed image.');
       setSavingImage(false);
       setShowConfirmationModal(true); // Reopen confirmation modal on error
@@ -286,40 +445,86 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
     if (activeTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name) {
       return 'Generate Recolored Image';
     } else if (activeTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name) {
-      return 'Apply Texture to Wall';
+      return 'Apply Texture to Specified Surfaces';
+    } else if (activeTaskName === GEMINI_TASKS.ADD_HOME_ITEM.task_name) {
+      return 'Add New Elements';
     }
     return 'Generate More Images';
   };
 
-  const getModalDescription = () => {
-    if (!activeTaskName) return 'Please select a task first';
-
+  // Dynamic prompt placeholder based on task
+  const getPromptPlaceholder = () => {
     if (activeTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name) {
-      return 'Create a new color variation from this image';
+      return "Enter specific color instructions... (e.g., 'Make it a matte finish', 'Apply to the accent wall only')";
     } else if (activeTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name) {
-      return 'Apply a texture pattern to the wall surface';
+      return "Describe how to apply the texture... (e.g., 'Apply to the upper half only', 'Make the pattern smaller')";
+    } else if (activeTaskName === GEMINI_TASKS.ADD_HOME_ITEM.task_name) {
+      return "Describe what you want to add... (e.g., 'A person reading on the sofa', 'A cat sleeping near the window', 'A modern floor lamp')";
     }
-    return 'Transform this image';
+    return "Enter any specific instructions for the AI... (e.g., 'Make the walls lighter', 'Add more warmth to the color')";
+  };
+
+  const sharedTip =
+    'The more specific your description is, the better the AI can generate an image that matches what you’re looking for. Try to clearly specify: ';
+
+  const getPromptWritingGuide = () => {
+    if (activeTaskName === GEMINI_TASKS.RECOLOR_WALL.task_name) {
+      return {
+        tips: [
+          {
+            text:
+              sharedTip +
+              "which wall(s) to recolor? (e.g., 'only the accent wall', 'all walls except the ceiling').",
+            hasButton: false,
+          },
+        ],
+      };
+    } else if (activeTaskName === GEMINI_TASKS.ADD_TEXTURE.task_name) {
+      return {
+        tips: [
+          {
+            text:
+              sharedTip +
+              "which wall(s) to apply it to? (e.g., 'the lower half only', 'behind the sofa')",
+            hasButton: false,
+          },
+        ],
+      };
+    } else if (activeTaskName === GEMINI_TASKS.ADD_HOME_ITEM.task_name) {
+      return {
+        tips: [
+          {
+            text:
+              sharedTip +
+              "where to place the item and what angle? (e.g., 'corner by the window', 'center of the room facing left')",
+            hasButton: false,
+          },
+        ],
+      };
+    }
+    return { tips: [] };
   };
 
   if (!sourceImage) return null;
+
+  // Check if operation limit has been reached for warning display
+  const hasReachedOperationLimit = !operationLimitCheck.canAdd;
 
   return (
     <>
       <Modal
         title={
-          <div>
+          <div className="mb-4">
             <Typography.Title level={4} style={{ margin: 0 }}>
               {getModalTitle()}
             </Typography.Title>
-            <Typography.Text type="secondary">{getModalDescription()}</Typography.Text>
           </div>
         }
         open={isOpen}
         onCancel={handleClose}
         width={1200}
-        maskClosable={!processingImage && !savingImage}
-        keyboard={!processingImage && !savingImage}
+        maskClosable={!savingImage}
+        keyboard={!savingImage}
         footer={[
           <Button
             key="cancel"
@@ -329,15 +534,17 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
           >
             Cancel
           </Button>,
-          <Button
-            key="generate"
-            type="primary"
-            onClick={handleGenerate}
-            disabled={!activeTaskName || processingImage || savingImage}
-            size="large"
-          >
-            Generate
-          </Button>,
+          <Tooltip title={isGenerateDisabled ? disableReason : ''} key="generate-tooltip">
+            <Button
+              key="generate"
+              type="primary"
+              onClick={handleGenerate}
+              disabled={isGenerateDisabled}
+              size="large"
+            >
+              Generate
+            </Button>
+          </Tooltip>,
         ]}
       >
         <Spin spinning={processingImage} tip="Generating new image..." size="large">
@@ -354,7 +561,7 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
             <div
               style={{ minWidth: 0, flex: '1 1 400px', display: 'flex', flexDirection: 'column' }}
             >
-              <Typography.Title level={5}>Current Image</Typography.Title>
+              <Typography.Title level={5}>Source Image</Typography.Title>
 
               {/* Image Info */}
               <div style={{ marginBottom: 16 }}>
@@ -396,9 +603,6 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
                         <strong>Custom Prompt:</strong> {lastOperation.customPrompt || 'N/A'}
                       </div>
                     </div>
-                    <Button onClick={applyLastOperation} size="small">
-                      Apply
-                    </Button>
                   </div>
                 </div>
               )}
@@ -406,7 +610,6 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
               {/* Source Image Preview */}
               <div
                 style={{
-                  flex: 1,
                   minHeight: 400,
                   backgroundColor: '#f3f4f6',
                   borderRadius: 8,
@@ -430,53 +633,232 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
             </div>
 
             {/* Right Column: Color Selector & Custom Prompt */}
-            <div style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {selectedTaskNames.includes('recolor_wall') && (
-                <div>
-                  <ColorSelector selectedColor={selectedColor} onSelectColor={setSelectedColor} />
-                </div>
-              )}
+            <div
+              style={{
+                flex: '1 1 400px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 16,
+                minWidth: 0,
+              }}
+            >
+              <SelectedAssets />
 
-              {selectedTaskNames.includes('add_texture') && (
-                <div>
-                  <TextureSelector onTextureSelect={setSelectedTexture} />
-                </div>
-              )}
+              {/* Custom Prompt & Historical Prompts */}
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 0,
+                  flex: 1,
+                  minHeight: 0,
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 6,
+                  overflow: 'hidden',
+                }}
+              >
+                {/* Left: Historical Custom Prompts List */}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                  <Typography.Title
+                    level={5}
+                    style={{ margin: 0, marginBottom: '4px', padding: '12px 12px 0 12px' }}
+                  >
+                    Saved Prompts
+                  </Typography.Title>
 
-              {/* Custom Prompt */}
-              <div>
+                  {/* Search Input */}
+                  <Input
+                    placeholder="Search prompts..."
+                    value={searchPrompts}
+                    onChange={(e) => setSearchPrompts(e.target.value)}
+                    allowClear
+                    style={{
+                      borderRadius: 0,
+                      borderLeft: 'none',
+                      borderRight: 'none',
+                      borderTop: 'none',
+                      margin: '8px 12px 0 12px',
+                      width: 'calc(100% - 24px)',
+                    }}
+                  />
+
+                  {/* Prompts List */}
+                  <div
+                    style={{
+                      flex: 1,
+                      overflow: 'auto',
+                      borderRight: '1px solid #e5e7eb',
+                      borderBottom: 'none',
+                      maxHeight: '300px',
+                    }}
+                  >
+                    {isLoadingPrompts ? (
+                      <div style={{ padding: 8 }}>
+                        <Skeleton active paragraph={{ rows: 2 }} />
+                        <Skeleton active paragraph={{ rows: 2 }} style={{ marginTop: 8 }} />
+                        <Skeleton active paragraph={{ rows: 2 }} style={{ marginTop: 8 }} />
+                      </div>
+                    ) : filteredPrompts.length === 0 ? (
+                      <div
+                        style={{
+                          padding: 16,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          height: '100%',
+                        }}
+                      >
+                        <Empty description="No prompts found" style={{ margin: 0 }} />
+                      </div>
+                    ) : (
+                      <List
+                        sx={{
+                          width: '100%',
+                          bgcolor: 'background.paper',
+                          overflow: 'auto',
+                        }}
+                      >
+                        {filteredPrompts.map((prompt: CustomPrompt, index) => (
+                          <ListItem
+                            key={prompt.id || index}
+                            sx={{
+                              padding: '8px 12px',
+                              borderBottom: '1px solid #f0f0f0',
+                              cursor: 'pointer',
+                              transition: 'background-color 0.2s',
+                              '&:hover': {
+                                backgroundColor: '#f5f5f5',
+                              },
+                            }}
+                            onClick={() => setCustomPrompt(prompt.content)}
+                          >
+                            <Box
+                              sx={{
+                                width: '100%',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'flex-start',
+                                gap: 1,
+                              }}
+                            >
+                              <Text>{prompt.content}</Text>
+                              <MuiTooltip title="Use this prompt">
+                                <IconButton
+                                  size="small"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCustomPrompt(prompt.content);
+                                    message.success('Prompt applied!');
+                                  }}
+                                  sx={{ flexShrink: 0 }}
+                                >
+                                  <CopyIcon sx={{ fontSize: '1rem' }} />
+                                </IconButton>
+                              </MuiTooltip>
+                            </Box>
+                          </ListItem>
+                        ))}
+                      </List>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right: Custom Prompt Textarea */}
                 <div
                   style={{
+                    flex: 1,
                     display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: 8,
+                    flexDirection: 'column',
+                    minWidth: 0,
+                    borderLeft: '1px solid #e5e7eb',
+                    paddingBottom: '16px',
                   }}
                 >
-                  <Typography.Title level={5} style={{ margin: 0 }}>
+                  <Typography.Title
+                    level={5}
+                    style={{ margin: 0, marginBottom: '4px', padding: '12px 12px 0 12px' }}
+                  >
                     Custom Prompt (Optional)
                   </Typography.Title>
-                  <Button
-                    type="link"
-                    onClick={() => setIsDefaultPromptExpanded(true)}
-                    icon={<InfoCircleOutlined />}
-                    style={{ padding: 0 }}
-                  >
-                    View Default Prompt
-                  </Button>
-                </div>
 
-                {/* Custom Prompt Input */}
-                <Input.TextArea
-                  rows={6}
-                  placeholder="Enter any specific instructions for the AI... (e.g., 'Make the walls lighter', 'Add more warmth to the color')"
-                  value={customPrompt}
-                  onChange={(e) => setCustomPrompt(e.target.value.slice(0, 200))}
-                  disabled={processingImage}
-                  maxLength={200}
-                  showCount
-                />
+                  {/* Custom Prompt Input */}
+                  <div
+                    style={{
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      padding: '8px 12px',
+                      minHeight: 0,
+                    }}
+                  >
+                    <Input.TextArea
+                      rows={10}
+                      placeholder={getPromptPlaceholder()}
+                      value={customPrompt}
+                      onChange={(e) => setCustomPrompt(e.target.value)}
+                      disabled={processingImage}
+                      maxLength={500}
+                      showCount
+                      allowClear
+                      style={{ flex: 1, resize: 'none' }}
+                    />
+                  </div>
+                </div>
               </div>
+
+              {/* Prompt Writing Guide */}
+              {activeTaskName && (
+                <div
+                  style={{
+                    marginTop: 16,
+                    padding: 12,
+                    backgroundColor: '#e6f7ff',
+                    borderRadius: 6,
+                    border: '1px solid #91d5ff',
+                  }}
+                >
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {getPromptWritingGuide().tips.map((tip, index) => (
+                      <div
+                        key={index}
+                        style={{
+                          fontSize: '0.85rem',
+                        }}
+                      >
+                        <h6>
+                          <BulbOutlined className="mr-2" style={{ color: '#1890ff' }} />
+                          Tips to write custom prompt:
+                        </h6>
+                        <span>{tip.text}.</span>
+                        <br />
+                        <span>
+                          You can also review the{' '}
+                          <Button
+                            type="link"
+                            onClick={() => setIsDefaultPromptExpanded(true)}
+                            style={{
+                              padding: '0',
+                              margin: '0 6px',
+                              height: 'auto',
+                            }}
+                          >
+                            default prompt
+                            <InfoCircleOutlined />
+                          </Button>{' '}
+                        </span>{' '}
+                        to understand what’s applied behind the scenes.
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {hasReachedOperationLimit && (
+                <Alert
+                  title={getLimitExceededMessage('operations', MAX_OPERATIONS_PER_IMAGE)}
+                  type="warning"
+                  showIcon
+                  style={{ margin: 0 }}
+                />
+              )}
             </div>
           </div>
         </Spin>
@@ -493,6 +875,7 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
           taskName={activeTaskName}
           colorName={selectedColor?.name}
           textureName={selectedTexture?.name}
+          itemName={selectedItem?.name}
         />
       )}
 

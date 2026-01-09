@@ -1,6 +1,10 @@
 import { useState, useCallback } from 'react';
 import { ImageData, Color } from '@/types';
-import { generateRecoloredImage, generateRetexturedImage } from '@/services/gemini/geminiService';
+import {
+  generateRecoloredImage,
+  generateRetexturedImage,
+  generateItemPlacedImage,
+} from '@/services/gemini/geminiService';
 import { GEMINI_TASKS, GeminiTaskName } from '@/services/gemini/geminiTasks';
 import { incrementTaskUsage } from '@/services/userService';
 
@@ -9,7 +13,15 @@ interface Texture {
   name: string;
   textureImageDownloadUrl: string;
   mimeType?: string;
-  notes?: string;
+  description?: string;
+}
+
+interface Item {
+  id: string;
+  name: string;
+  itemImageDownloadUrl: string;
+  mimeType?: string;
+  description?: string;
 }
 
 interface UseImageProcessingProps {
@@ -18,13 +30,14 @@ interface UseImageProcessingProps {
   options: {
     selectedColor?: Color | null;
     selectedTexture?: Texture | null;
+    selectedItem?: Item | null;
   };
 }
 
 export const useImageProcessing = ({
   userId,
   selectedTaskName,
-  options: { selectedColor, selectedTexture },
+  options: { selectedColor, selectedTexture, selectedItem },
 }: UseImageProcessingProps) => {
   const [processingImage, setProcessingImage] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -72,6 +85,20 @@ export const useImageProcessing = ({
             selectedTexture.textureImageDownloadUrl,
             selectedTexture.mimeType || 'image/jpeg',
             selectedTexture.name,
+            customPrompt
+          );
+        } else if (selectedTaskName === GEMINI_TASKS.ADD_HOME_ITEM.task_name) {
+          if (!selectedItem) {
+            setErrorMessage('Please select a home item first.');
+            setProcessingImage(false);
+            return null;
+          }
+          result = await generateItemPlacedImage(
+            userId,
+            imageData,
+            selectedItem.itemImageDownloadUrl,
+            selectedItem.mimeType || 'image/jpeg',
+            selectedItem.name,
             customPrompt
           );
         } else {

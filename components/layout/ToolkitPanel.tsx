@@ -16,7 +16,7 @@ const ToolkitPanel: React.FC = () => {
   const selectedUpdatedImageIds = useSelector(selectSelectedUpdatedImageIds);
   const originalImages = useSelector(selectOriginalImages);
   const updatedImages = useSelector(selectUpdatedImages);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
 
   const selectedImageCount = selectedOriginalImageIds.size + selectedUpdatedImageIds.size;
   const isEnabled = selectedImageCount >= 2 && selectedImageCount <= 4;

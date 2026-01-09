@@ -5,13 +5,22 @@ import { CloudUpload as UploadIcon } from '@mui/icons-material';
 interface UploadCardProps {
   onImageUpload: (file: File) => void;
   onError: (message: string) => void;
+  isLimitReached?: boolean;
 }
 
-const UploadCard: React.FC<UploadCardProps> = ({ onImageUpload, onError }) => {
+const UploadCard: React.FC<UploadCardProps> = ({
+  onImageUpload,
+  onError,
+  isLimitReached = false,
+}) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
   const handleFileChange = async (files: FileList | null) => {
+    if (isLimitReached) {
+      onError('Image limit reached. Delete images to upload new ones.');
+      return;
+    }
     if (files && files.length > 0) {
       const file = files[0];
       if (!file.type.startsWith('image/')) {
@@ -53,12 +62,14 @@ const UploadCard: React.FC<UploadCardProps> = ({ onImageUpload, onError }) => {
 
   return (
     <div
-      className={`relative group rounded-lg overflow-hidden shadow-md bg-white transition-all duration-200 cursor-pointer hover:shadow-lg
-                  ${isDragOver ? 'ring-2 ring-blue-500' : ''}`}
-      onDrop={handleDrop}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onClick={() => fileInputRef.current?.click()}
+      className={`relative group rounded-lg overflow-hidden shadow-md bg-white transition-all duration-200 ${
+        isLimitReached ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:shadow-lg'
+      }
+                  ${isDragOver && !isLimitReached ? 'ring-2 ring-blue-500' : ''}`}
+      onDrop={isLimitReached ? undefined : handleDrop}
+      onDragOver={isLimitReached ? undefined : handleDragOver}
+      onDragLeave={isLimitReached ? undefined : handleDragLeave}
+      onClick={() => !isLimitReached && fileInputRef.current?.click()}
     >
       <input
         type="file"
@@ -66,28 +77,47 @@ const UploadCard: React.FC<UploadCardProps> = ({ onImageUpload, onError }) => {
         className="hidden"
         accept="image/*"
         onChange={(e) => handleFileChange(e.target.files)}
+        disabled={isLimitReached}
       />
 
       {/* Upload area matching ImageCard height */}
-      <div className="w-full h-48 bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-t-lg hover:border-blue-400 hover:from-blue-50 hover:to-blue-100 transition-all duration-200">
+      <div
+        className={`w-full h-48 flex flex-col items-center justify-center border-2 border-dashed rounded-t-lg transition-all duration-200 ${
+          isLimitReached
+            ? 'bg-gray-100 border-gray-300 text-gray-500'
+            : 'bg-gradient-to-br from-gray-50 to-gray-100 border-gray-300 hover:border-blue-400 hover:from-blue-50 hover:to-blue-100'
+        }`}
+      >
         <UploadIcon
           sx={{
             fontSize: 48,
-            color: 'text.secondary',
+            color: isLimitReached ? 'action.disabled' : 'text.secondary',
             transition: 'color 0.2s',
-            '&:hover': { color: 'primary.main' },
+            '&:hover': isLimitReached ? {} : { color: 'primary.main' },
           }}
-          className="group-hover:text-blue-400"
+          className={isLimitReached ? '' : 'group-hover:text-blue-400'}
         />
-        <p className="mt-2 text-sm text-gray-600 group-hover:text-blue-600 transition-colors font-semibold">
-          Click or Drop
+        <p
+          className={`mt-2 text-sm font-semibold transition-colors ${
+            isLimitReached ? 'text-gray-500' : 'text-gray-600 group-hover:text-blue-600'
+          }`}
+        >
+          {isLimitReached ? 'Limit Reached' : 'Click or Drop'}
         </p>
-        <p className="text-xs text-gray-500 mt-1">{MAX_FILE_SIZE_MB} MB max</p>
+        <p className={`text-xs mt-1 ${isLimitReached ? 'text-gray-500' : 'text-gray-500'}`}>
+          {isLimitReached ? 'Delete images to upload more' : `${MAX_FILE_SIZE_MB} MB max`}
+        </p>
       </div>
 
       {/* Info section matching ImageCard layout */}
       <div className="p-3">
-        <p className="text-sm font-medium text-gray-800 text-center">Add Photo</p>
+        <p
+          className={`text-sm font-medium text-center ${
+            isLimitReached ? 'text-gray-500' : 'text-gray-800'
+          }`}
+        >
+          {isLimitReached ? 'Limit Reached' : 'Add Photo'}
+        </p>
       </div>
     </div>
   );

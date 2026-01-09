@@ -1,10 +1,9 @@
 import React, { useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { Checkbox } from 'antd';
+import { Checkbox, Typography } from 'antd';
 import type { CheckboxChangeEvent } from 'antd/es/checkbox';
 import { GEMINI_TASKS, GeminiTaskName } from '@/services/gemini/geminiTasks';
 import { selectSelectedTaskNames, setSelectedTaskNames } from '@/stores/taskStore';
-import { useAuth } from '@/contexts/AuthContext';
 
 interface TaskSelectorProps {
   multiSelect?: boolean;
@@ -22,8 +21,6 @@ const TaskSelector: React.FC<TaskSelectorProps> = ({
   const dispatch = useDispatch();
   const selectedTaskNames = useSelector(selectSelectedTaskNames);
 
-  const { user } = useAuth();
-
   useEffect(() => {
     dispatch(setSelectedTaskNames([GEMINI_TASKS.RECOLOR_WALL.task_name]));
   }, [dispatch]);
@@ -37,13 +34,18 @@ const TaskSelector: React.FC<TaskSelectorProps> = ({
   const tasks = [
     {
       value: GEMINI_TASKS.RECOLOR_WALL.task_name,
-      label: 'Recolor Walls',
+      label: GEMINI_TASKS.RECOLOR_WALL.label_name,
       icon: '🎨',
     },
     {
       value: GEMINI_TASKS.ADD_TEXTURE.task_name,
-      label: 'Add Texture',
+      label: GEMINI_TASKS.ADD_TEXTURE.label_name,
       icon: '🧱',
+    },
+    {
+      value: GEMINI_TASKS.ADD_HOME_ITEM.task_name,
+      label: GEMINI_TASKS.ADD_HOME_ITEM.label_name,
+      icon: '🛋️',
     },
   ];
 
@@ -84,21 +86,18 @@ const TaskSelector: React.FC<TaskSelectorProps> = ({
     onTaskChange?.(newSelectedTasks);
   };
 
-  const firstName = user?.displayName?.split(' ')[0] || '';
-
   return (
-    <div className="space-y-4 p-6">
-      <h2 className="text-lg text-gray-800">
-        👋 Hi {firstName || ''}! Select your tasks to get started.
-      </h2>
+    <div className="space-y-2 px-6 pt-6">
+      <Typography.Title level={5} style={{ margin: 0, marginBottom: '8px' }}>
+        Redesign task
+      </Typography.Title>
 
-      <div className="flex flex-wrap justify-center gap-3 max-w-2xl mx-auto">
+      <div className="flex flex-col justify-center gap-2 max-w-2xl mx-auto">
         {tasks.map((task) => (
           <div
             key={task.value}
             className={`
-              relative flex items-center gap-3 p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer
-              min-w-[200px] flex-shrink-0
+              relative flex items-center gap-3 px-4 py-2 rounded-xl border-2 transition-all duration-200 cursor-pointer
               ${
                 selectedTaskNames.includes(task.value as GeminiTaskName)
                   ? 'border-blue-500 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-lg'

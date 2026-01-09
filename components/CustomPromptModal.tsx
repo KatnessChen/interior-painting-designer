@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Close as CloseIcon, ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
-import { wallRecolorPrompts, texturePrompts } from '@/services/gemini/prompts';
+import { getWallRecolorPrompt, getAddTexturePrompt } from '@/services/gemini/prompts';
 import { GeminiTask, GEMINI_TASKS } from '@/services/gemini/geminiTasks';
 
 interface CustomPromptModalProps {
@@ -33,9 +33,9 @@ const CustomPromptModal: React.FC<CustomPromptModalProps> = ({
   // Memoize default prompt based on task
   const defaultPrompt = useMemo(() => {
     if (isRecolorTask) {
-      return wallRecolorPrompts(colorName, colorHex, undefined);
+      return getWallRecolorPrompt(colorName, colorHex, undefined);
     } else if (isTextureTask) {
-      return texturePrompts(textureName, undefined);
+      return getAddTexturePrompt(textureName, undefined);
     }
     return '';
   }, [isRecolorTask, isTextureTask, colorName, colorHex, textureName]);

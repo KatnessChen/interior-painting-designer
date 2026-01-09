@@ -83,6 +83,35 @@ export const generateRetexturedImage = async (
   });
 };
 
+export const generateItemPlacedImage = async (
+  userId: string,
+  imageData: ImageData,
+  itemImageDownloadUrl: string,
+  itemMimeType: string,
+  itemName: string,
+  customPrompt?: string
+): Promise<{ base64: string; mimeType: string }> => {
+  const image = {
+    base64String: await getBase64FromImageData(userId, imageData),
+    mimeType: imageData.mimeType,
+  };
+
+  // Fetch item image from URL
+  const itemBase64 = await fetchImageAsBase64(itemImageDownloadUrl);
+
+  const itemImage = {
+    base64String: itemBase64,
+    mimeType: itemMimeType,
+  };
+
+  return processImageWithTask(GEMINI_TASKS.ADD_HOME_ITEM, image, {
+    itemName,
+    customPrompt,
+    userId,
+    itemImage,
+  });
+};
+
 /**
  * Fetch image from URL and convert to base64
  */
@@ -114,8 +143,13 @@ export const processImageWithTask = async (
     colorName?: string;
     colorHex?: string;
     textureName?: string;
+    itemName?: string;
     userId?: string;
     textureImage?: {
+      base64String: string;
+      mimeType: string;
+    };
+    itemImage?: {
       base64String: string;
       mimeType: string;
     };
@@ -140,6 +174,16 @@ export const processImageWithTask = async (
         inlineData: {
           data: options.textureImage.base64String,
           mimeType: options.textureImage.mimeType,
+        },
+      });
+    }
+
+    // For ADD_HOME_ITEM task, item image comes first
+    if (task.task_name === GEMINI_TASKS.ADD_HOME_ITEM.task_name && options.itemImage) {
+      parts.push({
+        inlineData: {
+          data: options.itemImage.base64String,
+          mimeType: options.itemImage.mimeType,
         },
       });
     }

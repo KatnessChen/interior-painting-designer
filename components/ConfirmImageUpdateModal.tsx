@@ -17,6 +17,7 @@ interface ConfirmImageUpdateModalProps {
   taskName: GeminiTaskName;
   colorName?: string;
   textureName?: string;
+  itemName?: string;
 }
 
 const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
@@ -28,6 +29,7 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
   taskName,
   colorName,
   textureName,
+  itemName,
 }) => {
   // Cached image state for original image
   const [cachedImageSrc, setCachedImageSrc] = useState<string | null>(null);
@@ -38,6 +40,7 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
   const [suffixMimeType, setSuffixMimeType] = useState<boolean>(false);
   const [suffixColorName, setSuffixColorName] = useState<boolean>(false);
   const [suffixTextureName, setSuffixTextureName] = useState<boolean>(false);
+  const [suffixItemName, setSuffixItemName] = useState<boolean>(false);
   const [suffixTimestamp, setSuffixTimestamp] = useState<boolean>(false);
   const [nameError, setNameError] = useState<string>('');
 
@@ -83,8 +86,12 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
       name = `${name}_${textureName}`;
     }
 
-    // Suffix timestamp
+    if (suffixItemName && itemName) {
+      name = `${name}_${itemName}`;
+    }
+
     if (suffixTimestamp) {
+      // Suffix timestamp
       const timestamp = generateTimestamp();
       name = `${name}_${timestamp}`;
     }
@@ -102,9 +109,11 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
     suffixMimeType,
     suffixColorName,
     suffixTextureName,
+    suffixItemName,
     suffixTimestamp,
     colorName,
     textureName,
+    itemName,
     generatedImage,
   ]);
 
@@ -162,11 +171,10 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
       onCancel={onCancel}
       width="90vw"
       style={{ top: 20, maxWidth: 1600 }}
-      styles={{ body: { maxHeight: 'calc(90vh - 200px)', overflowY: 'auto' } }}
       zIndex={1500}
       footer={[
         <Button key="cancel" onClick={onCancel} size="large">
-          No, Discard
+          No, refine
         </Button>,
         <Button
           key="confirm"
@@ -175,38 +183,12 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
           disabled={!!nameError}
           size="large"
         >
-          Yes, I'm Satisfied!
+          Yes, save
         </Button>,
       ]}
     >
       {/* Image Comparison Section */}
       <div style={{ display: 'flex', gap: 24, marginBottom: 24, flexWrap: 'wrap' }}>
-        {/* Recolored Photo */}
-        <div
-          style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', minHeight: 400 }}
-        >
-          <Typography.Title level={5} style={{ marginBottom: 12 }}>
-            Processed Photo
-          </Typography.Title>
-          <div
-            style={{
-              flex: 1,
-              backgroundColor: '#f0f0f0',
-              borderRadius: 8,
-              overflow: 'hidden',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <img
-              src={`data:${generatedImage.mimeType};base64,${generatedImage.base64}`}
-              alt="Processed Photo"
-              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-            />
-          </div>
-        </div>
-
         {/* Original Photo */}
         <div
           style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', minHeight: 400 }}
@@ -228,6 +210,32 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
             <img
               src={cachedImageSrc || originalImage.imageDownloadUrl}
               alt="Original"
+              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+            />
+          </div>
+        </div>
+
+        {/* Recolored Photo */}
+        <div
+          style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', minHeight: 400 }}
+        >
+          <Typography.Title level={5} style={{ marginBottom: 12 }}>
+            Redesigned Photo
+          </Typography.Title>
+          <div
+            style={{
+              flex: 1,
+              backgroundColor: '#f0f0f0',
+              borderRadius: 8,
+              overflow: 'hidden',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <img
+              src={`data:${generatedImage.mimeType};base64,${generatedImage.base64}`}
+              alt="Redesigned Photo"
               style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
             />
           </div>
@@ -267,14 +275,14 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
           >
             Prefix with timestamp
           </Checkbox>
-          <Checkbox checked={suffixMimeType} onChange={(e) => setSuffixMimeType(e.target.checked)}>
-            Suffix with file extension
-          </Checkbox>
           <Checkbox
             checked={suffixTimestamp}
             onChange={(e) => setSuffixTimestamp(e.target.checked)}
           >
             Suffix with timestamp
+          </Checkbox>
+          <Checkbox checked={suffixMimeType} onChange={(e) => setSuffixMimeType(e.target.checked)}>
+            Suffix with file extension
           </Checkbox>
           {taskName === GEMINI_TASKS.RECOLOR_WALL.task_name && colorName && (
             <Checkbox
@@ -288,6 +296,14 @@ const ConfirmImageUpdateModal: React.FC<ConfirmImageUpdateModalProps> = ({
             <Checkbox
               checked={suffixTextureName}
               onChange={(e) => setSuffixTextureName(e.target.checked)}
+            >
+              Suffix with texture name
+            </Checkbox>
+          )}
+          {taskName === GEMINI_TASKS.ADD_HOME_ITEM.task_name && itemName && (
+            <Checkbox
+              checked={suffixItemName}
+              onChange={(e) => setSuffixItemName(e.target.checked)}
             >
               Suffix with texture name
             </Checkbox>

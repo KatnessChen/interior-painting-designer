@@ -25,6 +25,8 @@ import {
   SpaceDocument,
   Color,
   Texture,
+  Item,
+  CustomPrompt,
 } from '@/types';
 import {
   base64ToFile,
@@ -823,13 +825,13 @@ export async function duplicateImage(
  *
  * @param userId The ID of the user.
  * @param projectId The ID of the project.
- * @param colorData The color data (name, hex, notes).
+ * @param colorData The color data (name, hex, description).
  * @returns The newly created Color object.
  */
 export async function addColor(
   userId: string,
   projectId: string,
-  colorData: { name: string; hex: string; notes?: string }
+  colorData: { name: string; hex: string; description?: string }
 ): Promise<Color> {
   if (!userId || !projectId) {
     throw new Error('User ID and Project ID are required');
@@ -843,7 +845,7 @@ export async function addColor(
       id: colorId,
       name: colorData.name.trim(),
       hex: colorData.hex.toUpperCase(),
-      notes: colorData.notes?.trim() || '',
+      description: colorData.description?.trim() || '',
       createdAt: now,
       updatedAt: now,
     };
@@ -858,7 +860,7 @@ export async function addColor(
       id: colorDoc.id,
       name: colorDoc.name,
       hex: colorDoc.hex,
-      notes: colorDoc.notes,
+      description: colorDoc.description,
     };
   } catch (error) {
     console.error('Failed to add color:', error);
@@ -893,7 +895,7 @@ export async function fetchColors(userId: string, projectId: string): Promise<Co
         id: data.id,
         name: data.name,
         hex: data.hex,
-        notes: data.notes,
+        description: data.description,
       };
     });
   } catch (error) {
@@ -917,7 +919,7 @@ export async function updateColor(
   userId: string,
   projectId: string,
   colorId: string,
-  updates: { name?: string; hex?: string; notes?: string }
+  updates: { name?: string; hex?: string; description?: string }
 ): Promise<void> {
   if (!userId || !projectId || !colorId) {
     throw new Error('User ID, Project ID, and Color ID are required');
@@ -932,7 +934,7 @@ export async function updateColor(
 
     if (updates.name !== undefined) updateData.name = updates.name.trim();
     if (updates.hex !== undefined) updateData.hex = updates.hex.toUpperCase();
-    if (updates.notes !== undefined) updateData.notes = updates.notes.trim();
+    if (updates.description !== undefined) updateData.description = updates.description.trim();
 
     await updateDoc(docRef, updateData);
     console.log('Custom color updated:', colorId);
@@ -993,7 +995,7 @@ export async function deleteColor(
 export async function addTexture(
   userId: string,
   projectId: string,
-  textureData: { name: string; file: File; notes?: string }
+  textureData: { name: string; file: File; description?: string }
 ): Promise<Texture> {
   if (!userId || !projectId) {
     throw new Error('User ID and Project ID are required');
@@ -1023,7 +1025,7 @@ export async function addTexture(
       id: textureId,
       name: textureData.name.trim(),
       textureImageDownloadUrl,
-      notes: textureData.notes?.trim() || '',
+      description: textureData.description?.trim() || '',
       createdAt: now,
       updatedAt: now,
     };
@@ -1038,7 +1040,7 @@ export async function addTexture(
       id: textureDoc.id,
       name: textureDoc.name,
       textureImageDownloadUrl: textureDoc.textureImageDownloadUrl,
-      notes: textureDoc.notes,
+      description: textureDoc.description,
     };
   } catch (error) {
     console.error('Failed to add texture:', error);
@@ -1073,7 +1075,7 @@ export async function fetchTextures(userId: string, projectId: string): Promise<
         id: data.id,
         name: data.name,
         textureImageDownloadUrl: data.textureImageDownloadUrl,
-        notes: data.notes,
+        description: data.description,
       };
     });
 
@@ -1102,7 +1104,7 @@ export async function updateTexture(
   userId: string,
   projectId: string,
   textureId: string,
-  updates: { name?: string; notes?: string }
+  updates: { name?: string; description?: string }
 ): Promise<void> {
   if (!userId || !projectId || !textureId) {
     throw new Error('User ID, Project ID, and Texture ID are required');
@@ -1116,7 +1118,7 @@ export async function updateTexture(
     };
 
     if (updates.name !== undefined) updateData.name = updates.name.trim();
-    if (updates.notes !== undefined) updateData.notes = updates.notes.trim();
+    if (updates.description !== undefined) updateData.description = updates.description.trim();
 
     await updateDoc(docRef, updateData);
     console.log('Custom texture updated:', textureId);
@@ -1213,5 +1215,296 @@ async function cacheTextureImages(textures: Texture[]): Promise<void> {
     `[Texture Cache] Queued ${
       textures.length - skippedCount
     } textures for caching (${skippedCount} already cached)`
+  );
+}
+
+// ============================================================================
+// Custom Items
+// ============================================================================
+
+/**
+ * Adds a new custom item to a project.
+ *
+ * @param userId The ID of the user.
+ * @param projectId The ID of the project.
+ * @param itemData The item data (name, file, description).
+ * @returns The newly created Item object.
+ */
+export async function addItem(
+  userId: string,
+  projectId: string,
+  itemData: { name: string; file: File; description?: string }
+): Promise<Item> {
+  if (!userId || !projectId) {
+    throw new Error('User ID and Project ID are required');
+  }
+
+  try {
+    const itemId = crypto.randomUUID();
+    const now = Timestamp.now();
+
+    // Get and validate file extension
+    const allowedExtensions = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp']);
+    const extension = itemData.file.name.split('.').pop()?.toLowerCase();
+    if (!extension || !allowedExtensions.has(extension)) {
+      throw new Error('Invalid item file type. Allowed types are: jpg, jpeg, png, gif, webp, bmp.');
+    }
+
+    // Upload item image to Firebase Storage
+    const storagePath = `users/${userId}/projects/${projectId}/custom_items/${itemId}.${extension}`;
+    const storageRef = ref(storage, storagePath);
+
+    await uploadBytes(storageRef, itemData.file);
+    const itemImageDownloadUrl = await getDownloadURL(storageRef);
+
+    const itemDoc: Item = {
+      id: itemId,
+      name: itemData.name.trim(),
+      itemImageDownloadUrl,
+      description: itemData.description?.trim() || '',
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const docRef = doc(db, 'users', userId, 'projects', projectId, 'custom_items', itemId);
+
+    await setDoc(docRef, itemDoc);
+
+    console.log('Custom item added to Firestore:', itemId);
+
+    return {
+      id: itemDoc.id,
+      name: itemDoc.name,
+      itemImageDownloadUrl: itemDoc.itemImageDownloadUrl,
+      description: itemDoc.description,
+    };
+  } catch (error) {
+    console.error('Failed to add item:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to add item: ${error.message}`);
+    }
+    throw new Error('Failed to add item to Firestore.');
+  }
+}
+
+/**
+ * Fetches all custom items for a project.
+ *
+ * @param userId The ID of the user.
+ * @param projectId The ID of the project.
+ * @returns An array of Item objects.
+ */
+export async function fetchItems(userId: string, projectId: string): Promise<Item[]> {
+  if (!userId || !projectId) {
+    throw new Error('User ID and Project ID are required');
+  }
+
+  try {
+    const itemsRef = collection(db, 'users', userId, 'projects', projectId, 'custom_items');
+
+    const itemsQuery = query(itemsRef, orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(itemsQuery);
+
+    const items = snapshot.docs.map((doc) => {
+      const data = doc.data() as Item;
+      return {
+        id: data.id,
+        name: data.name,
+        itemImageDownloadUrl: data.itemImageDownloadUrl,
+        description: data.description,
+      };
+    });
+
+    // Cache item images in background (using download URL as cache key)
+    void cacheItemImages(items);
+
+    return items;
+  } catch (error) {
+    console.error('Failed to fetch items:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to fetch items: ${error.message}`);
+    }
+    throw new Error('Failed to fetch items from Firestore.');
+  }
+}
+
+/**
+ * Updates a custom item.
+ *
+ * @param userId The ID of the user.
+ * @param projectId The ID of the project.
+ * @param itemId The ID of the item.
+ * @param updates The fields to update.
+ */
+export async function updateItem(
+  userId: string,
+  projectId: string,
+  itemId: string,
+  updates: { name?: string; description?: string }
+): Promise<void> {
+  if (!userId || !projectId || !itemId) {
+    throw new Error('User ID, Project ID, and Item ID are required');
+  }
+
+  try {
+    const docRef = doc(db, 'users', userId, 'projects', projectId, 'custom_items', itemId);
+
+    const updateData: any = {
+      updatedAt: Timestamp.now(),
+    };
+
+    if (updates.name !== undefined) updateData.name = updates.name.trim();
+    if (updates.description !== undefined) updateData.description = updates.description.trim();
+
+    await updateDoc(docRef, updateData);
+    console.log('Custom item updated:', itemId);
+  } catch (error) {
+    console.error('Failed to update item:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to update item: ${error.message}`);
+    }
+    throw new Error('Failed to update item in Firestore.');
+  }
+}
+
+/**
+ * Deletes a custom item.
+ *
+ * @param userId The ID of the user.
+ * @param projectId The ID of the project.
+ * @param itemId The ID of the item.
+ */
+export async function deleteItem(userId: string, projectId: string, itemId: string): Promise<void> {
+  if (!userId || !projectId || !itemId) {
+    throw new Error('User ID, Project ID, and Item ID are required');
+  }
+
+  try {
+    const docRef = doc(db, 'users', userId, 'projects', projectId, 'custom_items', itemId);
+
+    await deleteDoc(docRef);
+    console.log('Custom item deleted:', itemId);
+  } catch (error) {
+    console.error('Failed to delete item:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to delete item: ${error.message}`);
+    }
+    throw new Error('Failed to delete item from Firestore.');
+  }
+}
+
+/**
+ * Cache item images in the background by converting download URLs to base64
+ * This runs asynchronously without blocking the main flow
+ */
+async function cacheItemImages(items: Item[]): Promise<void> {
+  if (items.length === 0) {
+    console.log('[Item Cache] No items to cache');
+    return;
+  }
+
+  let cachedCount = 0;
+  let skippedCount = 0;
+
+  for (const item of items) {
+    if (!item.itemImageDownloadUrl) {
+      skippedCount++;
+      continue;
+    }
+
+    try {
+      // Check if already cached (using download URL as cache key)
+      const existingCache = await imageCache.get(item.itemImageDownloadUrl);
+
+      if (existingCache) {
+        skippedCount++;
+        console.log(`[Item Cache] Skipped (already cached): ${item.name}`);
+        continue;
+      }
+
+      // Fire and forget - cache in background
+      imageDownloadUrlToBase64(item.itemImageDownloadUrl)
+        .then(() => {
+          cachedCount++;
+          if (cachedCount % 5 === 0 || cachedCount === items.length - skippedCount) {
+            console.log(
+              `[Item Cache] Progress: ${cachedCount}/${
+                items.length - skippedCount
+              } items cached (${skippedCount} skipped)`
+            );
+          }
+        })
+        .catch((error) => {
+          console.warn(`[Item Cache] Failed to cache item ${item.name}:`, error);
+        });
+    } catch (error) {
+      console.warn(`[Item Cache] Error caching item ${item.name}:`, error);
+    }
+  }
+
+  console.log(
+    `[Item Cache] Queued ${
+      items.length - skippedCount
+    } items for caching (${skippedCount} already cached)`
+  );
+}
+
+/**
+ * Saves a custom prompt to Firestore for a project
+ * @param userId The ID of the user
+ * @param projectId The ID of the project
+ * @param taskName The task name
+ * @param content The prompt content
+ */
+export async function saveCustomPrompt(
+  userId: string,
+  projectId: string,
+  taskName: string,
+  content: string
+): Promise<void> {
+  if (!userId || !projectId || !taskName || !content) {
+    throw new Error('Missing required fields for saving custom prompt');
+  }
+
+  const promptId = crypto.randomUUID();
+  const customPromptsPath = `/users/${userId}/projects/${projectId}/custom_prompts`;
+  const docRef = doc(db, customPromptsPath, promptId);
+
+  const promptData: CustomPrompt = {
+    id: promptId,
+    task_name: taskName,
+    timestamp: Timestamp.now(),
+    content: content,
+  };
+
+  await setDoc(docRef, promptData);
+}
+
+/**
+ * Fetches all custom prompts for a project from Firestore
+ * @param userId The ID of the user
+ * @param projectId The ID of the project
+ * @returns Array of custom prompts sorted by timestamp (newest first)
+ */
+export async function fetchAllCustomPrompts(
+  userId: string,
+  projectId: string
+): Promise<CustomPrompt[]> {
+  if (!userId || !projectId) {
+    throw new Error('Missing userId or projectId');
+  }
+
+  const customPromptsPath = `/users/${userId}/projects/${projectId}/custom_prompts`;
+  const collectionRef = collection(db, customPromptsPath);
+
+  const q = query(collectionRef, orderBy('timestamp', 'desc'));
+  const snapshot = await getDocs(q);
+
+  return snapshot.docs.map(
+    (doc) =>
+      ({
+        id: doc.id,
+        ...doc.data(),
+      }) as CustomPrompt
   );
 }

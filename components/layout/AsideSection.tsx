@@ -1,51 +1,192 @@
-import React from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { Alert, Typography } from 'antd';
 import TaskSelector from '@/components/TaskSelector';
-import ColorSelector from '@/components/ColorSelector';
-import TextureSelector from '@/components/TextureSelector';
+import SelectedAssets from '@/components/SelectedAssets';
 import ToolkitPanel from './ToolkitPanel';
-import { GEMINI_TASKS } from '@/services/gemini/geminiTasks';
+import { AutoAwesome as AutoAwesomeIcon } from '@mui/icons-material';
+import {
+  selectSelectedOriginalImageIds,
+  selectSelectedUpdatedImageIds,
+  selectOriginalImages,
+  selectUpdatedImages,
+} from '@/stores/imageStore';
 import {
   selectSelectedTaskNames,
   selectSelectedColor,
-  setSelectedColor,
-  setSelectedTexture,
+  selectSelectedTexture,
+  selectSelectedItem,
+  setIsGenerateModalOpen,
+  setSourceImage,
 } from '@/stores/taskStore';
-import { Color, Texture } from '@/types';
+import { useGenerateButtonState } from '@/hooks/useGenerateButtonState';
+import { checkOperationLimit } from '@/utils/limitationUtils';
+import { imageCache } from '@/utils/imageCache';
+import { useImageProcessing } from '@/hooks/useImageProcessing';
+import { useAuth } from '@/contexts/AuthContext';
 
 const AsideSection: React.FC = () => {
   const dispatch = useDispatch();
+  const { user } = useAuth();
+  const selectedOriginalImageIds = useSelector(selectSelectedOriginalImageIds);
+  const selectedUpdatedImageIds = useSelector(selectSelectedUpdatedImageIds);
+  const originalImages = useSelector(selectOriginalImages);
+  const updatedImages = useSelector(selectUpdatedImages);
   const selectedTaskNames = useSelector(selectSelectedTaskNames);
   const selectedColor = useSelector(selectSelectedColor);
+  const selectedTexture = useSelector(selectSelectedTexture);
+  const selectedItem = useSelector(selectSelectedItem);
 
-  const isRecolorSelected = selectedTaskNames.includes(GEMINI_TASKS.RECOLOR_WALL.task_name);
-  const isTextureSelected = selectedTaskNames.includes(GEMINI_TASKS.ADD_TEXTURE.task_name);
+  const [cachedImageSrc, setCachedImageSrc] = useState<string | null>(null);
 
-  const handleSelectColor = (color: Color) => {
-    dispatch(setSelectedColor(color));
-  };
+  // Use image processing hook to get sourceImage state
+  const { processingImage } = useImageProcessing({
+    userId: user?.uid,
+    selectedTaskName: selectedTaskNames[0] || null,
+    options: {
+      selectedColor,
+      selectedTexture,
+      selectedItem,
+    },
+  });
 
-  const handleSelectTexture = (texture: Texture) => {
-    dispatch(setSelectedTexture(texture));
+  // Get the single selected image (if exactly 1 is selected)
+  const selectedImage = useMemo(() => {
+    const allSelectedIds = new Set([
+      ...Array.from(selectedOriginalImageIds),
+      ...Array.from(selectedUpdatedImageIds),
+    ]);
+
+    if (allSelectedIds.size !== 1) return null;
+
+    const selectedId = Array.from(allSelectedIds)[0];
+    const allImages = [...originalImages, ...updatedImages];
+    return allImages.find((img) => img.id === selectedId) || null;
+  }, [selectedOriginalImageIds, selectedUpdatedImageIds, originalImages, updatedImages]);
+
+  // Load cached image
+  useEffect(() => {
+    const loadCachedImage = async () => {
+      if (!selectedImage) {
+        setCachedImageSrc(null);
+        return;
+      }
+
+      try {
+        const base64 = await imageCache.get(selectedImage.imageDownloadUrl);
+        if (base64) {
+          setCachedImageSrc(`data:${selectedImage.mimeType};base64,${base64}`);
+        }
+      } catch (error) {
+        console.warn('Failed to load cached image:', error);
+      }
+    };
+
+    loadCachedImage();
+  }, [selectedImage]);
+
+  // Calculate button state
+  const operationLimitCheck = selectedImage ? checkOperationLimit(selectedImage) : null;
+  const { isDisabled, disableReason } = useGenerateButtonState({
+    activeTaskName: selectedTaskNames[0] || null,
+    processingImage,
+    savingImage: false, // AsideSection doesn't track saving state, only processing
+    canAddOperation: operationLimitCheck?.canAdd ?? false,
+    selectedColor,
+    selectedTexture,
+    selectedItem,
+  });
+
+  // Determine selection state message
+  const selectionMessage = useMemo(() => {
+    const totalSelected = selectedOriginalImageIds.size + selectedUpdatedImageIds.size;
+
+    if (totalSelected === 0) return 'No image selected';
+    if (totalSelected > 1) return `${totalSelected} images selected. Please select only 1 image.`;
+    return null;
+  }, [selectedOriginalImageIds.size, selectedUpdatedImageIds.size]);
+
+  const handleGenerate = () => {
+    if (selectedImage) {
+      dispatch(setSourceImage(selectedImage));
+      dispatch(setIsGenerateModalOpen(true));
+    }
   };
 
   return (
-    <aside className="h-full w-[240px] bg-white flex flex-col shadow-lg border-r border-gray-200 overflow-y-auto">
+    <aside className="h-full w-[250px] bg-white flex flex-col shadow-lg border-r border-gray-200 overflow-y-auto gap-6">
       <TaskSelector />
 
-      {/* Show ColorSelector when Recolor task is selected */}
-      {isRecolorSelected && (
-        <div className="pt-6 border-t border-gray-200 px-6">
-          <ColorSelector title="" selectedColor={selectedColor} onSelectColor={handleSelectColor} />
-        </div>
-      )}
+      <div className="px-6">
+        <SelectedAssets />
+      </div>
 
-      {/* Show TextureSelector when Add Texture task is selected */}
-      {isTextureSelected && (
-        <div className="pt-6 border-t border-gray-200 px-6">
-          <TextureSelector title="" onTextureSelect={handleSelectTexture} />
-        </div>
-      )}
+      {/* Selected Image Display */}
+      <div className="px-6">
+        <Typography.Title level={5} style={{ margin: 0, marginBottom: '8px' }}>
+          Image to Redesign
+        </Typography.Title>
+        {selectionMessage ? (
+          <div
+            style={{
+              padding: '12px',
+              backgroundColor: '#f3f4f6',
+              borderRadius: '4px',
+              border: '1px dashed #d1d5db',
+              color: '#9ca3af',
+              fontSize: '0.875rem',
+              textAlign: 'center',
+            }}
+          >
+            {selectionMessage}
+          </div>
+        ) : selectedImage ? (
+          <div>
+            <img
+              src={cachedImageSrc || selectedImage.imageDownloadUrl}
+              alt={selectedImage.name}
+              style={{
+                width: '100%',
+                height: 'auto',
+                borderRadius: '4px',
+                border: '1px solid #d1d5db',
+                marginBottom: '8px',
+              }}
+            />
+            <div style={{ fontSize: '0.875rem', color: '#374151' }}>
+              <div style={{ fontWeight: 500, marginBottom: '4px' }}>{selectedImage.name}</div>
+              <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                {selectedImage.evolutionChain.length} operation
+                {selectedImage.evolutionChain.length > 1 ? 's' : ''}
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      {/* Generate Button */}
+      <div className="px-6">
+        <button
+          disabled={isDisabled || !selectedImage}
+          onClick={handleGenerate}
+          className={`flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm transition-colors w-full ${
+            isDisabled || !selectedImage
+              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              : 'text-purple-700 bg-purple-100 hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500'
+          }`}
+          style={{
+            height: '44px',
+            fontSize: '1rem',
+            fontWeight: 600,
+          }}
+        >
+          <AutoAwesomeIcon sx={{ fontSize: 20, marginRight: 1, color: 'inherit' }} />
+          Redesign
+        </button>
+        {isDisabled && disableReason && selectedImage && (
+          <Alert title={disableReason} type="warning" style={{ marginTop: '8px' }} />
+        )}
+      </div>
 
       {/* Toolkit Panel at the bottom */}
       <div className="mt-auto border-t border-gray-200">

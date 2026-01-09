@@ -68,7 +68,7 @@ export const useCustomColors = (projectId: string | null) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid, projectId, dispatch]);
 
-  const addColor = async (colorData: { name: string; hex: string; notes?: string }) => {
+  const addColor = async (colorData: { name: string; hex: string; description?: string }) => {
     if (!user?.uid || !projectId) {
       throw new Error('User or project not available');
     }

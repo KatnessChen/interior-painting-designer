@@ -77,6 +77,19 @@ export interface ImageOperation {
       name: string;
       url: string; // The URL of the texture image at that time
     } | null;
+
+    /**
+     * The ID of the item used, if applicable.
+     */
+    itemId: string | null;
+
+    /**
+     * A snapshot of the item's details at the time of the operation.
+     */
+    itemSnapshot: {
+      name: string;
+      url: string; // The URL of the item image at that time
+    } | null;
   };
 
   timestamp: Timestamp;
@@ -171,7 +184,7 @@ export interface Color {
   id: string;
   name: string;
   hex: string;
-  notes?: string;
+  description?: string;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }
@@ -180,9 +193,31 @@ export interface Texture {
   id: string;
   name: string;
   textureImageDownloadUrl: string;
-  notes?: string;
+  description?: string;
   base64?: string;
   mimeType?: string;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
+}
+
+export interface Item {
+  id: string;
+  name: string;
+  itemImageDownloadUrl: string;
+  description?: string;
+  base64?: string;
+  mimeType?: string;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
+}
+
+/**
+ * Custom Prompt document structure in Firestore.
+ * Path: users/{userId}/projects/{projectId}/custom_prompts/{promptId}
+ */
+export interface CustomPrompt {
+  id?: string;
+  task_name: string;
+  timestamp: Timestamp;
+  content: string;
 }

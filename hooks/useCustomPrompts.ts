@@ -1,0 +1,78 @@
+import { useCallback } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchAllCustomPrompts } from '@/services/firestoreService';
+import {
+  setCustomPrompts,
+  setLoadingPrompts,
+  setLoadPromptsError,
+  selectCustomPromptsForProject,
+  selectIsLoadingPromptsForProject,
+  selectLoadPromptsErrorForProject,
+  selectSearchedCustomPrompts,
+} from '@/stores/customAssetsStore';
+
+interface UseCustomPromptsOptions {
+  userId?: string;
+  projectId?: string;
+}
+
+/**
+ * Hook for managing custom prompts
+ * Provides access to cached prompts, loading states, and fetch/search operations
+ */
+export const useCustomPrompts = (options: UseCustomPromptsOptions) => {
+  const { userId, projectId } = options;
+  const dispatch = useDispatch();
+
+  // Selectors
+  const prompts = useSelector(selectCustomPromptsForProject(projectId || ''));
+  const isLoading = useSelector(selectIsLoadingPromptsForProject(projectId || ''));
+  const error = useSelector(selectLoadPromptsErrorForProject(projectId || ''));
+
+  // Fetch all prompts from Firestore
+  const fetchPrompts = useCallback(async () => {
+    if (!userId || !projectId) {
+      dispatch(
+        setLoadPromptsError({ projectId: projectId || '', error: 'Missing userId or projectId' })
+      );
+      return;
+    }
+
+    dispatch(setLoadingPrompts({ projectId, isLoadingPrompts: true }));
+
+    try {
+      const fetchedPrompts = await fetchAllCustomPrompts(userId, projectId);
+      dispatch(
+        setCustomPrompts({
+          projectId,
+          prompts: fetchedPrompts,
+        })
+      );
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch custom prompts';
+      dispatch(
+        setLoadPromptsError({
+          projectId,
+          error: errorMessage,
+        })
+      );
+    }
+  }, [userId, projectId, dispatch]);
+
+  // Search prompts by keyword
+  const searchPrompts = useCallback(
+    (keyword: string) => {
+      if (!projectId) return [];
+      return selectSearchedCustomPrompts(projectId, keyword)({ customAssets: { projects: {} } });
+    },
+    [projectId]
+  );
+
+  return {
+    prompts,
+    isLoading,
+    error,
+    fetchPrompts,
+    searchPrompts,
+  };
+};
