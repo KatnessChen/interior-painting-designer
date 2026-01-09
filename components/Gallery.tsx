@@ -113,6 +113,11 @@ const Gallery: React.FC<GalleryProps> = ({
                 Select All
               </Button>
             )}
+            {onClearSelection && (
+              <Button onClick={onClearSelection} disabled={!hasSelection} icon={<ClearOutlined />}>
+                Deselect All
+              </Button>
+            )}
             {onBulkDownload && (
               <Button onClick={onBulkDownload} disabled={!hasSelection} icon={<DownloadOutlined />}>
                 Download
@@ -133,11 +138,6 @@ const Gallery: React.FC<GalleryProps> = ({
                 icon={<DeleteOutlined />}
               >
                 Delete
-              </Button>
-            )}
-            {onClearSelection && (
-              <Button onClick={onClearSelection} disabled={!hasSelection} icon={<ClearOutlined />}>
-                Deselect All
               </Button>
             )}
           </>
