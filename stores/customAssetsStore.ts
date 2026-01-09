@@ -1,7 +1,8 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { Color, Texture, Item } from '@/types';
+import { Color, Texture, Item, CustomPrompt } from '@/types';
 
 interface ProjectCustomAssets {
+  // Custom Assets
   customColors: Color[];
   isLoadingColors: boolean;
   loadColorsError: string | null;
@@ -11,6 +12,11 @@ interface ProjectCustomAssets {
   customItems: Item[];
   isLoadingItems: boolean;
   loadItemsError: string | null;
+
+  // Custom Prompts
+  customPrompts: CustomPrompt[];
+  isLoadingPrompts: boolean;
+  loadPromptsError: string | null;
 }
 
 interface CustomAssetsState {
@@ -40,6 +46,9 @@ const getOrCreateProjectAssets = (
       customItems: [],
       isLoadingItems: false,
       loadItemsError: null,
+      customPrompts: [],
+      isLoadingPrompts: false,
+      loadPromptsError: null,
     };
   }
   return state.projects[projectId];
@@ -224,6 +233,42 @@ export const customAssetsStore = createSlice({
       projectAssets.isLoadingItems = false;
     },
 
+    // Custom Prompts
+    setCustomPrompts: (
+      state,
+      action: PayloadAction<{ projectId: string; prompts: CustomPrompt[] }>
+    ) => {
+      const projectAssets = getOrCreateProjectAssets(state, action.payload.projectId);
+      projectAssets.customPrompts = action.payload.prompts;
+      projectAssets.isLoadingPrompts = false;
+      projectAssets.loadPromptsError = null;
+    },
+
+    addCustomPrompt: (
+      state,
+      action: PayloadAction<{ projectId: string; prompt: CustomPrompt }>
+    ) => {
+      const projectAssets = getOrCreateProjectAssets(state, action.payload.projectId);
+      projectAssets.customPrompts.unshift(action.payload.prompt);
+    },
+
+    setLoadingPrompts: (
+      state,
+      action: PayloadAction<{ projectId: string; isLoadingPrompts: boolean }>
+    ) => {
+      const projectAssets = getOrCreateProjectAssets(state, action.payload.projectId);
+      projectAssets.isLoadingPrompts = action.payload.isLoadingPrompts;
+    },
+
+    setLoadPromptsError: (
+      state,
+      action: PayloadAction<{ projectId: string; error: string | null }>
+    ) => {
+      const projectAssets = getOrCreateProjectAssets(state, action.payload.projectId);
+      projectAssets.loadPromptsError = action.payload.error;
+      projectAssets.isLoadingPrompts = false;
+    },
+
     // Clear state for a specific project
     clearProjectAssets: (state, action: PayloadAction<string>) => {
       delete state.projects[action.payload];
@@ -255,8 +300,50 @@ export const {
   removeCustomItem,
   setLoadingItems,
   setLoadItemsError,
+  setCustomPrompts,
+  addCustomPrompt,
+  setLoadingPrompts,
+  setLoadPromptsError,
   clearProjectAssets,
   clearAllAssets,
 } = customAssetsStore.actions;
 
 export default customAssetsStore.reducer;
+
+// ============================================================================
+// Selectors
+// ============================================================================
+
+export const selectCustomPromptsForProject =
+  (projectId: string) => (state: { customAssets: CustomAssetsState }) => {
+    return state.customAssets.projects[projectId]?.customPrompts || [];
+  };
+
+export const selectIsLoadingPromptsForProject =
+  (projectId: string) => (state: { customAssets: CustomAssetsState }) => {
+    return state.customAssets.projects[projectId]?.isLoadingPrompts || false;
+  };
+
+export const selectLoadPromptsErrorForProject =
+  (projectId: string) => (state: { customAssets: CustomAssetsState }) => {
+    return state.customAssets.projects[projectId]?.loadPromptsError || null;
+  };
+
+/**
+ * Search custom prompts by task name or content
+ */
+export const selectSearchedCustomPrompts =
+  (projectId: string, keyword: string) =>
+  (state: { customAssets: CustomAssetsState }): CustomPrompt[] => {
+    const prompts = state.customAssets.projects[projectId]?.customPrompts || [];
+    if (!keyword.trim()) {
+      return prompts;
+    }
+
+    const lowerKeyword = keyword.toLowerCase();
+    return prompts.filter(
+      (p) =>
+        p.task_name.toLowerCase().includes(lowerKeyword) ||
+        p.content.toLowerCase().includes(lowerKeyword)
+    );
+  };

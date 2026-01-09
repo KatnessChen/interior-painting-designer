@@ -210,3 +210,14 @@ export interface Item {
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }
+
+/**
+ * Custom Prompt document structure in Firestore.
+ * Path: users/{userId}/projects/{projectId}/custom_prompts/{promptId}
+ */
+export interface CustomPrompt {
+  id?: string;
+  task_name: string;
+  timestamp: Timestamp;
+  content: string;
+}

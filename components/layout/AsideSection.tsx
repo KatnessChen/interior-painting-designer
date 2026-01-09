@@ -16,6 +16,7 @@ import {
   selectSelectedColor,
   selectSelectedTexture,
   selectSelectedItem,
+  setIsGenerateModalOpen,
   setSourceImage,
 } from '@/stores/taskStore';
 import { useGenerateButtonState } from '@/hooks/useGenerateButtonState';
@@ -108,6 +109,7 @@ const AsideSection: React.FC = () => {
   const handleGenerate = () => {
     if (selectedImage) {
       dispatch(setSourceImage(selectedImage));
+      dispatch(setIsGenerateModalOpen(true));
     }
   };
 

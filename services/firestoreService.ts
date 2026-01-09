@@ -26,6 +26,7 @@ import {
   Color,
   Texture,
   Item,
+  CustomPrompt,
 } from '@/types';
 import {
   base64ToFile,
@@ -1445,5 +1446,65 @@ async function cacheItemImages(items: Item[]): Promise<void> {
     `[Item Cache] Queued ${
       items.length - skippedCount
     } items for caching (${skippedCount} already cached)`
+  );
+}
+
+/**
+ * Saves a custom prompt to Firestore for a project
+ * @param userId The ID of the user
+ * @param projectId The ID of the project
+ * @param taskName The task name
+ * @param content The prompt content
+ */
+export async function saveCustomPrompt(
+  userId: string,
+  projectId: string,
+  taskName: string,
+  content: string
+): Promise<void> {
+  if (!userId || !projectId || !taskName || !content) {
+    throw new Error('Missing required fields for saving custom prompt');
+  }
+
+  const promptId = crypto.randomUUID();
+  const customPromptsPath = `/users/${userId}/projects/${projectId}/custom_prompts`;
+  const docRef = doc(db, customPromptsPath, promptId);
+
+  const promptData: CustomPrompt = {
+    id: promptId,
+    task_name: taskName,
+    timestamp: Timestamp.now(),
+    content: content,
+  };
+
+  await setDoc(docRef, promptData);
+}
+
+/**
+ * Fetches all custom prompts for a project from Firestore
+ * @param userId The ID of the user
+ * @param projectId The ID of the project
+ * @returns Array of custom prompts sorted by timestamp (newest first)
+ */
+export async function fetchAllCustomPrompts(
+  userId: string,
+  projectId: string
+): Promise<CustomPrompt[]> {
+  if (!userId || !projectId) {
+    throw new Error('Missing userId or projectId');
+  }
+
+  const customPromptsPath = `/users/${userId}/projects/${projectId}/custom_prompts`;
+  const collectionRef = collection(db, customPromptsPath);
+
+  const q = query(collectionRef, orderBy('timestamp', 'desc'));
+  const snapshot = await getDocs(q);
+
+  return snapshot.docs.map(
+    (doc) =>
+      ({
+        id: doc.id,
+        ...doc.data(),
+      }) as CustomPrompt
   );
 }
