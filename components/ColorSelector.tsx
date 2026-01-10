@@ -5,7 +5,7 @@ import { CheckCircle as CheckmarkBadgeIcon } from '@mui/icons-material';
 import { Alert as AntAlert } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { Color } from '@/types';
-import { PRESET_COLOR } from '@/constants';
+import { PRESET_COLOR } from '@/constants/constants';
 import { Snackbar, Alert } from '@mui/material';
 import AddColorModal from './AddColorModal';
 import { useCustomColors } from '@/hooks/useCustomColors';

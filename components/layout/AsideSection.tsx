@@ -27,7 +27,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const AsideSection: React.FC = () => {
   const dispatch = useDispatch();
-  const { user } = useAuth();
+  const { user, adminSettings } = useAuth();
   const selectedOriginalImageIds = useSelector(selectSelectedOriginalImageIds);
   const selectedUpdatedImageIds = useSelector(selectSelectedUpdatedImageIds);
   const originalImages = useSelector(selectOriginalImages);
@@ -86,7 +86,9 @@ const AsideSection: React.FC = () => {
   }, [selectedImage]);
 
   // Calculate button state
-  const operationLimitCheck = selectedImage ? checkOperationLimit(selectedImage) : null;
+  const operationLimitCheck = selectedImage
+    ? checkOperationLimit(selectedImage, adminSettings.mock_limit_reached)
+    : null;
   const { isDisabled, disableReason } = useGenerateButtonState({
     activeTaskName: selectedTaskNames[0] || null,
     processingImage,
@@ -114,7 +116,10 @@ const AsideSection: React.FC = () => {
   };
 
   return (
-    <aside className="h-full w-[250px] bg-white flex flex-col shadow-lg border-r border-gray-200 overflow-y-auto gap-6">
+    <aside
+      className="h-full w-[250px] bg-white flex flex-col shadow-lg border-r border-gray-200 overflow-y-auto gap-6"
+      style={{ height: 'calc(100vh - var(--header-height))' }}
+    >
       <TaskSelector />
 
       <div className="px-6">

@@ -1,11 +1,14 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from 'firebase/auth';
 import { onAuthChange } from '@/services/authService';
+import { getAdminSettings, setAdminSettings, AdminSettings } from '@/utils/storageUtils';
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  adminSettings: AdminSettings;
+  updateAdminSettings: (settings: AdminSettings) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -13,6 +16,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [adminSettings, setAdminSettingsState] = useState<AdminSettings>(() => getAdminSettings());
 
   useEffect(() => {
     // Subscribe to auth state changes
@@ -25,10 +29,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => unsubscribe();
   }, []);
 
+  const updateAdminSettings = (settings: AdminSettings) => {
+    setAdminSettingsState(settings);
+    setAdminSettings(settings);
+  };
+
   const value: AuthContextType = {
     user,
     isLoading,
     isAuthenticated: user !== null,
+    adminSettings,
+    updateAdminSettings,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

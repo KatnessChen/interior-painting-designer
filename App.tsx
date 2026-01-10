@@ -1,14 +1,17 @@
 import React from 'react';
 import { Provider } from 'react-redux';
+import '@/styles/main.css';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { store } from './stores/store';
+import { ROUTES } from './constants/routes';
 import Header from './components/layout/Header';
 import LandingPage from './pages/LandingPage';
 import AuthPage from './pages/AuthPage';
-import AsideSection from './components/layout/AsideSection';
+import AdminSettingPage from './pages/AdminSettingPage';
+import NotFoundPage from './pages/NotFoundPage';
 
 // Protected Layout Component
 const ProtectedLayout: React.FC = () => {
@@ -23,19 +26,18 @@ const ProtectedLayout: React.FC = () => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/auth" replace />;
+    return <Navigate to={ROUTES.AUTH} replace />;
   }
 
   return (
     <div className="h-screen flex flex-col overflow-scroll">
       <Header />
-      <div className="flex-1 flex" style={{ maxHeight: 'calc(100vh - var(--header-height))' }}>
-        {/* Fixed Aside Section */}
-        <AsideSection />
-        {/* Main Content with left margin to avoid overlap */}
-        <div className="flex-1 overflow-scroll">
-          <LandingPage />
-        </div>
+      <div className="flex-1 overflow-scroll">
+        <Routes>
+          <Route path={ROUTES.HOME} element={<LandingPage />} />
+          <Route path={ROUTES.ADMIN_SETTING} element={<AdminSettingPage />} />
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
       </div>
     </div>
   );
@@ -49,9 +51,8 @@ const AppContent: React.FC = () => {
     <GoogleOAuthProvider clientId={googleClientId}>
       <Router>
         <Routes>
-          <Route path="/auth" element={<AuthPage />} />
-          <Route path="/" element={<ProtectedLayout />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path={ROUTES.AUTH} element={<AuthPage />} />
+          <Route path="/*" element={<ProtectedLayout />} />
         </Routes>
         <SpeedInsights />
       </Router>
