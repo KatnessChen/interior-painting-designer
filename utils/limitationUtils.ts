@@ -4,16 +4,26 @@ import {
   MAX_SPACES_PER_PROJECT,
   MAX_IMAGES_PER_SPACE,
   MAX_OPERATIONS_PER_IMAGE,
-} from '@/constants';
+} from '@/constants/constants';
 
 /**
  * Checks if a user can add a new project and returns remaining quota.
  * Excludes soft-deleted projects.
  *
  * @param projects Array of user's projects
+ * @param mockLimitReached If true, simulates limit reached scenario
  * @returns Object with canAdd boolean and remaining count
  */
-export const checkProjectLimit = (projects: Project[]): { canAdd: boolean; remaining: number } => {
+export const checkProjectLimit = (
+  projects: Project[],
+  mockLimitReached: boolean = false
+): { canAdd: boolean; remaining: number } => {
+  if (mockLimitReached) {
+    return {
+      canAdd: false,
+      remaining: 0,
+    };
+  }
   const activeProjects = projects.length; // All projects in Redux are active
   const remaining = MAX_PROJECTS_PER_USER - activeProjects;
   return {
@@ -27,11 +37,16 @@ export const checkProjectLimit = (projects: Project[]): { canAdd: boolean; remai
  * Excludes soft-deleted spaces.
  *
  * @param activeProject The current active project
+ * @param mockLimitReached If true, simulates limit reached scenario
  * @returns Object with canAdd boolean and remaining count
  */
 export const checkSpaceLimit = (
-  activeProject: Project | null | undefined
+  activeProject: Project | null | undefined,
+  mockLimitReached: boolean = false
 ): { canAdd: boolean; remaining: number } => {
+  if (mockLimitReached) {
+    return { canAdd: false, remaining: 0 };
+  }
   if (!activeProject) {
     return { canAdd: false, remaining: 0 };
   }
@@ -49,11 +64,21 @@ export const checkSpaceLimit = (
  * Excludes soft-deleted images.
  *
  * @param space The space to check
+ * @param mockLimitReached If true, simulates limit reached scenario
  * @returns Object with canAdd boolean, remaining count, and max count
  */
 export const checkImageLimit = (
-  space: Space | null
+  space: Space | null,
+  mockLimitReached: boolean = false
 ): { canAdd: boolean; remaining: number; max: number; current: number } => {
+  if (mockLimitReached) {
+    return {
+      canAdd: false,
+      remaining: 0,
+      max: MAX_IMAGES_PER_SPACE,
+      current: MAX_IMAGES_PER_SPACE,
+    };
+  }
   if (!space || !space.images) {
     return { canAdd: true, remaining: MAX_IMAGES_PER_SPACE, max: MAX_IMAGES_PER_SPACE, current: 0 };
   }
@@ -75,11 +100,23 @@ export const checkImageLimit = (
  * Excludes soft-deleted images.
  *
  * @param image The image to check
+ * @param mockLimitReached If true, simulates limit reached scenario
  * @returns Object with canAdd boolean, remaining count, and max count
  */
 export const checkOperationLimit = (
-  image: ImageData | null
+  image: ImageData | null,
+  mockLimitReached: boolean = false
 ): { canAdd: boolean; remaining: number; max: number; current: number } => {
+  // If mock_limit_reached is true, simulate limit reached
+  if (mockLimitReached) {
+    return {
+      canAdd: false,
+      remaining: 0,
+      max: MAX_OPERATIONS_PER_IMAGE,
+      current: MAX_OPERATIONS_PER_IMAGE,
+    };
+  }
+
   if (!image) {
     return {
       canAdd: true,
@@ -126,10 +163,10 @@ export const getLimitExceededMessage = (
   limit: number
 ): string => {
   const messages: Record<string, string> = {
-    projects: `You have reached the maximum of ${limit} projects. Delete an existing project to create a new one.`,
-    spaces: `You have reached the maximum of ${limit} spaces per project. Delete an existing space to create a new one.`,
-    images: `You have reached the maximum of ${limit} images in this space. Delete images to upload new ones.`,
-    operations: `This image has reached the maximum of ${limit} operations. Contact custom support for solutions.`,
+    projects: `You have reached the maximum of ${limit} projects.`,
+    spaces: `You have reached the maximum of ${limit} spaces per project.`,
+    images: `You have reached the maximum of ${limit} images in this space.`,
+    operations: `This image has reached the maximum of ${limit} operations.`,
   };
   return messages[resourceType] || 'You have reached the limit for this resource.';
 };

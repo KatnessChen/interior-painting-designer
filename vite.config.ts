@@ -27,6 +27,7 @@ export default defineConfig(({ mode }) => {
       ),
       'process.env.VITE_FIREBASE_APP_ID': JSON.stringify(env.VITE_FIREBASE_APP_ID),
       'process.env.VITE_FIREBASE_MEASUREMENT_ID': JSON.stringify(env.VITE_FIREBASE_MEASUREMENT_ID),
+      'process.env.VITE_ADMIN_EMAILS': JSON.stringify(env.VITE_ADMIN_EMAILS),
     },
     resolve: {
       alias: {

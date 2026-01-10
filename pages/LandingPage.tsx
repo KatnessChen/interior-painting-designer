@@ -10,6 +10,7 @@ import GenericConfirmModal from '@/components/GenericConfirmModal';
 import CopyImageModal from '@/components/CopyImageModal';
 import MyBreadcrumb from '@/components/MyBreadcrumb';
 import Footer from '@/components/layout/Footer';
+import AsideSection from '@/components/layout/AsideSection';
 import ColorSelector from '@/components/ColorSelector';
 import TextureOrItemSelector from '@/components/TextureOrItemSelector';
 import { GEMINI_TASKS } from '@/services/gemini/geminiTasks';
@@ -56,7 +57,7 @@ import {
 
 const LandingPage: React.FC = () => {
   // Get authenticated user
-  const { user } = useAuth();
+  const { user, adminSettings } = useAuth();
   const dispatch = useDispatch();
 
   const isAppInitiated = useSelector(selectIsAppInitiated);
@@ -138,7 +139,10 @@ const LandingPage: React.FC = () => {
   }, [projects, activeProjectId, activeSpaceId]);
 
   // Check image limit in current space
-  const imageLimitCheck = useMemo(() => checkImageLimit(activeSpace), [activeSpace]);
+  const imageLimitCheck = useMemo(
+    () => checkImageLimit(activeSpace, adminSettings.mock_limit_reached),
+    [activeSpace, adminSettings.mock_limit_reached]
+  );
 
   // Format image limit info for breadcrumb display
   const imageLimitInfo = useMemo(
@@ -715,7 +719,11 @@ const LandingPage: React.FC = () => {
 
   return (
     <div className="flex bg-gray-50">
-      <main className="flex-1 flex flex-col">
+      <AsideSection />
+      <main
+        className="flex-1 overflow-scroll"
+        style={{ height: 'calc(100vh - var(--header-height))' }}
+      >
         <div
           className="bg-gray-100"
           style={{ minHeight: 'calc(100vh - var(--header-height) - var(--footer-height))' }}

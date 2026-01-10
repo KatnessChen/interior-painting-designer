@@ -66,7 +66,7 @@ interface BreadcrumbProps {
 }
 
 const MyBreadcrumb: React.FC<BreadcrumbProps> = ({ onProjectSelected, onSpaceSelected }) => {
-  const { user } = useAuth();
+  const { user, adminSettings } = useAuth();
   const dispatch = useDispatch<AppDispatch>();
   const projects = useSelector(selectProjects);
   const activeProjectId = useSelector(selectActiveProjectId);
@@ -214,7 +214,7 @@ const MyBreadcrumb: React.FC<BreadcrumbProps> = ({ onProjectSelected, onSpaceSel
 
       switch (modalMode) {
         case ModalMode.ADD_PROJECT: {
-          const projectLimitCheck = checkProjectLimit(projects);
+          const projectLimitCheck = checkProjectLimit(projects, adminSettings.mock_limit_reached);
           if (!projectLimitCheck.canAdd) {
             setLimitWarning({
               type: 'project',
@@ -230,7 +230,7 @@ const MyBreadcrumb: React.FC<BreadcrumbProps> = ({ onProjectSelected, onSpaceSel
         }
         case ModalMode.ADD_SPACE: {
           if (!activeProjectId) throw Error('Project Id not exist');
-          const spaceLimitCheck = checkSpaceLimit(activeProject);
+          const spaceLimitCheck = checkSpaceLimit(activeProject, adminSettings.mock_limit_reached);
           if (!spaceLimitCheck.canAdd) {
             setLimitWarning({
               type: 'space',
@@ -312,8 +312,14 @@ const MyBreadcrumb: React.FC<BreadcrumbProps> = ({ onProjectSelected, onSpaceSel
     }
   }, [modalMode]);
 
-  const projectLimitCheck = useMemo(() => checkProjectLimit(projects), [projects]);
-  const spaceLimitCheck = useMemo(() => checkSpaceLimit(activeProject), [activeProject]);
+  const projectLimitCheck = useMemo(
+    () => checkProjectLimit(projects, adminSettings.mock_limit_reached),
+    [projects, adminSettings.mock_limit_reached]
+  );
+  const spaceLimitCheck = useMemo(
+    () => checkSpaceLimit(activeProject, adminSettings.mock_limit_reached),
+    [activeProject, adminSettings.mock_limit_reached]
+  );
 
   const projectMenuItems: MenuProps['items'] = useMemo(() => {
     const projectItems = projects.map((project) => ({

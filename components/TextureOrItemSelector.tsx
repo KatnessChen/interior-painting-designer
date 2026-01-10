@@ -15,7 +15,10 @@ import {
   setSelectedItem,
   selectSelectedItem,
 } from '@/stores/taskStore';
-import { MAX_CUSTOM_ASSET_NAME_LENGTH, MAX_CUSTOM_ASSET_DESCRIPTION_LENGTH } from '@/constants';
+import {
+  MAX_CUSTOM_ASSET_NAME_LENGTH,
+  MAX_CUSTOM_ASSET_DESCRIPTION_LENGTH,
+} from '@/constants/constants';
 import { CheckCircle as CheckmarkBadgeIcon } from '@mui/icons-material';
 
 type AssetType = 'texture' | 'item';

@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { MAX_FILE_SIZE_MB } from '@/constants';
+import { MAX_FILE_SIZE_MB } from '@/constants/constants';
 import { CloudUpload as UploadIcon } from '@mui/icons-material';
 
 interface UploadCardProps {

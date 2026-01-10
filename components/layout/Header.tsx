@@ -1,10 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Avatar, IconButton } from '@mui/material';
+import { Button } from 'antd';
+import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '@/constants/routes';
 import AuthPanel from '../AuthPanel';
 import { useAuth } from '../../contexts/AuthContext';
 
 const Header: React.FC = () => {
   const { user } = useAuth();
+  const ALLOWED_EMAILS = (process.env.VITE_ADMIN_EMAILS || '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  const email = user?.email?.toLowerCase();
+  const isAdmins = email && ALLOWED_EMAILS.includes(email);
+
+  const navigate = useNavigate();
   const [isAuthPanelOpen, setIsAuthPanelOpen] = useState(false);
   const authPanelRef = useRef<HTMLDivElement>(null);
 
@@ -34,12 +45,21 @@ const Header: React.FC = () => {
       <nav className="fixed top-0 left-0 w-full z-50 bg-gradient-to-r from-indigo-400 to-purple-600 shadow-lg">
         <div className="flex items-center justify-between px-6 py-2">
           {/* Brand Section */}
-          <div className="flex items-center">
+          <div className="flex items-center cursor-pointer" onClick={() => navigate(ROUTES.HOME)}>
             <div className="text-xl text-white/85">Vizion</div>
             <div className="text-white/70 font-light mt-1 ml-2">Your AI Image Designer</div>
           </div>
           {/* Right Section - Profile */}
           <div className="flex items-center gap-2">
+            {isAdmins && (
+              <Button
+                type="link"
+                onClick={() => navigate(ROUTES.ADMIN_SETTING)}
+                style={{ color: 'rgba(255,255,255,0.75)' }}
+              >
+                Admin Settings
+              </Button>
+            )}
             <IconButton
               onClick={toggleAuthPopover}
               sx={{

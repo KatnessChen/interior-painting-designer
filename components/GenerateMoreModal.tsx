@@ -48,7 +48,8 @@ import {
 import { useCustomPrompts } from '@/hooks/useCustomPrompts';
 import ConfirmImageUpdateModal from './ConfirmImageUpdateModal';
 import SelectedAssets from '@/components/SelectedAssets';
-import { MAX_OPERATIONS_PER_IMAGE } from '@/constants';
+import { MAX_OPERATIONS_PER_IMAGE } from '@/constants/constants';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface GenerateMoreModalProps {
   isOpen: boolean;
@@ -67,6 +68,8 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
 }) => {
   // Get dispatch from Redux
   const dispatch = useDispatch();
+  // Get adminSettings from Auth context
+  const { adminSettings } = useAuth();
   // Get active project and space from Redux store
   const activeProjectId = useSelector(selectActiveProjectId);
   const activeSpaceId = useSelector(selectActiveSpaceId);
@@ -127,7 +130,7 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
   }, [selectedTaskNames]);
 
   // Check operation limit
-  const operationLimitCheck = checkOperationLimit(sourceImage);
+  const operationLimitCheck = checkOperationLimit(sourceImage, adminSettings.mock_limit_reached);
 
   // Use image processing hook
   const { processImage, processingImage, errorMessage, setErrorMessage } = useImageProcessing({
@@ -195,7 +198,7 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
 
   const handleGenerate = async () => {
     // Check operation limit first
-    const operationLimitCheck = checkOperationLimit(sourceImage);
+    const operationLimitCheck = checkOperationLimit(sourceImage, adminSettings.mock_limit_reached);
     if (!operationLimitCheck.canAdd) {
       setErrorMessage(getLimitExceededMessage('operations', MAX_OPERATIONS_PER_IMAGE));
       return;
@@ -311,7 +314,10 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
 
     try {
       // Check operation limit on source image
-      const operationLimitCheck = checkOperationLimit(sourceImage);
+      const operationLimitCheck = checkOperationLimit(
+        sourceImage,
+        adminSettings.mock_limit_reached
+      );
       if (!operationLimitCheck.canAdd) {
         setErrorMessage(getLimitExceededMessage('operations', MAX_OPERATIONS_PER_IMAGE));
         setSavingImage(false);
@@ -809,7 +815,6 @@ const GenerateMoreModal: React.FC<GenerateMoreModalProps> = ({
               {activeTaskName && (
                 <div
                   style={{
-                    marginTop: 16,
                     padding: 12,
                     backgroundColor: '#e6f7ff',
                     borderRadius: 6,

@@ -1,0 +1,38 @@
+/**
+ * Admin Settings stored in localStorage
+ */
+export interface AdminSettings {
+  mock_limit_reached: boolean;
+}
+
+const ADMIN_SETTINGS_KEY = 'admin_settings';
+
+const DEFAULT_SETTINGS: AdminSettings = {
+  mock_limit_reached: false,
+};
+
+/**
+ * Get admin settings from localStorage
+ */
+export const getAdminSettings = (): AdminSettings => {
+  try {
+    const stored = localStorage.getItem(ADMIN_SETTINGS_KEY);
+    if (stored) {
+      return { ...DEFAULT_SETTINGS, ...JSON.parse(stored) };
+    }
+  } catch (error) {
+    console.error('Failed to load admin settings from localStorage:', error);
+  }
+  return DEFAULT_SETTINGS;
+};
+
+/**
+ * Save admin settings to localStorage
+ */
+export const setAdminSettings = (settings: AdminSettings): void => {
+  try {
+    localStorage.setItem(ADMIN_SETTINGS_KEY, JSON.stringify(settings));
+  } catch (error) {
+    console.error('Failed to save admin settings to localStorage:', error);
+  }
+};

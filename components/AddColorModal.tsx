@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { Modal, Input, Button } from 'antd';
 import { Color } from '@/types';
-import { MAX_CUSTOM_ASSET_NAME_LENGTH, MAX_CUSTOM_ASSET_DESCRIPTION_LENGTH } from '@/constants';
+import {
+  MAX_CUSTOM_ASSET_NAME_LENGTH,
+  MAX_CUSTOM_ASSET_DESCRIPTION_LENGTH,
+} from '@/constants/constants';
 
 interface AddColorModalProps {
   open: boolean;
